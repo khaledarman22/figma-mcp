@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: var(--figma-color-bg, #fff);
+        --fg: var(--figma-color-text, #1e1e1e);
+        --muted: var(--figma-color-text-secondary, #6b6b6b);
+        --line: var(--figma-color-border, #e6e6e6);
+        --ok: var(--figma-color-text-success, #14ae5c);
+        --err: var(--figma-color-text-danger, #e03e1a);
+        --warn: var(--figma-color-text-warning, #b86200);
+        --accent: var(--figma-color-bg-brand, #0d99ff);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 11px/1.45 Inter, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--fg); }
+      header { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+      .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+      .dot.wait { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+      .dot.off { background: var(--muted); }
+      .dot.paused { background: var(--warn); }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      .who { flex: 1; min-width: 0; }
+      #status { font-weight: 600; font-size: 12px; }
+      #detail { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      button { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 5px; padding: 4px 9px; cursor: pointer; }
+      button:hover { border-color: var(--muted); }
+      button.active { background: var(--warn); border-color: var(--warn); color: #fff; }
+      #min { padding: 4px 7px; }
+      .bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 4px; color: var(--muted); }
+      .bar button { border: none; padding: 0; color: var(--muted); }
+      #log { padding: 0 6px 10px; overflow-y: auto; height: calc(100vh - 92px); }
+      .row { display: grid; grid-template-columns: 52px 1fr auto; gap: 6px; padding: 5px 6px; border-radius: 4px; align-items: baseline; }
+      .row:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+      .row .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+      .row .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .d { color: var(--muted); font-variant-numeric: tabular-nums; }
+      .row.run .m::before { content: '◌ '; color: var(--accent); }
+      .row.ok .m::before { content: '✓ '; color: var(--ok); }
+      .row.err .m::before { content: '✕ '; color: var(--err); }
+      .row.err { cursor: help; }
+      body.min .bar, body.min #log { display: none; }
+      body.min header { border-bottom: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span id="dot" class="dot"></span>
+      <div class="who">
+        <div id="status">Starting…</div>
+        <div id="detail"></div>
+      </div>
+      <button id="pause" title="Stop Claude from changing this file">Pause</button>
+      <button id="min" title="Minimize">–</button>
+    </header>
+    <div class="bar"><span>Activity</span><button id="clear">Clear</button></div>
+    <div id="log"></div>
+    <script>
+      /*__UI_SCRIPT__*/
+    </script>
+  </body>
+</html>

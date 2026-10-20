@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: var(--figma-color-bg, #fff);
+        --fg: var(--figma-color-text, #1e1e1e);
+        --muted: var(--figma-color-text-secondary, #6b6b6b);
+        --line: var(--figma-color-border, #e6e6e6);
+        --ok: var(--figma-color-text-success, #14ae5c);
+        --err: var(--figma-color-text-danger, #e03e1a);
+        --warn: var(--figma-color-text-warning, #b86200);
+        --accent: var(--figma-color-bg-brand, #0d99ff);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 11px/1.45 Inter, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--fg); }
+      header { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+      .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+      .dot.wait { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+      .dot.off { background: var(--muted); }
+      .dot.paused { background: var(--warn); }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      .who { flex: 1; min-width: 0; }
+      #status { font-weight: 600; font-size: 12px; }
+      #detail { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      button { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 5px; padding: 4px 9px; cursor: pointer; }
+      button:hover { border-color: var(--muted); }
+      button.active { background: var(--warn); border-color: var(--warn); color: #fff; }
+      #min { padding: 4px 7px; }
+      .bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 4px; color: var(--muted); }
+      .bar button { border: none; padding: 0; color: var(--muted); }
+      #log { padding: 0 6px 10px; overflow-y: auto; height: calc(100vh - 92px); }
+      .row { display: grid; grid-template-columns: 52px 1fr auto; gap: 6px; padding: 5px 6px; border-radius: 4px; align-items: baseline; }
+      .row:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); }
+      .row .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+      .row .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .d { color: var(--muted); font-variant-numeric: tabular-nums; }
+      .row.run .m::before { content: '◌ '; color: var(--accent); }
+      .row.ok .m::before { content: '✓ '; color: var(--ok); }
+      .row.err .m::before { content: '✕ '; color: var(--err); }
+      .row.err { cursor: help; }
+      body.min .bar, body.min #log { display: none; }
+      body.min header { border-bottom: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span id="dot" class="dot"></span>
+      <div class="who">
+        <div id="status">Starting…</div>
+        <div id="detail"></div>
+      </div>
+      <button id="pause" title="Stop Claude from changing this file">Pause</button>
+      <button id="min" title="Minimize">–</button>
+    </header>
+    <div class="bar"><span>Activity</span><button id="clear">Clear</button></div>
+    <div id="log"></div>
+    <script>
+      "use strict";(()=>{var P=[7457,7458,7459];var u=t=>document.getElementById(t),k=u("dot"),C=u("status"),H=u("detail"),m=u("log"),w=u("pause"),h=u("min"),L=u("clear"),c=null,S=null,o=null,y=0,M,p=!1,T=new Map;function E(t){parent.postMessage({pluginMessage:t},"*")}function x(t,e,i=""){k.className=`dot ${t}`,C.textContent=e,H.textContent=i}function d(){var t;o!=null&&o.paused?x("paused","Paused","Claude can read this file but cannot change it."):c&&c.readyState===WebSocket.OPEN&&S?x("ok","Connected to Claude Code",`localhost:${S} \xB7 ${(t=o==null?void 0:o.file.name)!=null?t:""}`):x(y>2?"off":"wait","Waiting for Claude Code\u2026","Starts automatically when a Claude session uses figma-mcp."),w.textContent=o!=null&&o.paused?"Resume":"Pause",w.classList.toggle("active",!!(o!=null&&o.paused))}function R(t,e){var i,n,r,s,g,a,l;try{if(t==="build")return(i=e==null?void 0:e.spec)!=null&&i.name?`build \u201C${e.spec.name}\u201D`:"build";if(t==="edit")return`edit \xB7 ${(r=(n=e==null?void 0:e.ops)==null?void 0:n.length)!=null?r:0} ops`;if(t==="execute"){let f=(g=String((s=e==null?void 0:e.code)!=null?s:"").split(`
+`).find(N=>N.trim()))!=null?g:"";return`execute ${f.trim().startsWith("//")?f.trim().slice(2).trim().slice(0,40):""}`.trim()}if(t==="create_component")return`component \u201C${(a=e==null?void 0:e.name)!=null?a:""}\u201D`;if(t==="variables")return`variables \xB7 ${((l=e==null?void 0:e.collections)!=null?l:[]).map(f=>f.name).join(", ")}`}catch{}return t.replace(/_/g," ")}var _=new Set(["ping","status"]);function U(t,e,i){var s;if(_.has(e))return;let n=document.createElement("div");n.className="row run";let r=R(e,i);for(n.innerHTML='<span class="t"></span><span class="m"></span><span class="d">\u2026</span>',n.querySelector(".t").textContent=new Date().toTimeString().slice(0,8),n.querySelector(".m").textContent=r,m.prepend(n);m.children.length>60;)(s=m.lastChild)==null||s.remove();T.set(t,{method:e,label:r,started:Date.now(),row:n})}function O(t,e,i){let n=T.get(t);if(!n)return;T.delete(t),n.row.className=`row ${e?"ok":"err"}`;let r=n.row.querySelector(".d");r.textContent=`${((Date.now()-n.started)/1e3).toFixed(1)}s`,!e&&i&&(n.row.title=i)}function b(){M!==void 0&&clearTimeout(M);let t=[...P],e=0,i=()=>{if(e>=t.length){y++,d(),M=setTimeout(b,Math.min(800+y*400,3e3));return}let n=t[e++],r=!1,s;try{s=new WebSocket(`ws://localhost:${n}/figma-mcp`)}catch{i();return}let g=setTimeout(()=>{if(!r)try{s.close()}catch{}},1500);s.onopen=()=>{r=!0,clearTimeout(g),o&&s.send(JSON.stringify({type:"hello",role:"plugin",protocol:1,state:o}))},s.onmessage=a=>{let l;try{l=JSON.parse(String(a.data))}catch{return}l.type==="welcome"?(c=s,S=n,y=0,d()):l.type==="request"&&(U(String(l.id),String(l.method),l.params),E({type:"request",id:l.id,method:l.method,params:l.params}))},s.onerror=()=>{},s.onclose=()=>{if(clearTimeout(g),c===s){c=null,S=null;for(let[a]of T)O(a,!1,"connection closed");d(),b()}else r||i()}};i()}window.onmessage=t=>{var i,n;let e=(i=t.data)==null?void 0:i.pluginMessage;if(e){if(e.type==="init"||e.type==="state"){let r=!o;o=e.state,c&&c.readyState===WebSocket.OPEN&&c.send(JSON.stringify({type:"state",state:o})),d(),r&&b()}else if(e.type==="response"&&(O(String(e.id),!!e.ok,(n=e.error)==null?void 0:n.message),c&&c.readyState===WebSocket.OPEN)){let{ms:r,...s}=e;c.send(JSON.stringify(s))}}};w.onclick=()=>E({type:"pause",value:!(o!=null&&o.paused)});L.onclick=()=>{m.innerHTML=""};h.onclick=()=>{p=!p,document.body.classList.toggle("min",p),h.textContent=p?"\u25A2":"\u2013",E({type:"resize",width:300,height:p?64:380})};d();E({type:"ui-ready"});})();
+
+    </script>
+  </body>
+</html>

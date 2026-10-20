@@ -1,0 +1,29 @@
+{
+  "name": "figma-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local bridge between Figma Desktop and Claude Code \u2014 MCP server + Figma plugin + principled skills.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.plugin.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
+    "test": "node --test --test-timeout=60000 test/",
+    "check": "npm run typecheck && npm run build && npm test",
+    "setup": "node scripts/setup.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "connect": "node scripts/setup.mjs"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "1.142.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@types/node": "22.20.5",
+    "@types/ws": "8.18.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "ws": "8.22.0",
+    "zod": "3.25.76"
+  }
+}

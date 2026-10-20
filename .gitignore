@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+*.log
+# machine-specific (absolute path of this folder), rewritten by every build
+claude-plugin/dist/source.json
+# outputs of the real-Figma scripts when run inside the folder
+e2e-out/
+e2e-org-out/

@@ -1,0 +1,14 @@
+{
+  "name": "figma-mcp-local",
+  "owner": {
+    "name": "Khaled"
+  },
+  "description": "Local marketplace for the figma-mcp plugin (this folder).",
+  "plugins": [
+    {
+      "name": "figma-mcp",
+      "source": "./claude-plugin",
+      "description": "Figma Desktop bridge: MCP server, skills, folder guard."
+    }
+  ]
+}

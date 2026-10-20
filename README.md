@@ -67,20 +67,25 @@ Claude Code ⇄ (MCP · stdio) ⇄ figma-mcp server ⇄ (WebSocket · localhost:
 | `figma-mcp:prototype` | البروتوتايب: ارسم الفلو الأول، كل زرار يشتغل، حركة ثابتة، overlays، وscroll |
 | `figma-mcp:to-code` | من التصميم للكود: افهم المشروع، صدّر التوكنز مرة، أعِد استخدام كمبوننتس الكود، اسحب سكشن سكشن، كود responsive ويخدم الـ accessibility، وقارن بالسكرين شوت |
 
-## التركيب (مرة واحدة)
+## التركيب: أمر واحد
+
+من جوه الفولدر، أياً كان مكانه:
 
 ```bash
-cd ~/Desktop/programming/tools/figma-mcp
-npm install        # أدوات البناء بس، والسيرفر نفسه ملف واحد مبني
-npm run build
-npm run setup      # بيسجّل البلجن في Claude Code (MCP + سكيلز + حارس الفولدر)
+npm run setup
 ```
 
-> عايز تشغّله مع **Codex** أو **OpenCode** أو **Antigravity** أو أي أداة MCP تانية؟ الشرح في [CLIENTS.md](CLIENTS.md)، والربط بأمر واحد: `npm run connect -- <الأداة>`.
+أو دبل كليك على **`setup.command`** في Finder.
 
-بعدين في **Figma Desktop** (مش المتصفح):
-**Plugins → Development → Import plugin from manifest…** واختار
-`figma-mcp/figma-plugin/manifest.json`
+- **بيجيب المسارات لوحده كل مرة:** مكان الفولدر و `node`. مفيش مسار مكتوب ثابت في أي حتة.
+- **بتختار من ليستة:** بيعرض الأدوات اللي على جهازك (Claude Code و Codex و OpenCode و Antigravity و Cursor و Gemini CLI و Claude Desktop). جنب كل واحدة مكتوب لو كانت موجودة أو متسطّب عليها figma-mcp. الأسهم بتتحرك، و Space بيختار، و Enter بيسطّب.
+- **لو نقلت الفولدر:** الأدوات بتشغّل لانشر ثابت في `~/.figma-mcp`، وده بيدوّر على الفولدر ويلاقيه لوحده. Claude Code بيقرا البلجن من الفولدر نفسه، فبعد النقل شغّل الأمر تاني وهو بيسجّله في مكانه الجديد.
+- **فيجما (مرة واحدة):** بيقولك تعمل Import من `~/.figma-mcp/figma-plugin/manifest.json`، والمسار بيتنسخ لوحده. المكان ده مش بيتغيّر، فمش هتعمل Import تاني لو نقلت الفولدر. ولو فيه نسخة قديمة مستوردة من مكان تاني بيقولك تشيلها.
+
+من غير ليستة: `npm run setup -- claude codex` أو `npm run setup -- --all`. عشان تشوف هيعمل إيه من غير ما يغيّر حاجة: `--dry-run`. وكل الاختيارات: `--help`.
+
+> أول مرة بس، لو مفيش `node_modules`: `npm install`. دي أدوات البناء، أما السيرفر نفسه فملف واحد مبني.
+> تفاصيل كل أداة في [CLIENTS.md](CLIENTS.md).
 
 ## الاستخدام اليومي
 
@@ -169,7 +174,9 @@ node scripts/call.mjs status '{}'     # نداء أداة واحدة من الت
 | `src/guard/` | حارس الفولدر |
 | `claude-plugin/` | بلجن Claude Code: السكيلز، و hooks، و `.mcp.json`، و dist |
 | `agent-skills/` | نسخة من السكيلز للأدوات التانية (Codex، OpenCode، Antigravity…). بتتولّد مع `npm run build`، متعدّلهاش بإيدك |
-| `CLIENTS.md` | شرح التشغيل مع كل أداة، و `npm run connect -- <الأداة>` |
+| `CLIENTS.md` | شرح التشغيل مع كل أداة |
+| `setup.command`، `scripts/setup.mjs`، `scripts/clients.mjs` | أمر التركيب، وطريقة كل أداة في حفظ إعداداتها |
+| `scripts/home-launch.mjs` | اللانشر اللي بيتنسخ لـ `~/.figma-mcp` ويلاقي الفولدر لو اتنقل |
 | `figma-plugin/` | اللي بتعمله import في فيجما |
 | `test/` | الاختبارات |
 
@@ -178,9 +185,7 @@ node scripts/call.mjs status '{}'     # نداء أداة واحدة من الت
 ```bash
 claude plugin uninstall figma-mcp@figma-mcp-local
 claude plugin marketplace remove figma-mcp-local
+rm -rf ~/.figma-mcp ~/.agents/skills/figma-mcp*
 ```
-وفي فيجما: Plugins → Development → Manage plugins in development → Remove.
-# figma-mcp
-# figma-mcp
-# figma-mcp
-# figma-mcp
+- **الأدوات التانية:** امسح `figma-mcp` من ملف إعداداتها (`npm run doctor` بيقولك أنهي أدوات متسطّب عليها). وكل ملف اتعدّل ليه نسخة احتياطي جنبه باسم `.bak-figma-mcp`.
+- **فيجما:** Plugins → Development → Manage plugins in development → Remove.

@@ -1,0 +1,15 @@
+{
+  "name": "figma-mcp",
+  "version": "1.0.0",
+  "description": "Local bridge between Claude Code and Figma Desktop: design with auto layout, variables, styles, components & variants and prototypes; pull designs into code; principled skills for both directions.",
+  "author": {
+    "name": "Khaled"
+  },
+  "keywords": [
+    "figma",
+    "design",
+    "mcp",
+    "design-system",
+    "design-to-code"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "Figma MCP",
+  "id": "figma-mcp-local-bridge",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": [
+    "figma"
+  ],
+  "documentAccess": "dynamic-page",
+  "enablePrivatePluginApi": true,
+  "permissions": [
+    "currentuser",
+    "teamlibrary"
+  ],
+  "networkAccess": {
+    "allowedDomains": [
+      "none"
+    ],
+    "devAllowedDomains": [
+      "http://localhost:7457",
+      "ws://localhost:7457",
+      "http://localhost:7458",
+      "ws://localhost:7458",
+      "http://localhost:7459",
+      "ws://localhost:7459"
+    ],
+    "reasoning": "Talks only to the local figma-mcp bridge (MCP server) running on this computer."
+  }
+}

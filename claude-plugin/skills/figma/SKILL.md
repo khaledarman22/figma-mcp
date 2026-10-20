@@ -1,0 +1,153 @@
+---
+name: figma
+description: Core workflow for the figma-mcp tools (mcp__plugin_figma-mcp_figma__*) — the local bridge to Figma Desktop through the "Figma MCP" plugin. Load it before the first figma-mcp call in a session, for any Figma work — reading or inspecting a file, designing screens/components/variables/prototypes, editing layers, auditing a design, or pulling a design into code. Covers connecting, the tool map, where things go in the file (pages, Components, Trash, references, image prompts), the build-spec vocabulary, verification and error recovery. Triggers include "Figma", "فيجما", "صمم", "ديزاين", "شاشة", "كمبوننت", "فاريبلز", "بروتوتايب", "اسحب التصميم", "ريفرنس", "صور", a figma.com URL, or a node id like 12:34.
+---
+
+# figma-mcp — working in Figma through the local bridge
+
+You drive Figma Desktop through a development plugin ("Figma MCP") that the user runs in their file.
+Every call acts on the live file the user is looking at, so work like a careful colleague: inspect
+first, change in small verified steps, keep the file organized, and never leave half-finished or mystery layers behind.
+
+Companion skills — load the ones that match the task (names in Claude Code; other clients use `figma-mcp-design` etc.):
+- **figma-mcp:design** — designing screens/flows (the working principles). Load for any visible design work.
+- **figma-mcp:design-system** — variables, styles, components & variants.
+- **figma-mcp:prototype** — flows, interactions, transitions.
+- **figma-mcp:to-code** — implementing a Figma design in a codebase.
+
+## 0. Tools
+
+The tools come from the figma-mcp MCP server; each client prefixes them its own way — Claude Code:
+`mcp__plugin_figma-mcp_figma__<tool>`; Codex / OpenCode / Antigravity / others: the server name you registered
+(usually `figma-mcp`) + the tool name. If your client defers MCP tools (Claude Code), load the ones you need in
+**one** search call, e.g. `select:mcp__plugin_figma-mcp_figma__status,mcp__plugin_figma-mcp_figma__get_metadata,mcp__plugin_figma-mcp_figma__build,mcp__plugin_figma-mcp_figma__edit,mcp__plugin_figma-mcp_figma__screenshot`.
+If your client does not show images returned by tools, call `screenshot` with `saveTo` and open the PNG with your image viewer.
+
+| Need | Tool |
+|---|---|
+| Is Figma connected? which file/page/selection? | `status` |
+| Structure + ids (cheap) | `get_metadata` |
+| Exact properties of layers (before editing) | `get_node` |
+| See it | `screenshot` |
+| What the file already has (tokens, styles, components) | `get_design_system` |
+| Find layers by name/text | `search` |
+| Create layouts/screens/sections | `build` |
+| Change existing layers (props, text, move, wrap, swap, delete → Trash, restore…) | `edit` |
+| Tokens | `variables`, `styles` |
+| Components & variant sets | `create_component` |
+| Prototype links, flows, scrolling | `prototype` |
+| Audit against principles (+ safe auto-fix) | `lint` |
+| Images the design waits for → prompts file; generated images → into place | `image_prompts`, `place_images` |
+| Design → code | `get_design_context`, `export_tokens`, `export` |
+| Anything else in the Plugin API | `execute` |
+| Fonts / icon names | `fonts`, `icons` |
+| Persistent design brief stored in the file | `brief` |
+
+## 1. Connect (every session)
+
+1. `status`. It lists connected files with page and selection, pages, and the stored brief.
+2. Not connected → tell the user (in their language): *Figma Desktop → open the file → Plugins → Development → **Figma MCP** — keep its panel open.*
+   First time only: *Plugins → Development → Import plugin from manifest… → `~/.figma-mcp/figma-plugin/manifest.json`* (made by `npm run setup` in the figma-mcp folder; that path never moves). Not installed in this tool yet → the user runs `npm run setup` there.
+3. Several files connected → pass `file: "<name>"` on calls; the choice sticks for the session.
+4. `PAUSED` error → the user pressed Pause in the plugin panel. Ask them to Resume; never work around it.
+5. A "plugin build differs" note → ask the user to close and re-run the plugin (it loads the new build).
+6. Anything odd → [references/troubleshooting.md](references/troubleshooting.md).
+
+"This", "here", "الشاشة دي" = the current selection (shown by `status`). Figma URLs and `12-34` ids are accepted anywhere an id is.
+
+## 2. The loop
+
+**Orient → Plan → Build in sections → Look → Fix → Report.**
+
+1. **Orient.** `status` (pages!) → `brief` (get) → `get_design_system` (tokens, styles, components to reuse) → `get_metadata` on the area you will touch. Never design blind and never assume a file is empty — check other pages. Something with the same name already there? Update it, don't make a second one.
+2. **Plan in words** (3–8 lines; show the user when non-trivial): purpose, which page, device size, structure top→bottom, components to reuse vs. create, tokens to use, states to cover, images needed. Ask only questions whose answers change the result.
+3. **Build in sections.** One meaningful region per `build` call (a header, a form, a card list) — big enough to be efficient, small enough to retry. Use `ref` names so later calls can target layers.
+4. **Look.** `build` returns a screenshot for top-level work; otherwise call `screenshot`. Check: clipped or overflowing text, collapsed widths, overlaps, alignment, spacing rhythm, hierarchy, contrast. Fix with `edit` before moving on.
+5. **Audit.** `lint` on the finished frame; fix errors and warnings (use `fix: true` for exact token matches).
+6. **Report.** What you made and where (page, names + ids), decisions taken, images waiting (the prompts file), open questions. Record lasting decisions with `brief` (append).
+
+## 3. Where things go — one structure in every file
+
+Pages have **English names** and one purpose each. A page is created the moment the first thing goes on it
+(`page` on `build` / `create_component`) — never ahead of time, and never left empty: an untouched "Page 1"
+is renamed instead of kept, and a page the tool created disappears when its last layer is deleted.
+
+| Page | Holds |
+|---|---|
+| `App` — one page per app when there are several: `App – Customer`, `App – Driver` | the mobile app's screens |
+| `Web` | website / landing pages — each desktop frame with its tablet/mobile frames beside it |
+| `Dashboard` | admin and dashboard screens |
+| `Banners` | banners, social posts, ads |
+| `Components` | every component and variant set, the Icons board, foundation docs if any — no screens |
+| `References` | references the user sent or you found: `Reference – <what> (<source>)` |
+| `Trash` | everything deleted, restorable |
+
+Other purposes get a short English page of their own (`Emails`, `Print`, `Presentation`). If the file already has
+its own structure, extend it and don't rename the user's pages. New pages are ordered content first, then
+Components, References, Trash.
+
+- **Components always live on `Components`.** `create_component` puts them there; `edit` `to-component` moves the main component there and leaves an instance in its place.
+- **One frame per screen** (and per state: `Home`, `Home – Empty`). Changing a screen changes that frame — `edit`, or `build` with `replaceId` (the old version goes to Trash). Never a second copy ("Home 2", "Home – new", a separate mobile redraw); `build` refuses a same-name twin on the page.
+- **Screens are plain top-level frames at exact device sizes** (`device`, §4), in flow order left → right. Several flows on one page → one Section per flow (`build` `{type: "section", name: "Checkout"}` on the page, then the screens with `parentId` = the section; it grows to fit).
+- **Deleting moves to Trash** (`edit` `delete`; `restore` puts it back where it was). Real deletion (`permanent: true`) or emptying the Trash only when the user asks. Nothing is built on the Trash page.
+- **References** go on `References` before you design from them (figma-mcp:design §References).
+- **Images that don't exist yet** carry a generation prompt and are listed in `IMAGE_PROMPTS.md` in the user's project for them to generate ([references/image-prompts.md](references/image-prompts.md)).
+
+## 4. Building — the spec in one screen
+
+`build` takes one JSON tree (`build { page: "App", spec: … }`). Full vocabulary and examples: [references/build-spec.md](references/build-spec.md). The essentials:
+
+```json
+{
+  "type": "frame", "name": "Sign in", "device": "iphone-16", "fill": "$color/bg/default",
+  "pad": [64, 24, 32, 24], "gap": "$space/6", "align": "stretch",
+  "font": { "family": "Inter" }, "color": "$color/text/primary",
+  "children": [
+    { "type": "text", "ref": "title", "text": "Welcome back", "style": "Heading/H1" },
+    { "type": "text", "text": "Sign in to continue", "style": "Body/MD", "color": "$color/text/muted" },
+    { "type": "image", "name": "Welcome illustration", "w": "fill", "h": 180, "prompt": "Flat illustration of …, no text" },
+    { "type": "instance", "component": "Input", "variant": { "State": "Default" }, "props": { "Label": "Email" } },
+    { "type": "row", "gap": 8, "align": "center", "children": [
+      { "type": "icon", "icon": "lucide:shield-check", "size": 16 },
+      { "type": "text", "text": "Secure login", "size": 13 }
+    ]},
+    { "type": "instance", "component": "Button", "variant": { "Type": "Primary" }, "props": { "Label": "Sign in" }, "onClick": "Home" }
+  ]
+}
+```
+
+- Frames are **auto layout by default** (`dir: column`); `dir: "row" | "grid" | "none"`. Sizes: number, `"fill"`, `"hug"` (default for frames).
+- **Exact sizes:** `device` sets the frame size — `mobile`/`iphone-16` 393×852, `iphone-16-pro` 402×874, `android` 412×917, `ipad` 820×1180, `desktop` 1440×1024, `instagram-post` 1080×1080, `instagram-story` 1080×1920, `ad-medium-rectangle` 300×250… (all in build-spec.md). One size for every screen of a product; long screens keep the width and grow in height (`h: "hug"`, `minH` = the device height).
+- `align: "stretch"` makes children fill the cross axis. A `fill` child needs a parent with a real size on that axis — a hugging parent collapses it (build warns you).
+- Text wraps only with a width (`w: "fill"` or a number); otherwise it is one auto-width line.
+- `"$name"` binds a variable, `"@Name"` uses a style; both must exist (build checks every name first and suggests corrections).
+- `font`, `color` and `rtl` set on a container are inherited by the text and icons inside it.
+- Icons: `"icon": "set:name"` from Iconify (`icons` tool to search). They become reusable components `icon/<set>/<name>` on the Icons board of the Components page; the instance takes `color` and `size`.
+- Images: `src` = absolute file path or URL (PNG/JPG/GIF). An image that doesn't exist yet: `{ "type": "image", "name": "<what it is>", "prompt": "<full generation prompt>" }` → a gray placeholder with an id (IMG-001); then `image_prompts`.
+- Nothing is created if validation fails; if Figma fails mid-way the partial result is removed. Read `warnings` in every result.
+
+## 5. Editing
+
+`edit` runs ops in order and stops at the first failure (it tells you which ops were applied):
+`set` (any build prop on existing layers, incl. `prompt`), `text`, `rename`, `delete` (→ Trash), `restore`, `move`, `duplicate`, `insert` (build a child into a parent), `wrap` (put layers into a new auto-layout frame), `unwrap`, `swap`, `detach`, `reset`, `to-component`, `combine-variants`, `group`, `ungroup`, `flatten`, `boolean`, `select`, `page`, `place-image`.
+
+- Read before you write: `get_node` shows what is set (and which variable/style is behind each value).
+- Change the smallest thing that fixes the problem. Rebuilding a whole frame loses the user's manual tweaks.
+- For many similar edits, one `edit` call with many ops beats many calls.
+
+## 6. Escape hatch: `execute`
+
+For what the tools don't cover (vector math, bulk renames, exotic properties). Plain JavaScript,
+top-level `await` and `return`; `h` helpers: `node`, `build`, `set`, `loadFonts`, `font`, `variable`,
+`component`, `style`, `solid`, `bindFill`, `bind`, `focus`, `place`, `inspect`, `page` (get/create a page by
+name), `trash` (delete the Trash way — never `node.remove()` on the user's content). The file uses dynamic page
+loading — always the async APIs. Rules and pitfalls: [references/execute.md](references/execute.md).
+
+## 7. Non-negotiables
+
+- **Never write into the figma-mcp tool folder.** Exports, tokens, prompt files and code go into the user's project (absolute paths). The server refuses writes there, and in Claude Code a hook blocks edits there too.
+- **Don't destroy.** Deleting means Trash. New work goes next to existing work. Ask before deleting or rebuilding anything you didn't create.
+- **No duplicates.** One frame per screen, one component per thing; update instead of copying.
+- **After an error, look before retrying.** `TIMEOUT` and `PLUGIN_DISCONNECTED` mean the change may be partly applied: `get_metadata`/`screenshot` first.
+- **Never report a visual result you have not seen** (screenshot).
+- Speak the user's language (Egyptian Arabic when they do); keep page names, layer names, tokens, prompts and code in English unless the file already uses another language for layers.

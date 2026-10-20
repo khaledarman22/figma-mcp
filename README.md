@@ -182,3 +182,4 @@ claude plugin marketplace remove figma-mcp-local
 وفي فيجما: Plugins → Development → Manage plugins in development → Remove.
 # figma-mcp
 # figma-mcp
+# figma-mcp

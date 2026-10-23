@@ -1,8 +1,3 @@
----
-name: to-code
-description: Principles and workflow for implementing a Figma design in a codebase with figma-mcp (design → code) — understand the target project first, export tokens once, map Figma components to existing code components, pull each section with get_design_context (reference code + tokens + assets + screenshot), then adapt it into idiomatic, responsive, accessible code and verify against the design. Use when the user wants to build, implement, code, port or "pull" a Figma screen/component/flow into their project ("اسحب التصميم", "حوّل التصميم لكود", "implement this design", "build this screen from Figma", a figma.com URL plus a codebase). Load figma-mcp:figma first for the tools.
----
-
 # Design → code, with principles
 
 `get_design_context` gives an exact **spec**: layout mirroring Figma's engine, every bound token as
@@ -14,6 +9,8 @@ and that behaves correctly at every size.
 - Framework and language (package.json, tsconfig), styling system (Tailwind? version and config; CSS modules; styled-components; plain CSS), component library (shadcn/ui, MUI, internal `components/`), icon package, routing, i18n/RTL support, where assets live (`public/`, `src/assets`).
 - Existing tokens: CSS variables, Tailwind theme, theme files. Existing components that match the design's components.
 - Conventions: file structure, naming, how similar screens are written. Read one or two comparable files.
+- A `DESIGN.md` (or a design-system skill) in the project is the identity for code: follow it ([identity.md](identity.md) §6).
+- Stop exploring once you know the stack, the primitives to reuse and how you will verify.
 
 ## 2. Tokens once, first
 - `export_tokens` in the project's format (`tailwind` for Tailwind v4, `css` otherwise, `dtcg` for token pipelines) — write to the project's theme file only when the project has no equivalent yet, or reconcile with the existing one.
@@ -41,10 +38,13 @@ and that behaves correctly at every size.
 - **Images not generated yet**: the assets list marks them `NOT GENERATED YET (IMG-…)` and the code points at their future file. Keep the path, keep the box's size/ratio, and tell the user which images are still waiting (`IMAGE_PROMPTS.md`; `place_images` puts them into Figma, then export again).
 - **Where to look**: screens live on `App` / `Web` / `Dashboard` pages, components on `Components`; ignore `Trash` and `References`.
 - Don't add dependencies (e.g. Tailwind) the project doesn't use; translate the reference code instead.
+- **Scope**: change the requested screens and components. Touch a shared primitive only when it is the cause or the result needs it, then check its other users.
+- **Content is a constraint**: copy, claims and behavior come from the design and the product; don't solve a layout problem by dropping content. No loading states or async behavior for content that is static.
 
 ## 6. Verify
 - Run the app (use the project's run skill / dev server) and compare against the design screenshot at the same width: spacing, alignment, type, colors, radii, states. Fix differences; small deviations need a reason (platform conventions, accessibility).
-- Check other widths and RTL if relevant.
+- Check other widths and RTL if relevant, with realistic data: long names, many rows, empty values, keyboard focus.
+- A passing build, typecheck or unit test is not proof of the visual result. If the real screen can't be opened, say so and what you checked instead.
 - Report: files created/changed, tokens/components added, deviations and why, anything needing the designer.
 
 ## Quick reference

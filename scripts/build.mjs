@@ -104,8 +104,8 @@ await import(pathToFileURL(target).href);
 `,
 );
 
-// Portable copies of the skills for other agents (Codex, OpenCode, Antigravity, …): plain Agent Skills
-// folders with unique names ("figma-mcp", "figma-mcp-design", …) instead of Claude's "figma-mcp:<skill>".
+// Portable copy of the skill for other agents (Codex, OpenCode, Antigravity, …): a plain Agent Skills
+// folder named "figma-mcp" (Claude Code calls it "figma-mcp:figma"); its guides travel in references/.
 const skillSrc = rel('claude-plugin/skills');
 const skillOut = rel('agent-skills');
 fs.rmSync(skillOut, { recursive: true, force: true });

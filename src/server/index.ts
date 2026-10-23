@@ -16,7 +16,7 @@ const VERSION = typeof __FIGMA_MCP_VERSION__ === 'string' ? __FIGMA_MCP_VERSION_
 
 const INSTRUCTIONS = [
   'figma-mcp — local bridge to Figma Desktop through the "Figma MCP" development plugin (read + write: layout, auto layout, variables, styles, components & variants, prototype, design→code).',
-  'Before the first call load the core figma-mcp skill (tool workflow + build-spec vocabulary): "figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere. Designing: also the design skill (+ design-system for tokens/components, prototype for flows). Implementing a design in code: the to-code skill.',
+  'Before the first call load the figma-mcp skill ("figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere) — the single entry point: its router tells you which guide to read for design, design systems/components, prototypes, design→code and images, and it covers the tool workflow and build-spec vocabulary. Pick the guides yourself for every request; the user should not have to name them.',
   'Call status first. Node ids accept "12:34", "12-34" or Figma URLs. Verify visual work with screenshot. Never write into the figma-mcp tool folder; exports go to the user\'s project (absolute paths are safest).',
 ].join('\n');
 

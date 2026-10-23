@@ -153,7 +153,12 @@ function copySkills(io, dir) {
     fs.cpSync(path.join(SKILLS, n), to, { recursive: true });
     fs.writeFileSync(path.join(to, '.figma-mcp'), `installed by figma-mcp (npm run setup); kept current by its server\nhash: ${skillHash(path.join(SKILLS, n))}\n`);
   }
-  io.ok(`skills ${names.join(', ')} → ${dir}`);
+  // Skills figma-mcp no longer ships (e.g. the old figma-mcp-design, now a guide inside figma-mcp).
+  for (const d of exists(dir) ? fs.readdirSync(dir) : []) {
+    const p = path.join(dir, d);
+    if (d.startsWith(NAME) && !names.includes(d) && exists(path.join(p, '.figma-mcp')) && !io.dry) fs.rmSync(p, { recursive: true, force: true });
+  }
+  io.ok(`skill ${names.join(', ')} → ${dir}`);
 }
 
 function removeOurSkills(io, dir) {
@@ -289,8 +294,8 @@ export const clients = [
   {
     id: 'codex',
     name: 'Codex',
-    what: 'MCP + skills (CLI and the ChatGPT app)',
-    next: 'restart Codex or open a new thread · check: /mcp, skills: $figma-mcp',
+    what: 'MCP + skills (Codex desktop + CLI)',
+    next: 'quit and reopen the ChatGPT app (or start a new Codex thread) · check: codex mcp list',
     detect() {
       const cfg = path.join(codexHome(), 'config.toml');
       const block = exists(cfg) ? tomlBlock(fs.readFileSync(cfg, 'utf8'), NAME) : null;
@@ -390,8 +395,8 @@ export const clients = [
   {
     id: 'claude-desktop',
     name: 'Claude Desktop',
-    what: 'MCP + skill ZIPs to upload',
-    next: 'quit and reopen Claude Desktop · upload the ZIPs: Customize → Skills',
+    what: 'MCP + skill ZIP to upload',
+    next: 'quit and reopen Claude Desktop · upload the ZIP: Customize → Skills',
     detect() {
       return { found: exists('/Applications/Claude.app') || exists(path.dirname(claudeDesktopConfig)), state: stateOf(readJson(claudeDesktopConfig).data?.mcpServers?.[NAME]) };
     },
@@ -401,13 +406,14 @@ export const clients = [
       const outDir = path.join(HOME, 'Downloads', 'figma-mcp-skills');
       if (!io.dry) {
         fs.mkdirSync(outDir, { recursive: true });
+        for (const z of fs.readdirSync(outDir)) if (z.startsWith(NAME) && z.endsWith('.zip')) fs.rmSync(path.join(outDir, z));
         for (const n of fs.readdirSync(SKILLS).filter((d) => fs.statSync(path.join(SKILLS, d)).isDirectory())) {
           const zip = path.join(outDir, `${n}.zip`);
           fs.rmSync(zip, { force: true });
           if (run('/usr/bin/zip', ['-qr', zip, n, '-x', '*/.figma-mcp'], { cwd: SKILLS }).status !== 0) io.warn(`zip failed for ${n}`);
         }
       }
-      io.ok(`skill ZIPs → ${outDir}`);
+      io.ok(`skill ZIP → ${outDir}`);
       return ok;
     },
   },

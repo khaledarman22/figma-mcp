@@ -1,6 +1,6 @@
 ---
 name: figma
-description: Core workflow for the figma-mcp tools (mcp__plugin_figma-mcp_figma__*) — the local bridge to Figma Desktop through the "Figma MCP" plugin. Load it before the first figma-mcp call in a session, for any Figma work — reading or inspecting a file, designing screens/components/variables/prototypes, editing layers, auditing a design, or pulling a design into code. Covers connecting, the tool map, where things go in the file (pages, Components, Trash, references, image prompts), the build-spec vocabulary, verification and error recovery. Triggers include "Figma", "فيجما", "صمم", "ديزاين", "شاشة", "كمبوننت", "فاريبلز", "بروتوتايب", "اسحب التصميم", "ريفرنس", "صور", a figma.com URL, or a node id like 12:34.
+description: The one entry point for figma-mcp — the local bridge to Figma Desktop through the "Figma MCP" plugin (tools mcp__plugin_figma-mcp_figma__* in Claude Code, figma-mcp elsewhere). Load it once for any Figma work and it routes itself — it reads the matching guide for designing screens, flows and banners (also from a reference), one brand identity kept across everything (defining it, extracting it from a site or screenshots, auditing consistency), design systems (variables, styles, components, variants), prototypes, design → code and images to generate, and keeps doing that for every later request in the conversation. Covers connecting, the tool map, file organization, the build-spec vocabulary, verification and error recovery. Triggers include "figma-mcp", "Figma", "فيجما", "صمم", "ديزاين", "شاشة", "كمبوننت", "فاريبلز", "ديزاين سيستم", "هوية", "براند", "وحّد التصميم", "بروتوتايب", "اسحب التصميم", "حوّل لكود", "ريفرنس", "صور", a figma.com URL, or a node id like 12:34.
 ---
 
 # figma-mcp — working in Figma through the local bridge
@@ -9,11 +9,31 @@ You drive Figma Desktop through a development plugin ("Figma MCP") that the user
 Every call acts on the live file the user is looking at, so work like a careful colleague: inspect
 first, change in small verified steps, keep the file organized, and never leave half-finished or mystery layers behind.
 
-Companion skills — load the ones that match the task (names in Claude Code; other clients use `figma-mcp-design` etc.):
-- **figma-mcp:design** — designing screens/flows (the working principles). Load for any visible design work.
-- **figma-mcp:design-system** — variables, styles, components & variants.
-- **figma-mcp:prototype** — flows, interactions, transitions.
-- **figma-mcp:to-code** — implementing a Figma design in a codebase.
+## Router — you pick the guide, never the user
+
+The user calls figma-mcp once (or simply asks for Figma work); from then on this skill governs every Figma
+request in the conversation. For each request, decide what kind of work it is and **read the matching guide
+before the first tool call** — several when the request spans them. When a later request changes the kind of
+work, read that guide then. Never ask the user which skill or guide to use, and never ask them to call
+figma-mcp again.
+
+| The request is about… | Read first |
+|---|---|
+| Screens, flows, landing pages, dashboards, banners, redesigns, polish — or designing from a reference | [references/design.md](references/design.md) |
+| One identity for everything: define or lock the brand, extract it from a site/screenshots, unify or audit consistency, carry it to code (`DESIGN.md`) | [references/identity.md](references/identity.md) |
+| Variables/tokens, styles, components and variants, themes, a UI kit | [references/design-system.md](references/design-system.md) |
+| A clickable prototype: links, transitions, overlays, scrolling, flows | [references/prototype.md](references/prototype.md) |
+| Building it in code: implement or pull a screen, export tokens/assets | [references/to-code.md](references/to-code.md) |
+| Images the design needs that don't exist yet, or images the user sent back | [references/image-prompts.md](references/image-prompts.md) |
+| `build` / `edit` / `create_component` beyond the basics in §4 | [references/build-spec.md](references/build-spec.md) |
+| Something only the Plugin API can do (`execute`) | [references/execute.md](references/execute.md) |
+| An error or odd behavior | [references/troubleshooting.md](references/troubleshooting.md) |
+
+Usual combinations: "design the app / a screen" → design (+ design-system when it needs components or tokens;
++ identity when the file has no `## Identity` in its brief yet, or the work is for a new product);
+"make it look like <brand/site>" → identity + design-system;
+"make it clickable" → prototype; "build it in the project" → to-code (+ design-system for the tokens).
+Only reading or inspecting a file → this page is enough.
 
 ## 0. Tools
 
@@ -59,7 +79,7 @@ If your client does not show images returned by tools, call `screenshot` with `s
 
 **Orient → Plan → Build in sections → Look → Fix → Report.**
 
-1. **Orient.** `status` (pages!) → `brief` (get) → `get_design_system` (tokens, styles, components to reuse) → `get_metadata` on the area you will touch. Never design blind and never assume a file is empty — check other pages. Something with the same name already there? Update it, don't make a second one.
+1. **Orient.** `status` (pages!) → `brief` (get) → `get_design_system` (tokens, styles, components to reuse) → `get_metadata` on the area you will touch. A `## Identity` block in the brief is binding: its tokens, components, patterns, icon set and imagery words are the only ones you use ([references/identity.md](references/identity.md)). Never design blind and never assume a file is empty — check other pages. Something with the same name already there? Update it, don't make a second one.
 2. **Plan in words** (3–8 lines; show the user when non-trivial): purpose, which page, device size, structure top→bottom, components to reuse vs. create, tokens to use, states to cover, images needed. Ask only questions whose answers change the result.
 3. **Build in sections.** One meaningful region per `build` call (a header, a form, a card list) — big enough to be efficient, small enough to retry. Use `ref` names so later calls can target layers.
 4. **Look.** `build` returns a screenshot for top-level work; otherwise call `screenshot`. Check: clipped or overflowing text, collapsed widths, overlaps, alignment, spacing rhythm, hierarchy, contrast. Fix with `edit` before moving on.
@@ -90,7 +110,7 @@ Components, References, Trash.
 - **One frame per screen** (and per state: `Home`, `Home – Empty`). Changing a screen changes that frame — `edit`, or `build` with `replaceId` (the old version goes to Trash). Never a second copy ("Home 2", "Home – new", a separate mobile redraw); `build` refuses a same-name twin on the page.
 - **Screens are plain top-level frames at exact device sizes** (`device`, §4), in flow order left → right. Several flows on one page → one Section per flow (`build` `{type: "section", name: "Checkout"}` on the page, then the screens with `parentId` = the section; it grows to fit).
 - **Deleting moves to Trash** (`edit` `delete`; `restore` puts it back where it was). Real deletion (`permanent: true`) or emptying the Trash only when the user asks. Nothing is built on the Trash page.
-- **References** go on `References` before you design from them (figma-mcp:design §References).
+- **References** go on `References` before you design from them ([references/design.md](references/design.md), § References).
 - **Images that don't exist yet** carry a generation prompt and are listed in `IMAGE_PROMPTS.md` in the user's project for them to generate ([references/image-prompts.md](references/image-prompts.md)).
 
 ## 4. Building — the spec in one screen

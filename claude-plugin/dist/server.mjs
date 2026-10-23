@@ -25895,9 +25895,18 @@ function refreshInstalledSkills(repo) {
   const home = os3.homedir();
   const targets = [path3.join(home, ".agents", "skills"), ...["config", "antigravity", "antigravity-cli"].map((d) => path3.join(home, ".gemini", d, "skills"))];
   let n = 0;
-  for (const name of fs3.readdirSync(source)) {
+  const names = fs3.readdirSync(source).filter((d) => fs3.statSync(path3.join(source, d)).isDirectory());
+  for (const t of targets) {
+    if (!fs3.existsSync(t)) continue;
+    for (const d of fs3.readdirSync(t)) {
+      if (d.startsWith("figma-mcp") && !names.includes(d) && fs3.existsSync(path3.join(t, d, ".figma-mcp"))) {
+        fs3.rmSync(path3.join(t, d), { recursive: true, force: true });
+        n++;
+      }
+    }
+  }
+  for (const name of names) {
     const from = path3.join(source, name);
-    if (!fs3.statSync(from).isDirectory()) continue;
     const hash = skillHash(from);
     for (const t of targets) {
       const to = path3.join(t, name);
@@ -29060,7 +29069,7 @@ ${result.xml}${tail}`, notes));
     "get_design_context",
     {
       title: "Design \u2192 code context",
-      description: "Pull a design for implementation (like Figma's get_design_context): reference code for a node \u2014 React + Tailwind (default) or HTML + CSS, or the raw extracted tree as JSON \u2014 plus the variables it uses (as CSS custom properties with values per mode), components and their properties, assets (icons/images; pass assetsDir to export them into the project), fonts, interactions, and a screenshot. The code mirrors Figma's layout engine (auto layout \u2192 flex/grid, fill/hug/fixed, constraints) and uses var(--token, fallback) for bound values. It is a precise SPEC: adapt it to the project's framework, existing components, tokens and conventions (load the figma-mcp to-code skill). Big screens: start from get_metadata and pull sections.",
+      description: "Pull a design for implementation (like Figma's get_design_context): reference code for a node \u2014 React + Tailwind (default) or HTML + CSS, or the raw extracted tree as JSON \u2014 plus the variables it uses (as CSS custom properties with values per mode), components and their properties, assets (icons/images; pass assetsDir to export them into the project), fonts, interactions, and a screenshot. The code mirrors Figma's layout engine (auto layout \u2192 flex/grid, fill/hug/fixed, constraints) and uses var(--token, fallback) for bound values. It is a precise SPEC: adapt it to the project's framework, existing components, tokens and conventions (the to-code guide of the figma-mcp skill). Big screens: start from get_metadata and pull sections.",
       inputSchema: {
         nodeId: nodeIdParam,
         framework: external_exports.enum(["react-tailwind", "html-css", "json"]).optional().describe("Default react-tailwind."),
@@ -29715,10 +29724,10 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
 }
 
 // src/server/index.ts
-var VERSION = true ? "1.0.0+c618df5" : "dev";
+var VERSION = true ? "1.0.0+850e521" : "dev";
 var INSTRUCTIONS = [
   'figma-mcp \u2014 local bridge to Figma Desktop through the "Figma MCP" development plugin (read + write: layout, auto layout, variables, styles, components & variants, prototype, design\u2192code).',
-  'Before the first call load the core figma-mcp skill (tool workflow + build-spec vocabulary): "figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere. Designing: also the design skill (+ design-system for tokens/components, prototype for flows). Implementing a design in code: the to-code skill.',
+  'Before the first call load the figma-mcp skill ("figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere) \u2014 the single entry point: its router tells you which guide to read for design, design systems/components, prototypes, design\u2192code and images, and it covers the tool workflow and build-spec vocabulary. Pick the guides yourself for every request; the user should not have to name them.',
   `Call status first. Node ids accept "12:34", "12-34" or Figma URLs. Verify visual work with screenshot. Never write into the figma-mcp tool folder; exports go to the user's project (absolute paths are safest).`
 ].join("\n");
 async function main() {

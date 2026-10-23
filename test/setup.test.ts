@@ -28,6 +28,9 @@ test('setup installs into the chosen tools through the fixed launcher, keeping e
     path.join(home, '.codex', 'config.toml'),
     ['model = "gpt-5"', '', '[mcp_servers.figma-mcp]', 'command = "node"', 'args = [', '  "/old/place/figma-mcp/claude-plugin/dist/server.mjs",', ']', 'tool_timeout_sec = 120', '', '[mcp_servers.other]', 'command = "other"', ''].join('\n'),
   );
+  // A skill this version no longer ships (left by an older install) and one the user made.
+  fs.mkdirSync(path.join(home, '.agents', 'skills', 'figma-mcp-design'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.agents', 'skills', 'figma-mcp-design', '.figma-mcp'), 'installed by figma-mcp\n');
   fs.mkdirSync(path.join(home, '.config', 'opencode'), { recursive: true });
   fs.writeFileSync(path.join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify({ mcp: { servers: { figma: { type: 'remote', url: 'https://mcp.figma.com/mcp' } } }, skills: ['/old/place/figma-mcp/agent-skills', '/my/skills'] }));
 
@@ -57,11 +60,13 @@ test('setup installs into the chosen tools through the fixed launcher, keeping e
   for (const f of [path.join('.gemini', 'config', 'mcp_config.json'), path.join('.cursor', 'mcp.json'), path.join('.gemini', 'settings.json'), path.join('Library', 'Application Support', 'Claude', 'claude_desktop_config.json')]) {
     assert.deepEqual(JSON.parse(read(path.join(home, f))).mcpServers['figma-mcp'].args, [launcher], f);
   }
-  for (const d of [path.join('.agents', 'skills', 'figma-mcp'), path.join('.agents', 'skills', 'figma-mcp-design'), path.join('.gemini', 'config', 'skills', 'figma-mcp')]) {
+  for (const d of [path.join('.agents', 'skills', 'figma-mcp'), path.join('.gemini', 'config', 'skills', 'figma-mcp')]) {
     assert.ok(fs.existsSync(path.join(home, d, 'SKILL.md')), d);
+    assert.ok(fs.existsSync(path.join(home, d, 'references', 'design.md')), `${d}: the guides travel with the one skill`);
     assert.match(read(path.join(home, d, '.figma-mcp')), /hash: [0-9a-f]{16}/, d);
   }
-  assert.ok(fs.existsSync(path.join(home, 'Downloads', 'figma-mcp-skills', 'figma-mcp-design.zip')));
+  assert.deepEqual(fs.readdirSync(path.join(home, '.agents', 'skills')), ['figma-mcp'], 'one entry point');
+  assert.deepEqual(fs.readdirSync(path.join(home, 'Downloads', 'figma-mcp-skills')), ['figma-mcp.zip']);
 
   // Re-running changes nothing that matters and adds nothing twice.
   assert.equal(setup(home, 'codex', 'opencode').code, 0);
@@ -123,9 +128,12 @@ test('the server records where the folder is now and refreshes the fixed copies 
   fs.mkdirSync(stale, { recursive: true });
   fs.writeFileSync(path.join(stale, 'SKILL.md'), 'old');
   fs.writeFileSync(path.join(stale, '.figma-mcp'), 'installed by figma-mcp\nhash: 0000\n');
-  const mine = path.join(user, '.agents', 'skills', 'figma-mcp-design');
+  const mine = path.join(user, '.agents', 'skills', 'figma-mcp-notes');
   fs.mkdirSync(mine, { recursive: true });
   fs.writeFileSync(path.join(mine, 'SKILL.md'), 'not ours (no marker)');
+  const retired = path.join(user, '.agents', 'skills', 'figma-mcp-prototype');
+  fs.mkdirSync(retired, { recursive: true });
+  fs.writeFileSync(path.join(retired, '.figma-mcp'), 'installed by figma-mcp\nhash: 1\n');
   const child = spawn(process.execPath, [path.join(repo, 'claude-plugin', 'dist', 'server.mjs')], {
     env: { ...process.env, HOME: user, FIGMA_MCP_HOME: home, FIGMA_MCP_DATA: tmp(), FIGMA_MCP_PORT: String(17950 + Math.floor(Math.random() * 40)) },
     stdio: ['pipe', 'ignore', 'ignore'],
@@ -141,4 +149,5 @@ test('the server records where the folder is now and refreshes the fixed copies 
   assert.equal(read(path.join(stale, 'SKILL.md')), read(path.join(repo, 'agent-skills', 'figma-mcp', 'SKILL.md')), 'installed skill refreshed');
   assert.match(read(path.join(stale, '.figma-mcp')), /hash: [0-9a-f]{16}/);
   assert.equal(read(path.join(mine, 'SKILL.md')), 'not ours (no marker)', 'folders without the marker are never touched');
+  assert.ok(!fs.existsSync(retired), 'a skill figma-mcp no longer ships is removed');
 });

@@ -1,8 +1,3 @@
----
-name: prototype
-description: Principles and recipes for wiring Figma prototypes with figma-mcp — mapping the flow first, linking every interactive element, consistent transitions, overlays, scrolling with fixed bars, interactive component states, variable/mode-driven prototypes, flow starting points, and reviewing the result. Use when the user wants a clickable prototype, to connect screens, add interactions/animations, or check an existing flow ("اربط البروتوتايب", "اعمل فلو", "خلي الزراير تشتغل", "prototype", "interactions"). Load figma-mcp:figma first for the tools.
----
-
 # Prototyping with principles
 
 A prototype is a promise of how the product behaves. Make it complete (no dead ends), consistent
@@ -12,7 +7,7 @@ A prototype is a promise of how the product behaves. Make it complete (no dead e
 - Prototypes live on the screens' own page (`App`, `Web`, …) — no separate prototype page or copies of screens for it. Never link to anything on `Trash` or `References`.
 - `get_metadata` on the page: list screens and their states. `prototype` with `read: true` shows what is already wired.
 - Write the flow: start screen → happy path → branches (errors, empty, cancel, back). Name it after the user's journey ("Checkout", "Onboarding").
-- Missing screens/states for the flow? Design them first (figma-mcp:design).
+- Missing screens/states for the flow? Design them first ([design.md](design.md)).
 
 ## 2. Wire everything that looks interactive
 - Every button, link, tab, list row, back arrow, close icon and nav item does something.
@@ -36,7 +31,7 @@ Durations 150–400 ms; one easing family per product; springs (`gentle`, `quick
 - Horizontal carousels: a frame with `scroll: "horizontal"` and `clip: true`.
 
 ## 5. Interactive components
-States live in the component (figma-mcp:design-system): `create_component` with `interactions: [{ from: { State: "Default" }, trigger: "hover", to: { State: "Hover" } }, { from: { State: "Default" }, trigger: "press", to: { State: "Pressed" } }]`. Instances in screens then behave without extra wiring. Toggles/checkboxes: `click` → `change-to` the other value.
+States live in the component ([design-system.md](design-system.md)): `create_component` with `interactions: [{ from: { State: "Default" }, trigger: "hover", to: { State: "Hover" } }, { from: { State: "Default" }, trigger: "press", to: { State: "Pressed" } }]`. Instances in screens then behave without extra wiring. Toggles/checkboxes: `click` → `change-to` the other value.
 
 ## 6. Variables in prototypes
 - Theme switch: `{ from: "<toggle>", trigger: "click", action: "set-mode", collection: "Theme", mode: "Dark" }` (paid Figma plans only — the Starter plan rejects Set Variable Mode actions; then link to the screen's dark-state frame, `Screen – Dark`, instead).

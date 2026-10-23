@@ -250,7 +250,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       title: 'Design → code context',
       description:
         'Pull a design for implementation (like Figma\'s get_design_context): reference code for a node — React + Tailwind (default) or HTML + CSS, or the raw extracted tree as JSON — plus the variables it uses (as CSS custom properties with values per mode), components and their properties, assets (icons/images; pass assetsDir to export them into the project), fonts, interactions, and a screenshot. ' +
-        'The code mirrors Figma\'s layout engine (auto layout → flex/grid, fill/hug/fixed, constraints) and uses var(--token, fallback) for bound values. It is a precise SPEC: adapt it to the project\'s framework, existing components, tokens and conventions (load the figma-mcp to-code skill). Big screens: start from get_metadata and pull sections.',
+        'The code mirrors Figma\'s layout engine (auto layout → flex/grid, fill/hug/fixed, constraints) and uses var(--token, fallback) for bound values. It is a precise SPEC: adapt it to the project\'s framework, existing components, tokens and conventions (the to-code guide of the figma-mcp skill). Big screens: start from get_metadata and pull sections.',
       inputSchema: {
         nodeId: nodeIdParam,
         framework: z.enum(['react-tailwind', 'html-css', 'json']).optional().describe('Default react-tailwind.'),

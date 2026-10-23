@@ -1,17 +1,13 @@
----
-name: design-system
-description: Principles and recipes for building or extending a design system in Figma with figma-mcp — variable collections and modes (primitives → semantic tokens, light/dark, brands, density), scopes and code syntax, text/effect/grid styles, and components with variants, properties and interactive states that map cleanly to code, all kept on the Components page without duplicates. Use when creating or changing tokens, variables, styles, components, component sets/variants, themes or a UI kit/library ("اعمل فاريبلز", "ديزاين سيستم", "كمبوننت بفاريانتس", "dark mode", "tokens"). Load figma-mcp:figma first for the tools.
----
-
 # Design system work
 
 A design system is the contract between design and code. Build it so that every value has a name, every
 name has one meaning, and every component reads like the code component it will become. Values come from
-the product's direction; this skill only defines the structure and the method.
+the product's direction; this guide only defines the structure and the method.
 
 ## 1. Discover, then extend
 - `get_design_system` and look at existing naming (slashes, casing, English/Arabic), collections, modes, styles, component axes.
 - If a system exists, **extend it in its own conventions**. Never create a parallel set of tokens or a second Button.
+- The system is half of the product's identity; the other half (component catalog, section patterns, icon set, imagery, voice) and how to lock it so every request follows it: [identity.md](identity.md).
 - If the project already has code tokens (CSS variables, Tailwind theme), mirror their names so design and code match (set `codeSyntax`).
 - **Where it lives:** every component and variant set on the `Components` page (created the first time a component is made — `create_component` does it), icons on its Icons board. Variables and styles live in the file's panels, not on a page. Never a component inside a screen page; a frame that should become a component → `edit` `to-component` (the main component moves to `Components`, an instance stays in place).
 

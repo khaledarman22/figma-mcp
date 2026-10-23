@@ -10,7 +10,7 @@ figma-mcp مش مربوط بكلود بس. أي أداة ذكاء اصطناعي
 | **بلجن فيجما** «Figma MCP» | نسخة ثابتة في `~/.figma-mcp/figma-plugin/` | بيتعمل له import في فيجما مرة واحدة، وبيخدم كل الأدوات |
 | **سيرفر MCP** | `claude-plugin/dist/server.mjs` جوه الفولدر | ملف واحد، والأدوات بتشغّله من خلال اللانشر |
 | **اللانشر** | `~/.figma-mcp/launch.mjs` | المدخل الثابت اللي الأدوات بتشغّله. بيلاقي الفولدر وهو في أي مكان، حتى لو اتنقل |
-| **السكيلز** (طريقة الشغل والمبادئ) | جوه البلجن لكلود، ونسخ في فولدر سكيلز كل أداة | بتعلّم الموديل يصمم بأوتو لاي أوت وتوكنز وكمبوننتس، ويسحب الكود بمبادئ |
+| **السكيل** `figma-mcp` (طريقة الشغل والمبادئ) | جوه البلجن لكلود، ونسخة في فولدر سكيلز كل أداة | مدخل واحد فيه موجّه: بيقرا لوحده دليل التصميم أو الكمبوننتس أو البروتوتايب أو الكود حسب الطلب |
 
 ```
 Claude Code ─┐
@@ -24,9 +24,7 @@ Cursor … ────┘
   - أول أداة تبدأ بتمسك الـ hub، والباقيين بيتوصلوا من خلالها.
   - لو اللي ماسكاه قفلت، واحدة تانية بتستلم لوحدها، والبلجن بيرجع يتوصل.
 - **اسم السيرفر:** في كلود اسمه `figma` جوه البلجن `figma-mcp`. في باقي الأدوات بنسمّيه **`figma-mcp`**، عشان ميتلخبطش مع سيرفر فيجما الرسمي، اللي غالبًا بيتسجّل باسم `figma`.
-- **أسماء السكيلز:**
-  - في Claude Code: `figma-mcp:figma` و `figma-mcp:design` …
-  - في باقي الأدوات: `figma-mcp` و `figma-mcp-design` و `figma-mcp-design-system` و `figma-mcp-prototype` و `figma-mcp-to-code`.
+- **السكيل واحد:** اسمه `figma-mcp:figma` في Claude Code، و `figma-mcp` في باقي الأدوات. بتناديه مرة واحدة (أو تطلب عادي وهو بيتحمّل لوحده)، وهو بيختار الدليل المناسب لكل طلب في المحادثة: تصميم، أو كمبوننتس، أو بروتوتايب، أو كود.
 
 ## التركيب: أمر واحد لكل الأدوات
 
@@ -100,7 +98,7 @@ npm run setup -- claude
 
 ده بيسجّل الفولدر كـ marketplace محلي وبيسطّب البلجن `figma-mcp` (user scope). ولو الفولدر اتنقل، بيشيل التسجيل القديم ويسجّله من جديد. البلجن فيه:
 - **سيرفر MCP** بأدواته الـ 22.
-- **5 سكيلز:** `figma-mcp:figma` و `figma-mcp:design` و `figma-mcp:design-system` و `figma-mcp:prototype` و `figma-mcp:to-code`. كلود بيحمّلهم لوحده لما يحتاجهم، وتقدر تستدعيهم بنفسك: `/figma-mcp:design`.
+- **سكيل واحد:** `figma-mcp:figma`، وفيه موجّه بيختار الدليل المناسب لكل طلب. كلود بيحمّله لوحده لما تطلب أي حاجة في فيجما، وتقدر تناديه بنفسك: `/figma-mcp:figma`.
 - **حارس الفولدر (hook):** أي جلسة شغالة في مشروع تاني مستحيل تعدّل أو تمسح حاجة في فولدر الأداة.
 
 **التشغيل:**
@@ -142,10 +140,11 @@ npm run setup -- codex
 - افتح thread جديد في Codex (أو أعد تشغيله).
 - اتأكد من السيرفر: `codex mcp list`.
 - **الاستدعاء:**
-  - في الـ CLI: `$figma-mcp-design` أو `/skills`.
-  - في تطبيق ChatGPT: اكتب `@` واختار السكيل.
-  - أو اطلب عادي وهو بيختار السكيل المناسب من الوصف.
-- مثال: «$figma-mcp — figma status، وبعدين صمم شاشة تسجيل دخول».
+  - في تطبيق ChatGPT: اكتب `@` واختار `figma-mcp` من قسم Skills (أو من قايمة `/`).
+  - في الـ CLI: `$figma-mcp` أو `/skills`.
+  - أو اطلب عادي وهو بيتحمّل لوحده من الوصف.
+  - بعد أول مرة مش محتاج تناديه تاني في نفس الـ thread: هو بيختار الدليل لكل طلب.
+- مثال: «@figma-mcp صمم شاشة تسجيل دخول» (في الـ CLI: «$figma-mcp …»).
 
 **ملاحظات مهمة:**
 - **الصور:** Codex بيوصّل صور الأدوات للموديل لو الموديل بيدعم الصور. ولو حصل ومظهرتش، استخدم `screenshot` مع `saveTo` (مثلًا `"saveTo": "figma-shots"`)، وخلي Codex يفتح الصورة بأداة `view_image` بتاعته.
@@ -246,12 +245,12 @@ npm run setup -- antigravity
 |---|---|---|---|
 | **Cursor** | `npm run setup -- cursor` | `~/.cursor/mcp.json` | `~/.agents/skills/` |
 | **Gemini CLI** | `npm run setup -- gemini` | `~/.gemini/settings.json` (بمهلة 10 دقايق) | `~/.agents/skills/` |
-| **Claude Desktop** | `npm run setup -- claude-desktop` | `~/Library/Application Support/Claude/claude_desktop_config.json` | ZIP في `~/Downloads/figma-mcp-skills/` |
-| **أي أداة MCP تانية** | `npm run setup -- --print` | stdio: `<node> ~/.figma-mcp/launch.mjs` | انسخ فولدرات `agent-skills/` لفولدر السكيلز بتاعها |
+| **Claude Desktop** | `npm run setup -- claude-desktop` | `~/Library/Application Support/Claude/claude_desktop_config.json` | `figma-mcp.zip` في `~/Downloads/figma-mcp-skills/` |
+| **أي أداة MCP تانية** | `npm run setup -- --print` | stdio: `<node> ~/.figma-mcp/launch.mjs` | انسخ `agent-skills/figma-mcp` لفولدر السكيلز بتاعها |
 
 - **Gemini CLI:** للمستخدمين المجانيين اتستبدل بـ Antigravity CLI (يونيو 2026).
 - **Claude Desktop:**
-  - ارفع كل ZIP من **Customize ← Skills**. لازم تكون مفعّل code execution.
+  - ارفع `figma-mcp.zip` من **Customize ← Skills**. لازم تكون مفعّل code execution.
   - اقفل التطبيق خالص وافتحه تاني بعد تعديل الإعدادات.
 
 ---
@@ -261,7 +260,7 @@ npm run setup -- antigravity
 | الحاجة | Claude Code | باقي الأدوات |
 |---|---|---|
 | الـ 22 أداة | ✓ | ✓ (نفس السيرفر) |
-| السكيلز | `figma-mcp:design` … | `figma-mcp-design` … (نفس المحتوى) |
+| اسم السكيل | `figma-mcp:figma` | `figma-mcp` (نفس المحتوى) |
 | حارس الفولدر (hook) | ✓ | ✗، بس السيرفر بيرفض أي تصدير لجوه فولدر الأداة في كل الأدوات |
 | لو الفولدر اتنقل | شغّل `npm run setup` مرة | بتلاقيه لوحدها |
 | فولدر المشروع للمسارات النسبية | تلقائي | من الأداة (MCP roots) أو فولدر التشغيل، أو حدده بإيدك بـ `FIGMA_MCP_PROJECT_DIR` في `env` |

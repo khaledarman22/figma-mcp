@@ -37,9 +37,19 @@ function refreshInstalledSkills(repo: string): number {
   const home = os.homedir();
   const targets = [path.join(home, '.agents', 'skills'), ...['config', 'antigravity', 'antigravity-cli'].map((d) => path.join(home, '.gemini', d, 'skills'))];
   let n = 0;
-  for (const name of fs.readdirSync(source)) {
+  const names = fs.readdirSync(source).filter((d) => fs.statSync(path.join(source, d)).isDirectory());
+  // Skills figma-mcp no longer ships (the old figma-mcp-design etc. are guides inside figma-mcp now).
+  for (const t of targets) {
+    if (!fs.existsSync(t)) continue;
+    for (const d of fs.readdirSync(t)) {
+      if (d.startsWith('figma-mcp') && !names.includes(d) && fs.existsSync(path.join(t, d, '.figma-mcp'))) {
+        fs.rmSync(path.join(t, d), { recursive: true, force: true });
+        n++;
+      }
+    }
+  }
+  for (const name of names) {
     const from = path.join(source, name);
-    if (!fs.statSync(from).isDirectory()) continue;
     const hash = skillHash(from);
     for (const t of targets) {
       const to = path.join(t, name);

@@ -156,7 +156,7 @@ Defining components in a build: `{ "type": "component", "name": "Tag", "props": 
 Inside any spec: `"onClick": "Details"` (navigate to the top-level frame named Details, a ref from the same build, or an id), `"onHover"`, `"onPress"`, or
 `"interactions": [{ "trigger": "click", "action": "overlay", "to": "Filter sheet", "transition": "move-in bottom 300ms ease-out" }]`.
 Scrolling: `"scroll": "vertical"` on a screen; children with `"fixed": true` stay put (headers, tab bars).
-Details and the full action list: the `prototype` tool / figma-mcp:prototype skill.
+Details and the full action list: the `prototype` tool / [prototype.md](prototype.md).
 
 ## 8. Tool options
 

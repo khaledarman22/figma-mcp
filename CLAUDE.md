@@ -23,7 +23,7 @@ plugin + Claude Code plugin (skills, guard hook). README.md (Arabic) is the user
 - Plugin code: async Plugin API only (`documentAccess: dynamic-page`); bundle target ES2017; use `getNodeSafe` instead of raw `getNodeByIdAsync`.
 - New spec keys: add to `KNOWN_KEYS`/`KEY_ALIASES` in `spec.ts`, apply in `props.ts`, document in `claude-plugin/skills/figma/references/build-spec.md`, add a test.
 - New tool or method: plugin method in `main.ts` (give it a deadline in `DEADLINES` if it can be slow), tool in `tools.ts`, row in the core skill's tool map and the README.
-- Skills must stay client-neutral (Claude-only details phrased as "in Claude Code: …"); cross-references use `figma-mcp:<skill>`, which the build rewrites to `figma-mcp-<skill>` for other agents.
+- One skill, one entry point: `claude-plugin/skills/figma/SKILL.md` is the router + core workflow; the guides (design, identity, design-system, prototype, to-code, image-prompts, build-spec, execute, troubleshooting) live in its `references/` and link each other relatively. A new guide needs a row in the router table. Keep everything client-neutral (Claude-only details phrased as "in Claude Code: …"); the build copies the skill to `agent-skills/figma-mcp` for other agents.
 - Outputs produced while *using* the tool never go into this folder (`resolveOutput` enforces it).
 - File organization is enforced in code, not only in skills: deletes go to Trash (`trashNodes`), components default to the Components page, same-name top-level twins are refused, pages come from `ensurePage` (never `figma.createPage()` directly).
 - Tests that start servers or run setup must isolate the user's home: `FIGMA_MCP_HOME` (and `HOME` when skills/configs are involved) pointing at temp dirs.

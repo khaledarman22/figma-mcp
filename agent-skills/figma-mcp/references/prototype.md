@@ -8,6 +8,7 @@ A prototype is a promise of how the product behaves. Make it complete (no dead e
 - `get_metadata` on the page: list screens and their states. `prototype` with `read: true` shows what is already wired.
 - Write the flow: start screen → happy path → branches (errors, empty, cancel, back). Name it after the user's journey ("Checkout", "Onboarding").
 - Missing screens/states for the flow? Design them first ([design.md](design.md)).
+- The current `prototype` tool resolves screens and flow starts only when they are direct children of a page or Section. Screens inside the required auto-layout board/groups are deeper. Do not move or duplicate them out of that structure just to wire a prototype; report this tool limitation if a clickable flow is requested until nested-screen support is added.
 
 ## 2. Wire everything that looks interactive
 - Every button, link, tab, list row, back arrow, close icon and nav item does something.

@@ -9,7 +9,7 @@ the product's direction; this guide only defines the structure and the method.
 - If a system exists, **extend it in its own conventions**. Never create a parallel set of tokens or a second Button.
 - The system is half of the product's identity; the other half (component catalog, section patterns, icon set, imagery, voice) and how to lock it so every request follows it: [identity.md](identity.md).
 - If the project already has code tokens (CSS variables, Tailwind theme), mirror their names so design and code match (set `codeSyntax`).
-- **Where it lives:** every component and variant set on the `Components` page (created the first time a component is made — `create_component` does it), icons on its Icons board. Variables and styles live in the file's panels, not on a page. Never a component inside a screen page; a frame that should become a component → `edit` `to-component` (the main component moves to `Components`, an instance stays in place).
+- **Where it lives:** every component and variant set on the `Components` page, inside one large auto-layout board with named auto-layout category frames. The tool files it: name it `Category/Name` (`Forms/Input`) and `create_component` / `to-component` put it into that category of the board (created on first use); `parentId` overrides. Icon components land in the board's `Icons` category by themselves. Variables and styles live in the file's panels, not on a page. Never a component inside a screen page; a frame that should become a component → `edit` `to-component` (the main component moves to `Components`, an instance stays in place).
 
 ## 2. Variable architecture
 | Layer | Collection | Contents | Scopes |
@@ -59,11 +59,12 @@ Anatomy first: what is the root (auto layout), what grows (`fill`), what hugs, w
 
 Rules:
 - One component per thing. To change it, update it (`edit` on the component or its variants) — a second "Button 2" / "Button new" is never the answer, and `create_component` refuses a same-name twin. Screen sizes are a variant/property of the same component (`Size=Mobile|Desktop`) when a component changes shape across breakpoints — not separate "mobile" components.
-- Name components like code, with slashes for groups when there are many (`Navigation/Tab bar`, `Forms/Input`); arrange the `Components` page by those groups.
+- Name components like code, with slashes for groups when there are many (`Navigation/Tab bar`, `Forms/Input`); arrange them in the matching auto-layout category frames inside the page's single auto-layout board. Use `gap` and `pad` to space categories and components.
 - Root and every part bound to tokens; no raw values.
 - Axis names and values read like code props: `Variant` (primary/secondary/ghost), `Size` (sm/md/lg), `State` (default/hover/pressed/disabled/focus). Keep matrices small; split very different things into separate components.
 - Every component gets a `description` (what it's for, when not to use it).
-- Icons are instances of icon components (build `icon` does this) so they swap via instance properties.
+- Icons are part of the component: `icon` children inside its auto layout (build makes them instances of the icon components), toggled with a boolean and swapped with an instance-swap property. Never leave the icon out and lay it next to the instance on the screen.
+- **Made for a screen, then used by it.** Create a component only for something the section you are building now places — just in time, shaped after that section's reference, then place it right away. No kit of "probably needed" components before the screens (only when the user asks for a UI kit). Right after creating it, swap the hand-drawn copies in existing screens for instances (`search` the name → `edit` `swap`; check `get_node` for overrides to keep), and build new screens from it. `COMPONENTS.md` in the workspace lists every component with its usage count — none may stay *unused* by the end of the task without a reason.
 - Verify the set: the tool returns a screenshot of the grid of variants; check every cell (text not clipped, states visibly different, sizes consistent).
 
 ### Example — button set from one base spec
@@ -101,6 +102,7 @@ Patches merge into the base by `ref` (`root` = the component itself); later patc
 
 ## Checklist
 - [ ] Every component on the `Components` page; no duplicates; nothing left on empty pages.
+- [ ] Every component is used by the designs it was made for (`COMPONENTS.md`: none *unused*); no hand-drawn copies left.
 - [ ] Semantic tokens alias primitives; screens/components use semantic tokens only.
 - [ ] Scopes set; code syntax set; modes named (no "Mode 1").
 - [ ] Type scale as text styles; elevation as effect styles.

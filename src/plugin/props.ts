@@ -6,6 +6,7 @@ import { didYouMean } from '../shared/util.ts';
 import type { Ctx } from './ctx.ts';
 import { badRequest, notFound } from './errors.ts';
 import { applyEffects, applyFills, applyStroke, bindNumber, numberOf, recolorVectors, toPaints } from './paint.ts';
+import { applyMockup, isMockupDevice } from './device.ts';
 import { setImagePrompt } from './pages.ts';
 import { applyText, applyTruncation, type Inherit } from './text.ts';
 
@@ -416,8 +417,15 @@ export async function applyProps(node: SceneNode, s: Partial<Spec>, inh: Inherit
   await applySizing(node, s, ctx, path, o);
   if (node.type === 'TEXT') applyTruncation(node, s);
   if (s.device !== undefined) node.setPluginData('device', s.device);
+  // New screens get their mockup once their children exist (build); existing ones here (edit set).
+  if (s.mockup !== undefined && !o.isNew && node.type === 'FRAME') {
+    const device = s.device ?? node.getPluginData('device');
+    if (s.mockup && !isMockupDevice(device)) ctx.warn(`${path}.mockup: only iPhone screens get a mockup (set device: "iphone-16" …); "${node.name}" has ${device ? `device "${device}"` : 'no device'}.`);
+    else for (const w of await applyMockup(node, device, s.mockup)) ctx.warn(w);
+  }
   // A prompt marks the layer as waiting for a generated image (new placeholders get theirs in createNode).
-  if (s.prompt !== undefined && !(o.isNew && node.getPluginData('role') === 'image-placeholder')) await setImagePrompt(node, s.prompt, (f) => ctx.loadFont(f));
+  const need = s.prompt ?? s.supply;
+  if (need !== undefined && !(o.isNew && node.getPluginData('role') === 'image-placeholder')) await setImagePrompt(node, need, (f) => ctx.loadFont(f), s.prompt === undefined);
 
   if (s.fill !== undefined && node.type !== 'TEXT') await applyFills(node, s.fill, ctx, `${path}.fill`);
   if (s.stroke !== undefined) await applyStroke(node, s.stroke, ctx, `${path}.stroke`);

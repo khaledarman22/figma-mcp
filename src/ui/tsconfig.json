@@ -1,0 +1,5 @@
+{
+  "//": "For editors: DOM typings for the plugin iframe. npm run check uses ../../tsconfig.ui.json.",
+  "extends": "../../tsconfig.ui.json",
+  "include": ["../shared/protocol.ts", "./**/*.ts"]
+}

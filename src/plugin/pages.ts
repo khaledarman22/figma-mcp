@@ -233,6 +233,10 @@ export interface PlaceholderInfo {
   w: number;
   h: number;
   prompt: string;
+  /** The user supplies this image (logo, product photo) instead of generating it. */
+  supply?: boolean;
+  /** The top-level frame (screen) the layer sits in, for previews. */
+  screenId?: string;
 }
 
 const PLACEHOLDER_ROLE = 'image-placeholder';
@@ -255,8 +259,8 @@ function promptKey(prompt: string): string {
 }
 
 /** Same prompt → same IMG id, so one generated image fills every place that uses it. */
-export function imageIdFor(prompt: string): string {
-  const key = promptKey(prompt);
+export function imageIdFor(prompt: string, supply = false): string {
+  const key = (supply ? 's:' : '') + promptKey(prompt);
   let reg: Record<string, string> = {};
   try {
     reg = JSON.parse(figma.root.getPluginData('imageIds') || '{}');
@@ -281,10 +285,11 @@ export function neededPrompt(n: BaseNode): string | null {
 }
 
 /** Marks a frame/rectangle as needing a generated image (new placeholder or an image to replace). */
-export async function setImagePrompt(n: SceneNode, prompt: string, loadFont: (f: FontName) => Promise<void>): Promise<string> {
-  if (n.type !== 'FRAME' && n.type !== 'RECTANGLE') throw badRequest(`prompt: only frames and rectangles hold images ("${n.name}" is a ${n.type.toLowerCase()}).`);
-  const id = imageIdFor(prompt);
+export async function setImagePrompt(n: SceneNode, prompt: string, loadFont: (f: FontName) => Promise<void>, supply = false): Promise<string> {
+  if (n.type !== 'FRAME' && n.type !== 'RECTANGLE') throw badRequest(`${supply ? 'supply' : 'prompt'}: only frames and rectangles hold images ("${n.name}" is a ${n.type.toLowerCase()}).`);
+  const id = imageIdFor(prompt, supply);
   n.setPluginData('prompt', prompt.trim());
+  n.setPluginData('supply', supply ? '1' : '');
   n.setPluginData('imageId', id);
   if (n.type === 'FRAME') {
     const caption = n.children.find((c) => c.type === 'TEXT' && c.getPluginData('role') === CAPTION_ROLE) as TextNode | undefined;
@@ -335,20 +340,25 @@ export async function listPlaceholders(p: { within?: string; allPages?: boolean 
       if (n.id.includes(';')) continue; // inside an instance: the main component's own layer is listed
       const prompt = neededPrompt(n);
       if (prompt === null) continue;
+      const supply = n.getPluginData('supply') === '1';
       let imageId = n.getPluginData('imageId');
       if (!imageId) {
-        imageId = prompt ? imageIdFor(prompt) : nextImageId();
+        imageId = prompt ? imageIdFor(prompt, supply) : nextImageId();
         n.setPluginData('imageId', imageId);
       }
       const path: string[] = [];
       let par = n.parent;
       let screen: string | undefined;
+      let screenId: string | undefined;
       while (par && par.type !== 'PAGE') {
         path.unshift(par.name);
-        if (par.parent?.type === 'PAGE' || par.parent?.type === 'SECTION') screen = par.name;
+        if ((par.parent?.type === 'PAGE' || par.parent?.type === 'SECTION') && par.type !== 'SECTION') {
+          screen = par.name;
+          screenId = par.id;
+        }
         par = par.parent;
       }
-      out.push({ nodeId: n.id, imageId, name: n.name, page: pageOf(n)?.name ?? '', screen, path: path.join(' / '), w: Math.round(n.width), h: Math.round(n.height), prompt });
+      out.push({ nodeId: n.id, imageId, name: n.name, page: pageOf(n)?.name ?? '', screen, path: path.join(' / '), w: Math.round(n.width), h: Math.round(n.height), prompt, ...(supply ? { supply } : {}), ...(screenId ? { screenId } : {}) });
     }
   }
   return { placeholders: out };
@@ -385,6 +395,7 @@ export async function placeImage(p: { ids: string[]; imageData: string; fit?: ke
     const prompt = n.getPluginData('prompt') || n.getPluginData('placeholder');
     n.setPluginData('imagePrompt', prompt);
     n.setPluginData('prompt', '');
+    n.setPluginData('supply', '');
     n.setPluginData('placeholder', '');
     if (n.getPluginData('role') === PLACEHOLDER_ROLE) n.setPluginData('role', '');
     if (/^image placeholder$/i.test(n.name)) n.name = 'Image';
@@ -392,3 +403,107 @@ export async function placeImage(p: { ids: string[]; imageData: string; fit?: ke
   }
   return { placed };
 }
+
+// ───────────── the component board ─────────────
+
+const BOARD_ROLE = 'component-board';
+export const ICONS_ROLE = 'icons';
+
+const isAuto = (n: SceneNode): n is FrameNode => n.type === 'FRAME' && n.layoutMode !== 'NONE';
+const holdsComponents = (f: FrameNode) =>
+  f.children.some((c) => c.type === 'COMPONENT' || c.type === 'COMPONENT_SET' || (c.type === 'FRAME' && c.children.some((g) => g.type === 'COMPONENT' || g.type === 'COMPONENT_SET')));
+
+/**
+ * The one auto-layout board on the Components page that holds every component, in category
+ * frames. Adopts the board the file already has (an auto-layout frame holding components);
+ * created on first use otherwise.
+ */
+export async function componentBoard(): Promise<FrameNode> {
+  const { page } = await rolePage('components');
+  const marked = page.children.find((c) => c.getPluginData('role') === BOARD_ROLE);
+  if (marked && isAuto(marked)) return marked;
+  const adopt = page.children.find((c): c is FrameNode => isAuto(c) && c.getPluginData('role') !== ICONS_ROLE && holdsComponents(c));
+  if (adopt) {
+    adopt.setPluginData('role', BOARD_ROLE);
+    return adopt;
+  }
+  const spot = freeSpot(page);
+  const f = figma.createFrame();
+  f.name = 'Components';
+  f.setPluginData('role', BOARD_ROLE);
+  f.layoutMode = 'VERTICAL';
+  f.itemSpacing = 64;
+  f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 64;
+  f.fills = [];
+  page.appendChild(f);
+  f.layoutSizingHorizontal = 'HUG';
+  f.layoutSizingVertical = 'HUG';
+  f.x = spot.x;
+  f.y = spot.y;
+  return f;
+}
+
+/** A named auto-layout category inside the board ("Forms", "Icons"…), created on first use. */
+export async function componentCategory(name: string): Promise<FrameNode> {
+  const board = await componentBoard();
+  const want = normName(name);
+  const found = board.children.find((c): c is FrameNode => isAuto(c) && normName(c.name) === want);
+  if (found) return found;
+  const f = figma.createFrame();
+  f.name = name.trim();
+  f.layoutMode = 'HORIZONTAL';
+  f.itemSpacing = 32;
+  f.counterAxisAlignItems = 'MIN';
+  f.fills = [];
+  board.appendChild(f);
+  f.layoutSizingHorizontal = 'HUG';
+  f.layoutSizingVertical = 'HUG';
+  return f;
+}
+
+/** Where a new main component goes: its category ("Forms/Input" → Forms), else the board itself. */
+export async function componentHome(name: string): Promise<FrameNode> {
+  const group = name.includes('/') ? name.split('/')[0].trim() : '';
+  if (group && !/^icon$/i.test(group)) return componentCategory(group);
+  if (/^icon\//i.test(name)) return iconBoard();
+  return componentBoard();
+}
+
+/**
+ * The Icons category of the board: a wrapping auto-layout frame of icon components. An Icons
+ * frame left loose on the Components page by an older version moves into the board.
+ */
+export async function iconBoard(): Promise<FrameNode> {
+  const board = await componentBoard();
+  const isIcons = (c: SceneNode): c is FrameNode => c.type === 'FRAME' && c.getPluginData('role') === ICONS_ROLE;
+  let icons = board.children.find(isIcons) ?? board.children.find((c): c is FrameNode => isAuto(c) && normName(c.name) === 'icon');
+  if (!icons) {
+    await figma.loadAllPagesAsync();
+    for (const pg of figma.root.children) {
+      if (isTrashPage(pg)) continue;
+      icons = pg.children.find(isIcons);
+      if (icons) break;
+    }
+  }
+  if (!icons) {
+    icons = figma.createFrame();
+    icons.name = 'Icons';
+    icons.layoutMode = 'HORIZONTAL';
+    icons.layoutWrap = 'WRAP';
+    icons.itemSpacing = 16;
+    icons.counterAxisSpacing = 16;
+    icons.fills = [];
+    icons.resize(360, 100);
+  }
+  icons.setPluginData('role', ICONS_ROLE);
+  if (icons.parent !== board) {
+    board.appendChild(icons);
+    icons.layoutPositioning = 'AUTO';
+  }
+  if (icons.layoutMode === 'NONE') icons.layoutMode = 'HORIZONTAL';
+  if (icons.layoutWrap === 'WRAP') icons.layoutSizingHorizontal = 'FIXED';
+  else icons.layoutSizingHorizontal = 'HUG';
+  icons.layoutSizingVertical = 'HUG';
+  return icons;
+}
+

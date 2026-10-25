@@ -185,3 +185,28 @@ test('image prompts: prompt makes an image node; images without src or prompt ge
   assert.equal(partial.prompt, 'Product shot');
   assert.equal(partial.type, undefined);
 });
+
+test('supply: an image the user provides is an image node; prompt wins when both are given', () => {
+  const issues = newIssues();
+  const s = normalizeSpec({ name: 'Logo', provide: 'The brand logo, transparent PNG or SVG', w: 120, h: 40 }, 'spec', issues);
+  assert.equal(s.type, 'image');
+  assert.equal(s.supply, 'The brand logo, transparent PNG or SVG');
+  assert.deepEqual(issues.warnings, []);
+  const both = newIssues();
+  const b = normalizeSpec({ type: 'image', prompt: 'A photo', supply: 'Your photo' }, 'spec', both);
+  assert.equal(b.prompt, 'A photo');
+  assert.equal(b.supply, undefined);
+  assert.match(both.warnings[0], /both prompt and supply/);
+});
+
+test('mockup is a boolean screen option; hand-placed related content gets an auto layout nudge', () => {
+  const issues = newIssues();
+  const s = normalizeSpec({ name: 'Home', device: 'iphone-16', deviceFrame: false }, 'spec', issues);
+  assert.equal(s.mockup, false);
+  const free = newIssues();
+  normalizeSpec({ type: 'frame', name: 'Card', dir: 'none', children: [{ type: 'text', text: 'A', x: 0, y: 0 }, { type: 'text', text: 'B', x: 0, y: 20 }] }, 'spec', free);
+  assert.match(free.warnings.join('\n'), /2 children placed by hand \(dir: "none"\) — put related content in auto layout/);
+  const overlay = newIssues();
+  normalizeSpec({ type: 'frame', name: 'Hero', dir: 'none', children: [{ type: 'image', src: '/x.png' }, { type: 'text', text: 'Badge', absolute: true }] }, 'spec', overlay);
+  assert.doesNotMatch(overlay.warnings.join('\n'), /placed by hand/);
+});

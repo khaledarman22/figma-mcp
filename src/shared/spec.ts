@@ -185,8 +185,12 @@ export interface Spec {
   placeholder?: string;
   /** Generation prompt for an image that does not exist yet (collected into IMAGE_PROMPTS.md). */
   prompt?: string;
+  /** An image the user supplies (logo, product photo…): what is needed, listed in IMAGE_PROMPTS.md under "from you". */
+  supply?: string;
   /** Device/format preset name the frame was sized from (see DEVICES). */
   device?: string;
+  /** iPhone screens: the phone look (radius, bezel, status bar, home indicator). Default on for top-level iPhone screens. */
+  mockup?: boolean;
   // prototype
   scroll?: 'none' | 'vertical' | 'horizontal' | 'both';
   fixed?: boolean;
@@ -254,7 +258,7 @@ const KNOWN_KEYS = new Set<string>([
   'alignContent', 'clip', 'w', 'h', 'minW', 'maxW', 'minH', 'maxH', 'x', 'y', 'absolute', 'constraints', 'rotation', 'cell', 'span',
   'fill', 'stroke', 'radius', 'opacity', 'blend', 'effects', 'visible', 'locked', 'modes', 'text', 'style', 'font', 'color',
   'textAlign', 'valign', 'maxLines', 'truncate', 'paragraphSpacing', 'segments', 'link', 'component', 'variant', 'props',
-  'overrides', 'bind', 'svg', 'icon', 'size', 'strokeWidth', 'src', 'imageData', 'fit', 'placeholder', 'prompt', 'device', 'scroll', 'fixed',
+  'overrides', 'bind', 'svg', 'icon', 'size', 'strokeWidth', 'src', 'imageData', 'fit', 'placeholder', 'prompt', 'supply', 'device', 'mockup', 'scroll', 'fixed',
   'interactions', 'rtl', 'annotations', 'children',
 ]);
 
@@ -287,8 +291,8 @@ const KEY_ALIASES: Record<string, string> = {
   properties: 'props', componentProperties: 'props',
   imageUrl: 'src', url: 'src', path: 'src', image: 'src',
   scaleMode: 'fit', objectFit: 'fit',
-  imagePrompt: 'prompt', generate: 'prompt',
-  preset: 'device', frameSize: 'device', format: 'device',
+  imagePrompt: 'prompt', generate: 'prompt', provide: 'supply', userImage: 'supply',
+  preset: 'device', frameSize: 'device', format: 'device', deviceFrame: 'mockup', chrome: 'mockup',
   overflow: 'scroll', overflowDirection: 'scroll',
   interaction: 'interactions', reactions: 'interactions', prototype: 'interactions',
   kids: 'children', items: 'children', nodes: 'children',
@@ -1015,7 +1019,7 @@ export function normalizeSpec(input: unknown, path: string, issues: Issues, opts
     else if (raw.component !== undefined || raw.mainComponent !== undefined || raw.componentKey !== undefined) typeInput = 'instance';
     else if (raw.icon !== undefined) typeInput = 'icon';
     else if (raw.svg !== undefined) typeInput = 'svg';
-    else if (raw.src !== undefined || raw.image !== undefined || raw.placeholder !== undefined || raw.prompt !== undefined || raw.imagePrompt !== undefined) typeInput = 'image';
+    else if (raw.src !== undefined || raw.image !== undefined || raw.placeholder !== undefined || raw.prompt !== undefined || raw.imagePrompt !== undefined || raw.supply !== undefined || raw.provide !== undefined || raw.userImage !== undefined) typeInput = 'image';
     else typeInput = 'frame';
   }
   if (typeInput !== undefined) {
@@ -1100,6 +1104,7 @@ export function normalizeSpec(input: unknown, path: string, issues: Issues, opts
       case 'imageData':
       case 'placeholder':
       case 'prompt':
+      case 'supply':
       case 'link':
       case 'blend':
         if (val !== undefined && val !== null) (out as unknown as Record<string, unknown>)[key] = String(val);
@@ -1239,6 +1244,7 @@ export function normalizeSpec(input: unknown, path: string, issues: Issues, opts
         out.visible = rawKey === 'hidden' ? !bool(val, p, issues) : bool(val, p, issues);
         break;
       case 'locked':
+      case 'mockup':
       case 'truncate':
       case 'fixed':
       case 'rtl':
@@ -1343,6 +1349,11 @@ export function normalizeSpec(input: unknown, path: string, issues: Issues, opts
     if (out.h === undefined) out.h = dh;
   }
   if (out.prompt !== undefined && !out.prompt.trim()) delete out.prompt;
+  if (out.supply !== undefined && !out.supply.trim()) delete out.supply;
+  if (out.prompt !== undefined && out.supply !== undefined) {
+    issues.warnings.push(`${path}: both prompt and supply — an image is either generated (prompt) or supplied by the user (supply); supply ignored.`);
+    delete out.supply;
+  }
 
   // 3. structural checks
   if (!opts.partial) {
@@ -1354,10 +1365,15 @@ export function normalizeSpec(input: unknown, path: string, issues: Issues, opts
     if (type === 'icon' && out.icon && !out.icon.includes(':')) issues.errors.push(`${path}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
     if (type === 'svg' && !out.svg) issues.errors.push(`${path}: an svg node needs "svg" markup.`);
     if (type === 'text' && out.text === undefined && !out.segments) issues.errors.push(`${path}: a text node needs "text".`);
-    if (type === 'image' && !out.src && !out.imageData && !out.prompt) {
-      issues.warnings.push(`${path}: image without src — add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate.`);
+    if (type === 'image' && !out.src && !out.imageData && !out.prompt && !out.supply) {
+      issues.warnings.push(`${path}: image without src — add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate (or "supply" for a real file the user has: logo, product photo).`);
     }
     if (type === 'group' && !(out.children && out.children.length)) issues.errors.push(`${path}: a group needs children.`);
+    // Related content belongs in auto layout; hand-placed layouts drift and do not translate to code.
+    if (out.dir === 'none' && (type === 'frame' || type === 'component') && (out.children?.filter((c) => !c.absolute).length ?? 0) >= 2) {
+      issues.warnings.push(`${path}: ${out.children!.length} children placed by hand (dir: "none") — put related content in auto layout (dir "row" | "column" | "grid"); keep free placement for overlays only (absolute: true on those children).`);
+    }
+    if (type === 'group' && (out.children?.length ?? 0) > 1) issues.warnings.push(`${path}: a group is not a layout container — use a frame (auto layout by default) so spacing and resizing work.`);
     if (out.dir === 'grid' && !out.cols) issues.errors.push(`${path}: a grid needs "cols".`);
   }
   return out;

@@ -117,7 +117,7 @@ function start() {
 
   // A Figma promise that never settles must not block the queue forever: answer with an error and move on.
   // (Slightly below the server's own timeouts, so the agent gets this message instead of a generic timeout.)
-  const DEADLINES: Record<string, number> = { build: 230_000, create_component: 290_000, edit: 170_000, variables: 170_000, lint: 170_000, export: 170_000, extract: 110_000, design_system: 110_000, screenshot: 80_000, placeholders: 110_000 };
+  const DEADLINES: Record<string, number> = { build: 230_000, create_component: 290_000, edit: 170_000, variables: 170_000, lint: 170_000, export: 170_000, extract: 110_000, design_system: 110_000, screenshot: 80_000, placeholders: 110_000, components: 110_000 };
   const deadlineFor = (method: string, params: unknown) =>
     method === 'execute' ? Math.min(Number((params as { timeoutMs?: number })?.timeoutMs ?? 60_000), 300_000) + 5_000 : DEADLINES[method] ?? 55_000;
   const withDeadline = <T>(work: Promise<T>, ms: number, method: string): Promise<T> => {

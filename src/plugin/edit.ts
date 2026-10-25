@@ -7,8 +7,10 @@ import { Ctx } from './ctx.ts';
 import { badRequest, explainFigmaError } from './errors.ts';
 import { applyPendingInteractions } from './prototype.ts';
 import { applyProps, isAutoLayout } from './props.ts';
+import { keepChromeOnTop, mockupScreenOf, setCanvas } from './device.ts';
+import { parseColor } from '../shared/color.ts';
 import { pageOf } from './inspect.ts';
-import { ensurePage, fitSections, freeSpot, placeImage, restoreNodes, rolePage, trashNodes } from './pages.ts';
+import { componentHome, ensurePage, fitSections, freeSpot, placeImage, restoreNodes, rolePage, trashNodes } from './pages.ts';
 
 export interface EditOp {
   op: string;
@@ -29,6 +31,8 @@ export interface EditOp {
   gap?: number;
   zoom?: boolean;
   create?: boolean;
+  /** page op: canvas color of the page. */
+  background?: string;
   operation?: 'union' | 'subtract' | 'intersect' | 'exclude';
   permanent?: boolean;
   keepInPlace?: boolean;
@@ -160,6 +164,7 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
         if (op.y !== undefined) n.y = op.y;
         touched.push(n);
       }
+      keepChromeOnTop(mockupScreenOf(parent ?? nodes[0]?.parent ?? null));
       return { ids: nodes.map((n) => n.id) };
     }
     case 'duplicate': {
@@ -193,6 +198,7 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
       ctx.warnings.push(...issues.warnings);
       await preflight(spec, ctx, { font: {} });
       const node = await buildNode(spec, parent, { font: {} }, ctx, label, { index: op.index, opts: { focus: false } });
+      keepChromeOnTop(mockupScreenOf(parent));
       if (op.ref) ctx.refs.set(op.ref, node);
       touched.push(node);
       return summarize(node);
@@ -271,7 +277,7 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
       return { ids: nodes.map((n) => n.id) };
     }
     case 'to-component': {
-      // The main component goes to the Components page; an instance takes its place in the design.
+      // The main component goes to the Components page's board (its category); an instance takes its place in the design.
       const nodes = await idsOf(op, ctx, i);
       const out = [];
       for (const n of nodes) {
@@ -302,12 +308,9 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
             instance.layoutSizingHorizontal = sizing.h;
             instance.layoutSizingVertical = sizing.v;
           }
-          const spot = freeSpot(home, c);
-          home.appendChild(c);
+          (await componentHome(c.name)).appendChild(c);
           if (c.layoutSizingHorizontal === 'FILL') c.layoutSizingHorizontal = 'FIXED';
           if (c.layoutSizingVertical === 'FILL') c.layoutSizingVertical = 'FIXED';
-          c.x = spot.x;
-          c.y = spot.y;
         }
         out.push({ id: c.id, name: c.name, key: c.key, page: pageOf(c)?.name, ...(instance ? { instance: instance.id } : {}) });
       }
@@ -348,6 +351,11 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
         created = r.created;
       }
       await figma.setCurrentPageAsync(page);
+      if (op.background !== undefined) {
+        const c = parseColor(String(op.background));
+        if (!c) throw badRequest(`${label}.background: "${op.background}" is not a color (e.g. "#D4D4D8").`);
+        setCanvas(page, { r: c.r, g: c.g, b: c.b });
+      }
       return { page: { id: page.id, name: page.name }, created };
     }
     case 'group': {

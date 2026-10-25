@@ -5,7 +5,7 @@ import { applyAssets, expandVariants, interactions as normalizeInteractions, new
 import { build, buildNode, defineComponentProps, preflight, summarize } from './build.ts';
 import { Ctx } from './ctx.ts';
 import { pageOf } from './inspect.ts';
-import { ensurePage, fitSections, freeSpot, rolePage } from './pages.ts';
+import { componentHome, ensurePage, fitSections, freeSpot } from './pages.ts';
 import { badRequest } from './errors.ts';
 import { applyPendingInteractions, toReaction } from './prototype.ts';
 import type { Inherit } from './text.ts';
@@ -29,11 +29,14 @@ export interface CreateComponentParams {
   assets?: AssetMap;
 }
 
-/** Components live on the Components page unless the call says otherwise. */
+/** Components live in the Components page's board (their category) unless the call says otherwise. */
 async function componentParent(p: CreateComponentParams): Promise<string | undefined> {
   if (p.parentId) return p.parentId;
-  const { page } = p.page ? await ensurePage(p.page) : await rolePage('components');
-  return page.id;
+  if (p.page) {
+    const { page } = await ensurePage(p.page);
+    if (page.getPluginData('role') !== 'components') return page.id;
+  }
+  return (await componentHome(p.name)).id;
 }
 
 const matches = (props: Record<string, string>, cond: Record<string, string | string[]> = {}) =>
@@ -111,9 +114,9 @@ export async function createComponent(p: CreateComponentParams) {
   if (!('appendChild' in n)) throw badRequest(`parentId: a ${n.type.toLowerCase()} cannot contain layers.`);
   if (n.type === 'PAGE') await (n as PageNode).loadAsync();
   const parent = n as BaseNode & ChildrenMixin;
-  const twin = parent.children.find((c) => c.name.trim().toLowerCase() === p.name.trim().toLowerCase());
+  const twin = parent.children.find((c) => c.name.trim().toLowerCase() === p.name.trim().toLowerCase()) ?? (await ctx.localComponentNamed(p.name));
   if (twin && !p.allowDuplicate) {
-    throw badRequest(`"${twin.name}" already exists on "${parent.name}" (${twin.id}). Update that component (edit its variants, or edit {op: "delete"} it first — it goes to the Trash page) instead of making a second one.`);
+    throw badRequest(`"${twin.name}" already exists (${twin.id}). Update that component (edit its variants, or edit {op: "delete"} it first — it goes to the Trash page) instead of making a second one.`);
   }
   await preflight(specs[0], ctx, inh);
   const spot = p.x === undefined && p.y === undefined && (parent.type === 'PAGE' || parent.type === 'SECTION') ? freeSpot(parent) : { x: p.x ?? 0, y: p.y ?? 0 };

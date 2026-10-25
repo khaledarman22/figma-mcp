@@ -32,12 +32,12 @@ with the exact path (`spec.children[2].pad`). All problems come back together be
 | `polygon`, `star` | triangle | |
 | `svg` | vector | `svg` markup (needs width/height/viewBox) |
 | `icon` | | `icon: "set:name"` (Iconify) |
-| `image` | img, photo | `src`, or `prompt` for an image that doesn't exist yet |
+| `image` | img, photo | `src`, or `prompt` for an image that doesn't exist yet, or `supply` for one the user hands over |
 | `instance` | use | `component` (+ `variant`, `props`, `overrides`) |
 | `group` | | prefer frames; groups have no layout |
 | `section` | | only on a page or in another section |
 
-`type` can be omitted: `text` ⇒ text, `component` ⇒ instance, `icon` ⇒ icon, `svg` ⇒ svg, `src`/`prompt`/`placeholder` ⇒ image, otherwise frame.
+`type` can be omitted: `text` ⇒ text, `component` ⇒ instance, `icon` ⇒ icon, `svg` ⇒ svg, `src`/`prompt`/`supply`/`placeholder` ⇒ image, otherwise frame.
 
 Common to all: `name` (always give meaningful names), `ref` (your handle — returned in `ids`, usable by interactions and later calls in the same request), `visible`/`hidden`, `locked`, `opacity` (0–1 or `"50%"`), `rotation`, `blend` (multiply, screen, overlay…), `annotations: ["dev note"]`, `description` (components only).
 
@@ -73,6 +73,16 @@ Sets `w`/`h` exactly unless you pass them (`"device": "iphone-16", "h": "hug", "
 | Web | `desktop` / `web` / `dashboard` 1440×1024 · `laptop` / `macbook-air` 1280×832 · `macbook-pro-14` 1512×982 · `macbook-pro-16` 1728×1117 · `desktop-hd` 1920×1080 |
 | Social | `instagram-post` 1080×1080 · `instagram-portrait` 1080×1350 · `instagram-story` 1080×1920 · `facebook-post` 1200×630 · `x-post` 1600×900 · `x-header` 1500×500 · `linkedin-post` 1200×627 · `linkedin-banner` 1584×396 · `youtube-thumbnail` 1280×720 · `youtube-banner` 2560×1440 |
 | Display ads | `ad-leaderboard` 728×90 · `ad-billboard` 970×250 · `ad-medium-rectangle` 300×250 · `ad-large-rectangle` 336×280 · `ad-half-page` 300×600 · `ad-skyscraper` 160×600 · `ad-mobile-banner` 320×50 · `ad-large-mobile-banner` 320×100 |
+
+**iPhone mockup (`mockup`, aliases `deviceFrame`, `chrome`).** A top-level screen with an iPhone `device` (`mobile`,
+`iphone-13` … `iphone-17-pro-max`; not `iphone-se`) looks like the phone automatically: the display's corner radius, a
+dark bezel drawn as an outside stroke (the frame keeps its exact size), and the status bar (time, Dynamic Island or
+notch, signal, battery) and home indicator as instances of `Device/iPhone/Status bar` / `Device/iPhone/Home
+indicator` (created on the Components page on first use; light or dark glyphs follow the screen's background). The
+chrome sits on top, is ignored by `get_design_context` (no status bar, radius or bezel in code) and by `lint`.
+Leave **≥ 54 px** at the top for the status bar (`pad` top, or a header that starts below it) — build warns otherwise.
+`"mockup": false` builds a plain frame; `edit` `set` `{ "mockup": true | false }` adds or removes it on an existing
+screen. Layers added later (`insert`, `move`) keep the chrome on top.
 
 ### Position
 Inside auto layout children flow; to overlay something (badge, close button, decoration) use `"absolute": true` + `x`, `y` (relative to the parent) + `constraints: { "h": "left|right|center|stretch|scale", "v": "top|bottom|center|stretch|scale" }`.
@@ -149,7 +159,7 @@ Defining components in a build: `{ "type": "component", "name": "Tag", "props": 
 - `{ "type": "icon", "icon": "lucide:arrow-right", "size": 20, "color": "$color/icon/default", "strokeWidth": 1.5 }` — default size 24; color defaults to the inherited text color. Keep one icon set per product (`icons` tool searches names). `build` option `icons: "inline"` makes plain vectors instead of reusable components.
 - `{ "type": "svg", "svg": "<svg width='24' height='24' viewBox='0 0 24 24'>…</svg>", "color": "#111" }`
 - `{ "type": "image", "src": "/Users/me/project/assets/hero.jpg", "w": "fill", "h": 240, "fit": "fill", "radius": 16 }` — local absolute path, URL or data URI; PNG/JPG/GIF (convert WebP first). With only `w` the height keeps the image's aspect ratio. `.svg` sources become vector nodes.
-- `{ "type": "image", "name": "Hero photo", "w": "fill", "h": 240, "prompt": "Warm editorial photograph of …, no text, no logos" }` — an image that doesn't exist yet: a gray placeholder captioned with its name and id (IMG-001). The same prompt shares one id. `image_prompts` writes all of them into `IMAGE_PROMPTS.md` in the project; `place_images` puts the generated files in. `placeholder: "<caption>"` changes the caption only. On any existing frame/rectangle, `edit` `set` `{ "prompt": "…" }` marks it for a new image. How to write prompts: [image-prompts.md](image-prompts.md).
+- `{ "type": "image", "name": "Hero photo", "w": "fill", "h": 240, "prompt": "Purpose: …\nReference: references/IMG-001-ref-….jpg …\nSubject: …\nElements:\n  - …\n…" }` (the full brief from image-prompts.md — every field, never a short phrase) — an image that doesn't exist yet: a gray placeholder captioned with its name and id (IMG-001). The same prompt shares one id. `image_prompts` writes all of them into `IMAGE_PROMPTS.md` in the project; `place_images` puts the generated files in. `placeholder: "<caption>"` changes the caption only. An image the user has and must hand over (logo, product or team photos, a screenshot of their app) is `{ "type": "image", "name": "Logo", "w": 120, "h": 40, "supply": "The brand logo, horizontal, transparent PNG or SVG" }` — same placeholder, listed under "from you" with the folder and file name to save it as; never write a generation prompt for real assets. On any existing frame/rectangle, `edit` `set` `{ "prompt": "…" }` marks it for a new image. How to write prompts: [image-prompts.md](image-prompts.md).
 
 ## 7. Interactions (inline)
 
@@ -160,13 +170,13 @@ Details and the full action list: the `prototype` tool / [prototype.md](prototyp
 
 ## 8. Tool options
 
-**build**: `spec`, `page` (English page name — created on first use; components default to `Components`), `parentId` (frame/section/page), `index`, `replaceId` (swap a layer for the new one, same place; the old one goes to Trash), `allowDuplicate` (a same-name top-level layer on the page is refused otherwise), `x`, `y`, `icons`, `focus` (default true), `screenshot` (default true at top level). Returns `built`, `page`, `ids` (refs → node ids), `warnings`.
+**build**: `spec`, `page` (English page name — created on first use; components default to `Components`), `parentId` (frame/section/page), `index`, `replaceId` (swap a layer for the new one, same place; the old one goes to Trash), `allowDuplicate` (a same-name top-level layer on the page is refused otherwise), `x`, `y`, `icons`, `focus` (default true), `screenshot` (default true at top level). Returns `built`, `page`, `ids` (refs → node ids), `warnings`. For designs and the component catalog, build one auto-layout board on the page, build auto-layout groups inside it with `parentId`, then put each screen or component in its group with `parentId`; keep these containers set to `dir: "row"` or `"column"` and size them to hug content.
 
-**edit** ops: `{op:"set", id|ids, props}`, `{op:"text", id, text}`, `{op:"rename", id, name}`, `{op:"delete", ids, permanent?}` (moves to the Trash page unless `permanent`), `{op:"restore", ids, parent?}`, `{op:"move", id|ids, parent?, index?, x?, y?}`, `{op:"duplicate", id, count?, parent?, index?, ref?}`, `{op:"insert", parent, index?, spec, ref?}`, `{op:"wrap", ids, spec?, ref?}`, `{op:"unwrap", id}`, `{op:"swap", id, component, variant?}`, `{op:"detach", ids}`, `{op:"reset", ids}`, `{op:"to-component", ids, name?, keepInPlace?}` (main component → Components page, an instance stays), `{op:"combine-variants", ids, name}`, `{op:"group", ids, name?}`, `{op:"ungroup", ids}`, `{op:"flatten", ids}`, `{op:"boolean", ids, operation: union|subtract|intersect|exclude}`, `{op:"select", ids}`, `{op:"page", name, create?}`, `{op:"place-image", id|ids, src, fit?}` (a real image into a placeholder).
+**edit** ops: `{op:"set", id|ids, props}`, `{op:"text", id, text}`, `{op:"rename", id, name}`, `{op:"delete", ids, permanent?}` (moves to the Trash page unless `permanent`), `{op:"restore", ids, parent?}`, `{op:"move", id|ids, parent?, index?, x?, y?}`, `{op:"duplicate", id, count?, parent?, index?, ref?}`, `{op:"insert", parent, index?, spec, ref?}`, `{op:"wrap", ids, spec?, ref?}`, `{op:"unwrap", id}`, `{op:"swap", id, component, variant?}`, `{op:"detach", ids}`, `{op:"reset", ids}`, `{op:"to-component", ids, name?, keepInPlace?}` (main component → Components page, an instance stays), `{op:"combine-variants", ids, name}`, `{op:"group", ids, name?}`, `{op:"ungroup", ids}`, `{op:"flatten", ids}`, `{op:"boolean", ids, operation: union|subtract|intersect|exclude}`, `{op:"select", ids}`, `{op:"page", name, create?, background?}` (`background: "#D4D4D8"` sets the page's canvas color), `{op:"place-image", id|ids, src, fit?}` (a real image into a placeholder).
 
-**create_component**: `name`, `spec`, `props`, `variants: { axes, patches: [{when, set: {root|<ref>: props}}], exclude }`, `interactions: [{from, trigger, to, transition}]`, `description`, `page` (default `Components`), `parentId`, `x`, `y`, `gap`, `allowDuplicate`.
+**create_component**: `name`, `spec`, `props`, `variants: { axes, patches: [{when, set: {root|<ref>: props}}], exclude }`, `interactions: [{from, trigger, to, transition}]`, `description`, `page` (default: the Components board, in the category named by `Category/Name`), `parentId`, `x`, `y`, `gap`, `allowDuplicate`.
 
-**image_prompts**: `outFile` (default `IMAGE_PROMPTS.md` in the project), `imagesDir` (default `images`), `scale` (default 2), `style` (shared art direction), `within`. **place_images**: `files` (`{"IMG-001": "/path"}`), `dir`, `promptsFile`, `fit`.
+**image_prompts**: `outFile` (default `IMAGE_PROMPTS.md` in the workspace `design/<file>/`), `imagesDir` (default `images`), `assetsDir` (default `assets`, for supplied images), `scale` (default 2), `style` (shared art direction), `previews` (default true: a screenshot of each screen under `previews/`), `within`. **place_images**: `files` (`{"IMG-001": "/path"}`), `dir` (default: the `images` and `assets` folders), `promptsFile`, `fit`. **workspace**: `action: status | open | sync`, `skill` (default true), `references` (default true). **image_library**: `action: list | add | remove`; list: `query`, `orientation`, `minWidth`, `minHeight`; add: `items: [{src, title, description?, tags?, source?, author?, license?}]`, `upload` (default true → page `Library`); remove: `ids`.
 
 **variables**: `collections: [{ name, modes?, hidden?, renameModes?, variables: [{ name, value | values: {Mode: v}, type?, scopes?, codeSyntax?, description?, hidden? }] }]`, `delete`, `deleteCollections`. Aliases: `"$name"` / `"$Collection:name"`.
 

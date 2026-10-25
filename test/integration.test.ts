@@ -57,14 +57,34 @@ const extractFixture = {
 
 const PROMPT = 'Sunrise over Cairo rooftops, warm light, 35mm photo';
 const waiting = [
-  { nodeId: '20:1', imageId: 'IMG-001', name: 'Hero photo', page: 'App', screen: 'Home', path: 'Home / Hero', w: 393, h: 300, prompt: PROMPT },
+  { nodeId: '20:1', imageId: 'IMG-001', name: 'Hero photo', page: 'App', screen: 'Home', screenId: '10:1', path: 'Home / Hero', w: 393, h: 300, prompt: PROMPT },
   { nodeId: '20:2', imageId: 'IMG-001', name: 'Hero photo', page: 'Web', screen: 'Landing', path: 'Landing', w: 1440, h: 600, prompt: PROMPT },
   { nodeId: '20:3', imageId: 'IMG-002', name: 'Avatar', page: 'App', screen: 'Profile', path: 'Profile / Header', w: 96, h: 96, prompt: 'Portrait of a smiling woman, soft studio light' },
+  { nodeId: '20:4', imageId: 'IMG-003', name: 'Logo', page: 'App', screen: 'Home', screenId: '10:1', path: 'Home / Header', w: 120, h: 40, prompt: 'The brand logo, transparent PNG or SVG', supply: true },
 ];
+const ws = path.join(project, 'design', 'test-file');
+const BRIEF = 'Shop app for Cairo.\n\n## Identity\nCalm, warm, trustworthy — never loud.\nIcons: lucide.\n\n## Decisions\n- 2026-10-01 iphone-16';
 const placedNodes = new Set<string>();
 const placeCalls: string[][] = [];
 
 const handlers = {
+  brief: () => ({ brief: BRIEF }),
+  design_system: () => ({
+    file: 'Test File',
+    pages: ['App', 'Components', 'References'],
+    styles: { text: [{ name: 'Heading/H1', family: 'Inter', style: 'Bold', size: 32, lineHeight: 40 }], paint: [], effect: [], grid: [] },
+    components: { components: [{ name: 'Button', kind: 'set', axes: { Variant: ['Primary', 'Secondary'] }, description: 'Primary actions.' }, { name: 'icon/lucide/star', kind: 'component' }], total: 2 },
+  }),
+  components: (p: { usage?: boolean }) => ({
+    components: [
+      { id: '40:1', name: 'Button', kind: 'set', axes: { Variant: ['Primary', 'Secondary'] }, props: { Label: 'text="Button"' }, description: 'Primary actions.', ...(p.usage ? { instances: 0, inDesigns: 0 } : {}) },
+      { id: '40:9', name: 'icon/lucide/star', kind: 'component' },
+      ...(p.usage ? idleComponents : []),
+    ],
+    total: 2,
+  }),
+  create_component: (p: { name: string }) => ({ componentSet: { id: '40:1', name: p.name }, variants: 2 }),
+  search: () => ({ results: [{ id: '30:1', name: 'Reference – Checkout (Stripe)', type: 'FRAME', page: 'References' }, { id: '30:2', name: 'Reference note', type: 'FRAME', page: 'References', path: 'Reference – Checkout (Stripe)' }], scanned: 2, more: false }),
   status: () => ({ file: { name: 'Test File' }, pages: [{ id: '0:1', name: 'Page 1' }], selection: [], brief: null, user: 'Tester' }),
   metadata: (p: { nodeId?: string }) => ({ xml: `<frame id="${p.nodeId ?? '0:1'}" name="Card"/>`, nodes: 1, truncated: false, page: { id: '0:1', name: 'Page 1' } }),
   build: (p: { spec: { name?: string }; assets?: { images?: Record<string, { data?: string }> } }) => ({
@@ -106,10 +126,13 @@ after(async () => {
   await B?.client.close().catch(() => {});
 });
 
+/** Extra components the fake file reports as unused (one test switches them on). */
+let idleComponents: Array<Record<string, unknown>> = [];
+
 test('lists all tools', async () => {
   const { tools } = await A.client.listTools();
   const names = tools.map((t) => t.name).sort();
-  for (const n of ['status', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
+  for (const n of ['status', 'workspace', 'image_library', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
   for (const t of tools) assert.ok((t.description ?? '').length < 4000, `${t.name} description too long`);
 });
 
@@ -128,6 +151,8 @@ test('build loads local images and returns a screenshot', async () => {
   const img = path.join(project, 'hero.png');
   const r = (await A.client.callTool({ name: 'build', arguments: { spec: { type: 'frame', name: 'Hero', children: [{ type: 'image', src: img, w: 100, h: 50 }] } } })) as { content: Array<{ type: string }> };
   assert.match(text(r), /Hero/);
+  assert.match(text(r), /Opened the design workspace for "Test File"/);
+  assert.ok(fs.existsSync(path.join(ws, 'workspace.json')) && fs.existsSync(path.join(ws, 'assets')), 'the first design change opens the workspace');
   assert.ok(r.content.some((c) => c.type === 'image'), 'screenshot attached');
   const req = plugin.requests.find((q) => q.method === 'build')!;
   assert.ok((req.params as { assets: { images: Record<string, { data: string }> } }).assets.images[img].data);
@@ -165,31 +190,115 @@ test('export_tokens writes css into the project', async () => {
   assert.match(fs.readFileSync(out, 'utf8'), /\[data-theme="dark"\]/);
 });
 
-test('image prompts go to a Markdown file in the project; generated images come back into their layers', async () => {
+test('image prompts go to the workspace with previews; generated and supplied images come back into their layers', async () => {
   const r1 = await A.client.callTool({ name: 'image_prompts', arguments: { style: 'Warm, natural light' } });
-  assert.match(text(r1), /2 image\(s\) to generate \(3 layer\(s\)\)/);
-  const md = path.join(project, 'IMAGE_PROMPTS.md');
+  assert.match(text(r1), /2 image\(s\) to generate, 1 from the user \(4 layer\(s\)\)/);
+  const md = path.join(ws, 'IMAGE_PROMPTS.md');
   const first = fs.readFileSync(md, 'utf8');
   assert.match(first, /# Image prompts — Test File/);
   assert.match(first, /## IMG-001 — Hero photo[\s\S]*2880×1200 px[\s\S]*Sunrise over Cairo/);
   assert.match(first, /\*\*Style for all images:\*\* Warm, natural light/);
-  assert.ok(fs.existsSync(path.join(project, 'images')));
+  assert.match(first, /Where it goes:\*\* !\[IMG-001 in place\]\(previews\/home\.png\)/);
+  assert.match(first, /# From you[\s\S]*IMG-003 — Logo \(from you\)[\s\S]*`assets\/IMG-003-logo\.png`/);
+  assert.ok(fs.existsSync(path.join(ws, 'previews', 'home.png')), 'one preview per screen');
+  assert.ok(fs.existsSync(path.join(ws, 'images')));
 
   // The user saves one image under its id; the other one arrives later with any name.
-  fs.writeFileSync(path.join(project, 'images', 'img-1-sunrise.png'), Buffer.from(PNG, 'base64'));
+  fs.writeFileSync(path.join(ws, 'images', 'img-1-sunrise.png'), Buffer.from(PNG, 'base64'));
   const r2 = await A.client.callTool({ name: 'place_images', arguments: {} });
   assert.match(text(r2), /IMG-001 ← img-1-sunrise\.png \(2 layers\)/);
-  assert.match(text(r2), /Still waiting: IMG-002/);
+  assert.match(text(r2), /Still waiting: IMG-002, IMG-003 \(from the user\)/);
   assert.deepEqual(placeCalls[0], ['20:1', '20:2']);
   const second = fs.readFileSync(md, 'utf8');
   assert.match(second, /# Placed[\s\S]*## IMG-001[\s\S]*placed ✓ \(images\/img-1-sunrise\.png\)/);
   assert.match(second, /\| IMG-002 \| Avatar/);
   assert.match(second, /Warm, natural light/);
 
+  assert.match(second, /Where it goes:\*\* !\[IMG-002 in place\]/, 'previews survive placing');
+
+  fs.writeFileSync(path.join(ws, 'assets', 'IMG-003-logo.png'), Buffer.from(PNG, 'base64'));
   const r3 = await A.client.callTool({ name: 'place_images', arguments: { files: { 'IMG-002': path.join(project, 'hero.png') } } });
   assert.match(text(r3), /IMG-002 ← hero\.png/);
+  assert.match(text(r3), /IMG-003 ← IMG-003-logo\.png/);
   assert.match(text(r3), /Nothing is waiting/);
   assert.match(fs.readFileSync(md, 'utf8'), /_No images waiting._/);
+});
+
+test('components are catalogued in the workspace; hand-drawn copies and unused components are called out', async () => {
+  const r1 = await A.client.callTool({ name: 'create_component', arguments: { name: 'Button', spec: { type: 'row', children: [{ type: 'text', text: 'Button' }] }, screenshot: false } });
+  assert.match(text(r1), /COMPONENTS\.md in .* lists it now/);
+  const md = fs.readFileSync(path.join(ws, 'COMPONENTS.md'), 'utf8');
+  assert.match(md, /\| `Button` \| Variant: Primary \/ Secondary \| Label \| \*\*unused\*\* \| Primary actions\. \|/);
+  assert.match(md, /## Not used in any design yet[\s\S]*- `Button`/);
+  assert.match(md, /\*\*Button\*\*: `\{"type":"instance","component":"Button","variant":\{"Variant":"Primary"\},"props":\{"Label":"Button"\}\}`/);
+  assert.doesNotMatch(md, /\| `icon\/lucide\/star`/);
+
+  const r2 = await A.client.callTool({ name: 'build', arguments: { spec: { type: 'frame', name: 'Sign in', children: [{ type: 'row', name: 'button', children: [{ type: 'text', text: 'Go' }] }] }, screenshot: false } });
+  assert.match(text(r2), /spec\.children\[0\] \\"button\\" is drawn by hand but the component \\"Button\\" exists|spec\.children\[0\] "button" is drawn by hand but the component "Button" exists/);
+  assert.match(text(r2), /No component instance in this build, but the file has 1 component/);
+  const r3 = await A.client.callTool({ name: 'build', arguments: { spec: { type: 'frame', name: 'Sign up', children: [{ type: 'instance', component: 'Button' }] }, screenshot: false } });
+  assert.doesNotMatch(text(r3), /drawn by hand|No component instance/);
+});
+
+test('making more components while others are still unused gets a stop-and-use-them note', async () => {
+  idleComponents = [
+    { id: '41:1', name: 'Cards/Stat', kind: 'component', instances: 0, inDesigns: 0 },
+    { id: '41:2', name: 'Navigation/Footer', kind: 'component', instances: 0, inDesigns: 0 },
+  ];
+  try {
+    const r = await A.client.callTool({ name: 'create_component', arguments: { name: 'Cards/Testimonial', spec: { type: 'row' }, screenshot: false } });
+    assert.match(text(r), /3 other components are not used by any design yet \(Button, Cards\/Stat, Navigation\/Footer\)[\s\S]*Stop making components/);
+  } finally {
+    idleComponents = [];
+    await A.client.callTool({ name: 'create_component', arguments: { name: 'Button', spec: { type: 'row' }, screenshot: false } });
+  }
+});
+
+test('image library: images are stored once in the workspace and placed on the Library page', async () => {
+  const r1 = await A.client.callTool({ name: 'image_library', arguments: { action: 'add', items: [{ src: path.join(project, 'hero.png'), title: 'Hero test', tags: ['test'], license: 'CC0' }] } });
+  assert.match(text(r1), /\+ LIB-001 "Hero test" · 1×1 square · test · CC0/);
+  assert.match(text(r1), /Placed 1 on the Figma page "Library"/);
+  const req = plugin.requests.filter((q) => q.method === 'build').pop()!.params as { page: string; spec: { name: string } };
+  assert.equal(req.page, 'Library');
+  assert.equal(req.spec.name, 'LIB-001 · Hero test');
+  assert.ok(fs.existsSync(path.join(ws, 'library', 'LIB-001-hero-test.png')));
+  const r2 = await A.client.callTool({ name: 'image_library', arguments: { action: 'add', items: [{ src: path.join(project, 'hero.png'), title: 'Again' }] } });
+  assert.match(text(r2), /= LIB-001 .*already in the library/);
+  const r3 = await A.client.callTool({ name: 'image_library', arguments: { query: 'hero' } });
+  assert.match(text(r3), /1 of 1 image\(s\)[\s\S]*LIB-001 "Hero test".*Figma 5:1/);
+});
+
+test('workspace sync writes the identity, tokens, references and a project skill; notes and foreign skills survive', async () => {
+  const foreign = path.join(project, '.agents', 'skills', 'test-file-design');
+  fs.mkdirSync(foreign, { recursive: true });
+  fs.writeFileSync(path.join(foreign, 'SKILL.md'), 'mine');
+  const r1 = await A.client.callTool({ name: 'workspace', arguments: { action: 'sync' } });
+  assert.match(text(r1), /Synced the workspace of "Test File"/);
+  const design = path.join(ws, 'DESIGN.md');
+  const d1 = fs.readFileSync(design, 'utf8');
+  assert.match(d1, /## Identity\n\nCalm, warm, trustworthy — never loud\.\nIcons: lucide\./);
+  assert.doesNotMatch(d1, /2026-10-01/, 'only the Identity block of the brief');
+  assert.match(d1, /color\/surface/);
+  assert.match(d1, /\*\*Button\*\* · Variant: Primary\|Secondary · props: Label — Primary actions\./);
+  assert.match(d1, /Iconify set: `lucide`/);
+  assert.match(d1, /Reference – Checkout \(Stripe\) → `references\/reference-checkout-stripe\.png`/);
+  assert.match(fs.readFileSync(path.join(ws, 'tokens', 'tokens.css'), 'utf8'), /--color-surface/);
+  assert.ok(fs.existsSync(path.join(ws, 'tokens', 'tokens.json')) && fs.existsSync(path.join(ws, 'references', 'REFERENCES.md')));
+  const skill = fs.readFileSync(path.join(project, '.claude', 'skills', 'test-file-design', 'SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: test-file-design\ndescription: "The design identity of 'Test File' — the only design system/);
+  assert.match(skill, /design\/test-file\/DESIGN\.md/);
+  assert.equal(fs.readFileSync(path.join(foreign, 'SKILL.md'), 'utf8'), 'mine', 'a skill figma-mcp did not write is left alone');
+  assert.match(text(r1), /skipped \.agents\/skills\/test-file-design\/SKILL\.md/);
+
+  fs.writeFileSync(design, d1.replace('_Your own notes go here; sync keeps them._', 'Keep the hero calm.'));
+  await A.client.callTool({ name: 'workspace', arguments: { action: 'sync', references: false } });
+  const d2 = fs.readFileSync(design, 'utf8');
+  assert.match(d2, /Keep the hero calm\./);
+  assert.equal(d2.match(/figma-mcp:start/g)?.length, 1);
+  const st = await A.client.callTool({ name: 'status', arguments: {} });
+  assert.match(text(st), /Workspace: .*design\/test-file · synced/);
+  const ws2 = await A.client.callTool({ name: 'workspace', arguments: {} });
+  assert.match(text(ws2), /Components: 1 · not used in any design: Button/);
 });
 
 test('plugin errors come back as tool errors', async () => {

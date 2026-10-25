@@ -7,8 +7,9 @@ import { walkSpec } from '../shared/spec.ts';
 import { Ctx } from './ctx.ts';
 import { badRequest } from './errors.ts';
 import { applyPendingInteractions } from './prototype.ts';
+import { applyMockup, ensureCanvas, isMockupDevice, keepChromeOnTop, mockupScreenOf } from './device.ts';
 import { pageOf } from './inspect.ts';
-import { addCaption, captionText, ensurePage, fitSections, freeSpot, isTrashPage, rolePage, setImagePrompt, trashNodes } from './pages.ts';
+import { addCaption, captionText, ensurePage, fitSections, freeSpot, componentHome, iconBoard, ICONS_ROLE, isTrashPage, rolePage, setImagePrompt, trashNodes } from './pages.ts';
 import { applyProps, isAutoLayout } from './props.ts';
 import { DEFAULT_FAMILY, inheritFrom, type Inherit } from './text.ts';
 
@@ -28,7 +29,6 @@ export interface BuildOptions {
   icons?: 'component' | 'inline';
 }
 
-const ICON_HOLDER_ROLE = 'icons';
 const PLUGIN_KEY = 'figma-mcp';
 
 // ───────────── preflight ─────────────
@@ -70,38 +70,6 @@ export async function preflight(spec: Spec, ctx: Ctx, inherited: Inherit): Promi
 
 // ───────────── creation ─────────────
 
-/** Icon components live on the Components page, in one "Icons" board. */
-async function iconHolder(): Promise<FrameNode> {
-  await figma.loadAllPagesAsync();
-  for (const pg of figma.root.children) {
-    const found = pg.children.find((c) => c.type === 'FRAME' && c.getPluginData('role') === ICON_HOLDER_ROLE) as FrameNode | undefined;
-    if (found && pg.getPluginData('role') !== 'trash') return found;
-  }
-  const { page } = await rolePage('components');
-  let left = Infinity;
-  let top = Infinity;
-  for (const c of page.children) {
-    left = Math.min(left, c.x);
-    top = Math.min(top, c.y);
-  }
-  const f = figma.createFrame();
-  f.name = 'Icons';
-  f.setPluginData('role', ICON_HOLDER_ROLE);
-  f.layoutMode = 'HORIZONTAL';
-  f.layoutWrap = 'WRAP';
-  f.itemSpacing = 16;
-  f.counterAxisSpacing = 16;
-  f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 24;
-  f.fills = [];
-  f.resize(360, 100);
-  f.layoutSizingHorizontal = 'FIXED';
-  f.layoutSizingVertical = 'HUG';
-  page.appendChild(f);
-  f.x = Number.isFinite(left) ? Math.round(left - 360 - 200) : 0;
-  f.y = Number.isFinite(top) ? Math.round(top) : 0;
-  return f;
-}
-
 /** One reusable component per icon ("icon/lucide/search"); screens get instances. */
 async function iconComponent(name: string, svg: string, ctx: Ctx): Promise<ComponentNode> {
   const compName = `icon/${name.replace(':', '/')}`;
@@ -116,7 +84,7 @@ async function iconComponent(name: string, svg: string, ctx: Ctx): Promise<Compo
   comp.name = compName;
   comp.fills = [];
   comp.description = `Icon ${name} (Iconify). Recolor through the instance's vector layers or a color variable.`;
-  const holder = await iconHolder();
+  const holder = await iconBoard();
   holder.appendChild(comp);
   ctx.registerComponent(comp);
   return comp;
@@ -214,7 +182,8 @@ async function createNode(s: Spec, ctx: Ctx, path: string, opts: BuildOptions): 
       f.setPluginData('role', 'image-placeholder');
       f.setPluginData('placeholder', s.placeholder ?? '');
       const load = (fn: FontName) => ctx.loadFont(fn);
-      const imageId = s.prompt ? await setImagePrompt(f, s.prompt, load) : '';
+      const need = s.prompt ?? s.supply;
+      const imageId = need ? await setImagePrompt(f, need, load, s.prompt === undefined) : '';
       const tiny = (typeof s.w === 'number' && s.w < 72) || (typeof s.h === 'number' && s.h < 48);
       if (!tiny && (s.placeholder || imageId)) await addCaption(f, captionText(s.placeholder ?? s.name ?? '', imageId), { family: DEFAULT_FAMILY, style: 'Regular' }, load);
       return { node: f };
@@ -445,11 +414,15 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
     }
     parent = p as BaseNode & ChildrenMixin;
   } else if (opts.page || spec.type === 'component') {
-    // Components live on the Components page unless told otherwise.
+    // Components live in the Components page's board unless told otherwise.
     const r = opts.page ? await ensurePage(opts.page) : await rolePage('components');
     if (r.created) createdPage = r.page;
     if (r.page !== figma.currentPage && (opts.switchPage ?? spec.type !== 'component')) await figma.setCurrentPageAsync(r.page);
-    parent = r.page;
+    parent = spec.type === 'component' && r.page.getPluginData('role') === 'components' ? await componentHome(spec.name ?? '') : r.page;
+  }
+  if (!replace && spec.type === 'component' && spec.name && !opts.allowDuplicate) {
+    const twin = await ctx.localComponentNamed(spec.name);
+    if (twin) throw badRequest(`Component "${twin.name}" already exists (${twin.id}). Update that component (edit it or its variants) and place instances of it instead of making a second one.`);
   }
   const targetPage = parent.type === 'PAGE' ? (parent as PageNode) : pageOf(parent);
   if (isTrashPage(targetPage)) throw badRequest('That is the Trash page. Build on a content page (page: "App", "Web", "Dashboard", …) or restore layers with edit {op: "restore"}.');
@@ -494,6 +467,11 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
       if (opts.x !== undefined) root.x = opts.x;
       if (opts.y !== undefined) root.y = opts.y;
     }
+    const topLevel = parent.type === 'PAGE' || parent.type === 'SECTION';
+    if (topLevel && root.type === 'FRAME' && spec.mockup !== false && isMockupDevice(spec.device) && targetPage?.getPluginData('role') !== 'components') {
+      for (const w of await applyMockup(root, spec.device!)) ctx.warn(w);
+    } else if (!topLevel) keepChromeOnTop(mockupScreenOf(parent));
+    if (topLevel && targetPage?.getPluginData('role') !== 'trash') ensureCanvas(targetPage, root);
     if (targetPage) fitSections(targetPage);
     const linked = await applyPendingInteractions(ctx);
     if (ctx.binds.length) {
@@ -512,7 +490,7 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
     const first = root ?? ctx.created[0];
     try {
       if (first && !first.removed) first.remove();
-      for (const n of ctx.created) if (!n.removed && n.parent?.type === 'PAGE' && n !== first && n.getPluginData('role') !== ICON_HOLDER_ROLE) n.remove();
+      for (const n of ctx.created) if (!n.removed && n.parent?.type === 'PAGE' && n !== first && n.getPluginData('role') !== ICONS_ROLE) n.remove();
       if (createdPage && !createdPage.removed && !createdPage.children.length && figma.root.children.length > 1) {
         if (figma.currentPage === createdPage) await figma.setCurrentPageAsync(figma.root.children.find((p) => p !== createdPage)!);
         createdPage.remove(); // no empty page left behind

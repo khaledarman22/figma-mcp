@@ -4,7 +4,25 @@ import { round } from '../shared/util.ts';
 import { readStyles } from './styles.ts';
 import { readVariables } from './variables.ts';
 
-export async function listComponents(p: { query?: string; limit?: number } = {}) {
+/** Instances of a component (all variants of a set): total, and those in design pages (not Components/References/Trash). */
+async function usageOf(n: ComponentNode | ComponentSetNode): Promise<{ instances: number; inDesigns: number }> {
+  const parts = n.type === 'COMPONENT_SET' ? (n.children.filter((c) => c.type === 'COMPONENT') as ComponentNode[]) : [n];
+  let instances = 0;
+  let inDesigns = 0;
+  for (const c of parts) {
+    for (const inst of await c.getInstancesAsync()) {
+      let page: BaseNode | null = inst.parent;
+      while (page && page.type !== 'PAGE') page = page.parent;
+      const role = page ? (page as PageNode).getPluginData('role') : '';
+      if (role === 'trash') continue;
+      instances++;
+      if (!role) inDesigns++;
+    }
+  }
+  return { instances, inDesigns };
+}
+
+export async function listComponents(p: { query?: string; limit?: number; usage?: boolean } = {}) {
   await figma.loadAllPagesAsync();
   const q = p.query?.toLowerCase();
   const limit = p.limit ?? 400;
@@ -36,6 +54,8 @@ export async function listComponents(p: { query?: string; limit?: number } = {})
         ...(Object.keys(props).length ? { props } : {}),
         ...(n.type === 'COMPONENT_SET' ? { variants: n.children.length } : {}),
         size: sample ? `${round(sample.width)}×${round(sample.height)}` : undefined,
+        // Icons are used through other components and screens all the time; counting them is noise.
+        ...(p.usage && !/^icon\//i.test(n.name) ? await usageOf(n) : {}),
       });
     }
   }

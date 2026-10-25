@@ -8,6 +8,7 @@ import { Ctx } from './ctx.ts';
 import { angleOf } from './paint.ts';
 import { describeTransition, screenOf } from './prototype.ts';
 import { pageOf } from './inspect.ts';
+import { hasMockup, isChrome } from './device.ts';
 import { isPlaceholderBox, neededPrompt } from './pages.ts';
 
 export type XPaint =
@@ -286,6 +287,7 @@ class Extractor {
 
   async node(n: SceneNode, depth: number, parentAL: boolean): Promise<XNode | null> {
     if (!n.visible && !this.p.includeHidden) return null;
+    if (isChrome(n)) return null; // the phone's status bar / home indicator are not product UI
     this.count++;
     const x: XNode = {
       id: n.id,
@@ -356,7 +358,8 @@ class Extractor {
       const fills = await this.paints((n as MinimalFillsMixin).fills);
       if (fills) x.fills = fills;
     }
-    if ('strokes' in n && (n as MinimalStrokesMixin).strokes.length) {
+    const mockup = hasMockup(n); // the bezel and display radius belong to the phone, not to the screen
+    if ('strokes' in n && (n as MinimalStrokesMixin).strokes.length && !mockup) {
       const s = n as MinimalStrokesMixin & SceneNode;
       const st = await this.styleName(s.strokeStyleId, 'paint');
       if (st) styles.stroke = st;
@@ -372,7 +375,7 @@ class Extractor {
         if (s.dashPattern.length) x.dash = [...s.dashPattern];
       }
     }
-    if ('cornerRadius' in n) {
+    if ('cornerRadius' in n && !mockup) {
       const r = (n as CornerMixin).cornerRadius;
       if (r === figma.mixed && 'topLeftRadius' in n) {
         const c = n as RectangleCornerMixin;

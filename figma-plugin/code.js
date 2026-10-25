@@ -277,7 +277,9 @@
     "fit",
     "placeholder",
     "prompt",
+    "supply",
     "device",
+    "mockup",
     "scroll",
     "fixed",
     "interactions",
@@ -371,9 +373,13 @@
     objectFit: "fit",
     imagePrompt: "prompt",
     generate: "prompt",
+    provide: "supply",
+    userImage: "supply",
     preset: "device",
     frameSize: "device",
     format: "device",
+    deviceFrame: "mockup",
+    chrome: "mockup",
     overflow: "scroll",
     overflowDirection: "scroll",
     interaction: "interactions",
@@ -1254,7 +1260,7 @@
     return [n, n, n, n];
   }
   function normalizeSpec(input, path, issues, opts = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
     const out = {};
     if (!isPlainObject(input)) {
       issues.errors.push(`${path}: expected an object, got ${(_a = JSON.stringify(input)) == null ? void 0 : _a.slice(0, 80)}.`);
@@ -1267,7 +1273,7 @@
       else if (raw.component !== void 0 || raw.mainComponent !== void 0 || raw.componentKey !== void 0) typeInput = "instance";
       else if (raw.icon !== void 0) typeInput = "icon";
       else if (raw.svg !== void 0) typeInput = "svg";
-      else if (raw.src !== void 0 || raw.image !== void 0 || raw.placeholder !== void 0 || raw.prompt !== void 0 || raw.imagePrompt !== void 0) typeInput = "image";
+      else if (raw.src !== void 0 || raw.image !== void 0 || raw.placeholder !== void 0 || raw.prompt !== void 0 || raw.imagePrompt !== void 0 || raw.supply !== void 0 || raw.provide !== void 0 || raw.userImage !== void 0) typeInput = "image";
       else typeInput = "frame";
     }
     if (typeInput !== void 0) {
@@ -1349,6 +1355,7 @@
         case "imageData":
         case "placeholder":
         case "prompt":
+        case "supply":
         case "link":
         case "blend":
           if (val !== void 0 && val !== null) out[key] = String(val);
@@ -1484,6 +1491,7 @@
           out.visible = rawKey === "hidden" ? !bool(val, p, issues) : bool(val, p, issues);
           break;
         case "locked":
+        case "mockup":
         case "truncate":
         case "fixed":
         case "rtl":
@@ -1591,6 +1599,11 @@
       if (out.h === void 0) out.h = dh;
     }
     if (out.prompt !== void 0 && !out.prompt.trim()) delete out.prompt;
+    if (out.supply !== void 0 && !out.supply.trim()) delete out.supply;
+    if (out.prompt !== void 0 && out.supply !== void 0) {
+      issues.warnings.push(`${path}: both prompt and supply \u2014 an image is either generated (prompt) or supplied by the user (supply); supply ignored.`);
+      delete out.supply;
+    }
     if (!opts.partial) {
       if (out.children && type && !CONTAINER_TYPES.has(type)) {
         issues.errors.push(`${path}: a "${type}" cannot have children (only frame, component, group, section). Wrap it in a frame.`);
@@ -1600,10 +1613,14 @@
       if (type === "icon" && out.icon && !out.icon.includes(":")) issues.errors.push(`${path}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
       if (type === "svg" && !out.svg) issues.errors.push(`${path}: an svg node needs "svg" markup.`);
       if (type === "text" && out.text === void 0 && !out.segments) issues.errors.push(`${path}: a text node needs "text".`);
-      if (type === "image" && !out.src && !out.imageData && !out.prompt) {
-        issues.warnings.push(`${path}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate.`);
+      if (type === "image" && !out.src && !out.imageData && !out.prompt && !out.supply) {
+        issues.warnings.push(`${path}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate (or "supply" for a real file the user has: logo, product photo).`);
       }
       if (type === "group" && !(out.children && out.children.length)) issues.errors.push(`${path}: a group needs children.`);
+      if (out.dir === "none" && (type === "frame" || type === "component") && ((_r = (_q = out.children) == null ? void 0 : _q.filter((c) => !c.absolute).length) != null ? _r : 0) >= 2) {
+        issues.warnings.push(`${path}: ${out.children.length} children placed by hand (dir: "none") \u2014 put related content in auto layout (dir "row" | "column" | "grid"); keep free placement for overlays only (absolute: true on those children).`);
+      }
+      if (type === "group" && ((_t = (_s = out.children) == null ? void 0 : _s.length) != null ? _t : 0) > 1) issues.warnings.push(`${path}: a group is not a layout container \u2014 use a frame (auto layout by default) so spacing and resizing work.`);
       if (out.dir === "grid" && !out.cols) issues.errors.push(`${path}: a grid needs "cols".`);
     }
     return out;
@@ -3116,7 +3133,7 @@
   }
 
   // src/plugin/inspect.ts
-  var PLUGIN_VERSION = true ? "1.0.0+850e521" : "dev";
+  var PLUGIN_VERSION = true ? "1.0.0+6700814" : "dev";
   function selectionSummary() {
     return figma.currentPage.selection.slice(0, 50).map((n) => ({ id: n.id, name: n.name, type: n.type, w: Math.round(n.width), h: Math.round(n.height) }));
   }
@@ -3662,8 +3679,8 @@
     }
     return (h >>> 0).toString(36);
   }
-  function imageIdFor(prompt) {
-    const key = promptKey(prompt);
+  function imageIdFor(prompt, supply = false) {
+    const key = (supply ? "s:" : "") + promptKey(prompt);
     let reg = {};
     try {
       reg = JSON.parse(figma.root.getPluginData("imageIds") || "{}");
@@ -3682,10 +3699,11 @@
     if (prompt) return prompt;
     return isPlaceholderBox(n) ? "" : null;
   }
-  async function setImagePrompt(n, prompt, loadFont) {
-    if (n.type !== "FRAME" && n.type !== "RECTANGLE") throw badRequest(`prompt: only frames and rectangles hold images ("${n.name}" is a ${n.type.toLowerCase()}).`);
-    const id = imageIdFor(prompt);
+  async function setImagePrompt(n, prompt, loadFont, supply = false) {
+    if (n.type !== "FRAME" && n.type !== "RECTANGLE") throw badRequest(`${supply ? "supply" : "prompt"}: only frames and rectangles hold images ("${n.name}" is a ${n.type.toLowerCase()}).`);
+    const id = imageIdFor(prompt, supply);
     n.setPluginData("prompt", prompt.trim());
+    n.setPluginData("supply", supply ? "1" : "");
     n.setPluginData("imageId", id);
     if (n.type === "FRAME") {
       const caption = n.children.find((c) => c.type === "TEXT" && c.getPluginData("role") === CAPTION_ROLE);
@@ -3734,20 +3752,25 @@ ${imageId}` : l;
         if (n.id.includes(";")) continue;
         const prompt = neededPrompt(n);
         if (prompt === null) continue;
+        const supply = n.getPluginData("supply") === "1";
         let imageId = n.getPluginData("imageId");
         if (!imageId) {
-          imageId = prompt ? imageIdFor(prompt) : nextImageId();
+          imageId = prompt ? imageIdFor(prompt, supply) : nextImageId();
           n.setPluginData("imageId", imageId);
         }
         const path = [];
         let par = n.parent;
         let screen;
+        let screenId;
         while (par && par.type !== "PAGE") {
           path.unshift(par.name);
-          if (((_a = par.parent) == null ? void 0 : _a.type) === "PAGE" || ((_b = par.parent) == null ? void 0 : _b.type) === "SECTION") screen = par.name;
+          if ((((_a = par.parent) == null ? void 0 : _a.type) === "PAGE" || ((_b = par.parent) == null ? void 0 : _b.type) === "SECTION") && par.type !== "SECTION") {
+            screen = par.name;
+            screenId = par.id;
+          }
           par = par.parent;
         }
-        out.push({ nodeId: n.id, imageId, name: n.name, page: (_d = (_c = pageOf(n)) == null ? void 0 : _c.name) != null ? _d : "", screen, path: path.join(" / "), w: Math.round(n.width), h: Math.round(n.height), prompt });
+        out.push(__spreadValues(__spreadValues({ nodeId: n.id, imageId, name: n.name, page: (_d = (_c = pageOf(n)) == null ? void 0 : _c.name) != null ? _d : "", screen, path: path.join(" / "), w: Math.round(n.width), h: Math.round(n.height), prompt }, supply ? { supply } : {}), screenId ? { screenId } : {}));
       }
     }
     return { placeholders: out };
@@ -3779,12 +3802,303 @@ ${imageId}` : l;
       const prompt = n.getPluginData("prompt") || n.getPluginData("placeholder");
       n.setPluginData("imagePrompt", prompt);
       n.setPluginData("prompt", "");
+      n.setPluginData("supply", "");
       n.setPluginData("placeholder", "");
       if (n.getPluginData("role") === PLACEHOLDER_ROLE) n.setPluginData("role", "");
       if (/^image placeholder$/i.test(n.name)) n.name = "Image";
       placed.push({ id: n.id, name: n.name });
     }
     return { placed };
+  }
+  var BOARD_ROLE = "component-board";
+  var ICONS_ROLE = "icons";
+  var isAuto = (n) => n.type === "FRAME" && n.layoutMode !== "NONE";
+  var holdsComponents = (f) => f.children.some((c) => c.type === "COMPONENT" || c.type === "COMPONENT_SET" || c.type === "FRAME" && c.children.some((g2) => g2.type === "COMPONENT" || g2.type === "COMPONENT_SET"));
+  async function componentBoard() {
+    const { page } = await rolePage("components");
+    const marked = page.children.find((c) => c.getPluginData("role") === BOARD_ROLE);
+    if (marked && isAuto(marked)) return marked;
+    const adopt = page.children.find((c) => isAuto(c) && c.getPluginData("role") !== ICONS_ROLE && holdsComponents(c));
+    if (adopt) {
+      adopt.setPluginData("role", BOARD_ROLE);
+      return adopt;
+    }
+    const spot = freeSpot(page);
+    const f = figma.createFrame();
+    f.name = "Components";
+    f.setPluginData("role", BOARD_ROLE);
+    f.layoutMode = "VERTICAL";
+    f.itemSpacing = 64;
+    f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 64;
+    f.fills = [];
+    page.appendChild(f);
+    f.layoutSizingHorizontal = "HUG";
+    f.layoutSizingVertical = "HUG";
+    f.x = spot.x;
+    f.y = spot.y;
+    return f;
+  }
+  async function componentCategory(name) {
+    const board = await componentBoard();
+    const want = normName(name);
+    const found = board.children.find((c) => isAuto(c) && normName(c.name) === want);
+    if (found) return found;
+    const f = figma.createFrame();
+    f.name = name.trim();
+    f.layoutMode = "HORIZONTAL";
+    f.itemSpacing = 32;
+    f.counterAxisAlignItems = "MIN";
+    f.fills = [];
+    board.appendChild(f);
+    f.layoutSizingHorizontal = "HUG";
+    f.layoutSizingVertical = "HUG";
+    return f;
+  }
+  async function componentHome(name) {
+    const group = name.includes("/") ? name.split("/")[0].trim() : "";
+    if (group && !/^icon$/i.test(group)) return componentCategory(group);
+    if (/^icon\//i.test(name)) return iconBoard();
+    return componentBoard();
+  }
+  async function iconBoard() {
+    var _a;
+    const board = await componentBoard();
+    const isIcons = (c) => c.type === "FRAME" && c.getPluginData("role") === ICONS_ROLE;
+    let icons = (_a = board.children.find(isIcons)) != null ? _a : board.children.find((c) => isAuto(c) && normName(c.name) === "icon");
+    if (!icons) {
+      await figma.loadAllPagesAsync();
+      for (const pg of figma.root.children) {
+        if (isTrashPage(pg)) continue;
+        icons = pg.children.find(isIcons);
+        if (icons) break;
+      }
+    }
+    if (!icons) {
+      icons = figma.createFrame();
+      icons.name = "Icons";
+      icons.layoutMode = "HORIZONTAL";
+      icons.layoutWrap = "WRAP";
+      icons.itemSpacing = 16;
+      icons.counterAxisSpacing = 16;
+      icons.fills = [];
+      icons.resize(360, 100);
+    }
+    icons.setPluginData("role", ICONS_ROLE);
+    if (icons.parent !== board) {
+      board.appendChild(icons);
+      icons.layoutPositioning = "AUTO";
+    }
+    if (icons.layoutMode === "NONE") icons.layoutMode = "HORIZONTAL";
+    if (icons.layoutWrap === "WRAP") icons.layoutSizingHorizontal = "FIXED";
+    else icons.layoutSizingHorizontal = "HUG";
+    icons.layoutSizingVertical = "HUG";
+    return icons;
+  }
+
+  // src/plugin/device.ts
+  var CHROME_ROLE = "device-chrome";
+  var MOCKUP_KEY = "mockup";
+  var BEZEL = { r: 0.043, g: 0.043, b: 0.047 };
+  var BEZEL_ON_DARK = { r: 0.2, g: 0.2, b: 0.216 };
+  var BEZEL_WIDTH = 12;
+  var STATUS_H = 54;
+  var HOME = { w: 139, h: 5, bottom: 8 };
+  var RADIUS = {
+    mobile: 55,
+    "iphone-16": 55,
+    "iphone-15": 55,
+    "iphone-14": 47,
+    "iphone-13": 47,
+    "iphone-16-plus": 55,
+    "iphone-16-pro": 62,
+    "iphone-16-pro-max": 62,
+    "iphone-17": 62,
+    "iphone-17-pro": 62,
+    "iphone-17-pro-max": 62
+  };
+  var NOTCH = /* @__PURE__ */ new Set(["iphone-14", "iphone-13"]);
+  var isMockupDevice = (device) => !!device && device in RADIUS;
+  var isChrome = (n) => "getPluginData" in n && n.getPluginData("role") === CHROME_ROLE;
+  var hasMockup = (n) => "getPluginData" in n && !!n.getPluginData(MOCKUP_KEY);
+  var SIGNAL = '<svg width="18" height="12" viewBox="0 0 18 12" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>';
+  var WIFI = '<svg width="16" height="12" viewBox="0 0 16 12" xmlns="http://www.w3.org/2000/svg"><path d="M8 2.3c2.3 0 4.3.9 5.8 2.3l1.1-1.1A9.6 9.6 0 0 0 8 .7 9.6 9.6 0 0 0 1.1 3.5l1.1 1.1A8 8 0 0 1 8 2.3Zm0 3.3c1.4 0 2.6.5 3.5 1.4l1.1-1.2A6.5 6.5 0 0 0 8 4a6.5 6.5 0 0 0-4.6 1.8l1.1 1.2c.9-.9 2.1-1.4 3.5-1.4Zm0 3.2c-.5 0-1 .2-1.3.5L8 10.6l1.3-1.3c-.3-.3-.8-.5-1.3-.5Z"/></svg>';
+  var BATTERY = '<svg width="27" height="13" viewBox="0 0 27 13" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="23" height="12" rx="3.8" fill="none" stroke="#000" stroke-opacity="0.35"/><rect x="2" y="2" width="20" height="9" rx="2.5"/><path d="M25 4.4v4.2c.8-.3 1.4-1.2 1.4-2.1S25.8 4.7 25 4.4Z" fill-opacity="0.4"/></svg>';
+  function tint(node, color) {
+    const recolor = (paints2) => paints2.map((p) => p.type === "SOLID" ? __spreadProps(__spreadValues({}, p), { color }) : p);
+    if ("fills" in node && Array.isArray(node.fills)) node.fills = recolor(node.fills);
+    if ("strokes" in node && node.strokes.length) node.strokes = recolor(node.strokes);
+    if ("children" in node) for (const c of node.children) tint(c, color);
+  }
+  async function timeFont() {
+    try {
+      await figma.loadFontAsync({ family: "Inter", style: "Semi Bold" });
+      return { family: "Inter", style: "Semi Bold" };
+    } catch (e) {
+      await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+      return { family: "Inter", style: "Regular" };
+    }
+  }
+  async function statusBarVariant(style, island) {
+    const color = style === "Dark" ? { r: 0, g: 0, b: 0 } : { r: 1, g: 1, b: 1 };
+    const c = figma.createComponent();
+    c.name = `Style=${style}`;
+    c.layoutMode = "HORIZONTAL";
+    c.primaryAxisAlignItems = "SPACE_BETWEEN";
+    c.counterAxisAlignItems = "CENTER";
+    c.paddingLeft = 40;
+    c.paddingRight = 30;
+    c.paddingTop = 6;
+    c.fills = [];
+    c.resize(393, STATUS_H);
+    c.layoutSizingVertical = "FIXED";
+    const time = figma.createText();
+    time.fontName = await timeFont();
+    time.characters = "9:41";
+    time.fontSize = 17;
+    time.fills = [{ type: "SOLID", color }];
+    time.name = "Time";
+    c.appendChild(time);
+    time.textAutoResize = "WIDTH_AND_HEIGHT";
+    const right = figma.createFrame();
+    right.name = "Levels";
+    right.layoutMode = "HORIZONTAL";
+    right.itemSpacing = 6;
+    right.counterAxisAlignItems = "CENTER";
+    right.fills = [];
+    right.layoutSizingHorizontal = "HUG";
+    right.layoutSizingVertical = "HUG";
+    for (const [name, svg] of [["Signal", SIGNAL], ["Wi-Fi", WIFI], ["Battery", BATTERY]]) {
+      const v = figma.createNodeFromSvg(svg);
+      v.name = name;
+      v.fills = [];
+      tint(v, color);
+      right.appendChild(v);
+    }
+    c.appendChild(right);
+    if (island) {
+      const pill = figma.createRectangle();
+      pill.name = "Dynamic Island";
+      pill.resize(125, 37);
+      pill.cornerRadius = 18.5;
+      pill.fills = [{ type: "SOLID", color: BEZEL }];
+      c.appendChild(pill);
+      pill.layoutPositioning = "ABSOLUTE";
+      pill.x = (393 - 125) / 2;
+      pill.y = 11;
+      pill.constraints = { horizontal: "CENTER", vertical: "MIN" };
+    }
+    return c;
+  }
+  async function homeVariant(style) {
+    const c = figma.createComponent();
+    c.name = `Style=${style}`;
+    c.resize(HOME.w, HOME.h);
+    c.cornerRadius = 100;
+    c.fills = [{ type: "SOLID", color: style === "Dark" ? { r: 0, g: 0, b: 0 } : { r: 1, g: 1, b: 1 } }];
+    return c;
+  }
+  async function chromeSet(kind) {
+    let reg = {};
+    try {
+      reg = JSON.parse(figma.root.getPluginData("deviceChrome") || "{}");
+    } catch (e) {
+    }
+    const known = reg[kind] ? await getNodeSafe(reg[kind]) : null;
+    if (known && known.type === "COMPONENT_SET" && !known.removed) return known;
+    const { page } = await rolePage("components");
+    const variants = kind === "home" ? [await homeVariant("Dark"), await homeVariant("Light")] : [await statusBarVariant("Dark", kind === "status"), await statusBarVariant("Light", kind === "status")];
+    for (const v of variants) page.appendChild(v);
+    const set = figma.combineAsVariants(variants, page);
+    set.name = kind === "home" ? "Device/iPhone/Home indicator" : kind === "status" ? "Device/iPhone/Status bar" : "Device/iPhone/Status bar (notch)";
+    set.description = "Device chrome added by figma-mcp to iPhone screens (mockup). Not part of the product UI: code ignores it.";
+    set.layoutMode = "HORIZONTAL";
+    set.itemSpacing = 24;
+    set.paddingTop = set.paddingBottom = set.paddingLeft = set.paddingRight = 24;
+    set.fills = [{ type: "SOLID", color: { r: 0.6, g: 0.6, b: 0.62 } }];
+    set.layoutSizingHorizontal = "HUG";
+    set.layoutSizingVertical = "HUG";
+    const spot = freeSpot(page, set);
+    set.x = spot.x;
+    set.y = spot.y;
+    reg[kind] = set.id;
+    figma.root.setPluginData("deviceChrome", JSON.stringify(reg));
+    return set;
+  }
+  function luminance2(n) {
+    const fill = "fills" in n && Array.isArray(n.fills) ? n.fills.find((p) => p.visible !== false && p.type === "SOLID") : void 0;
+    if (!fill) return 1;
+    const { r, g: g2, b } = fill.color;
+    return 0.2126 * r + 0.7152 * g2 + 0.0722 * b;
+  }
+  function addAbsolute(screen, inst) {
+    screen.appendChild(inst);
+    if (screen.layoutMode !== "NONE") inst.layoutPositioning = "ABSOLUTE";
+  }
+  async function applyMockup(screen, device, on = true) {
+    const warnings = [];
+    for (const c of [...screen.children]) if (isChrome(c)) c.remove();
+    if (!on || !isMockupDevice(device)) {
+      if (hasMockup(screen)) {
+        screen.strokes = [];
+        screen.cornerRadius = 0;
+        screen.setPluginData(MOCKUP_KEY, "");
+      }
+      return warnings;
+    }
+    screen.cornerRadius = RADIUS[device];
+    screen.clipsContent = true;
+    const style = luminance2(screen) < 0.5 ? "Light" : "Dark";
+    screen.strokes = [{ type: "SOLID", color: style === "Light" ? BEZEL_ON_DARK : BEZEL }];
+    screen.strokeWeight = BEZEL_WIDTH;
+    screen.strokeAlign = "OUTSIDE";
+    screen.setPluginData(MOCKUP_KEY, device);
+    const status2 = await chromeSet(NOTCH.has(device) ? "status-notch" : "status");
+    const bar = status2.children.find((v) => v.name === `Style=${style}`).createInstance();
+    bar.name = "Status bar";
+    bar.setPluginData("role", CHROME_ROLE);
+    addAbsolute(screen, bar);
+    bar.resize(screen.width, STATUS_H);
+    bar.x = 0;
+    bar.y = 0;
+    bar.constraints = { horizontal: "STRETCH", vertical: "MIN" };
+    const home = await chromeSet("home");
+    const ind = home.children.find((v) => v.name === `Style=${style}`).createInstance();
+    ind.name = "Home indicator";
+    ind.setPluginData("role", CHROME_ROLE);
+    addAbsolute(screen, ind);
+    ind.x = Math.round((screen.width - HOME.w) / 2);
+    ind.y = screen.height - HOME.bottom - HOME.h;
+    ind.constraints = { horizontal: "CENTER", vertical: "MAX" };
+    if (screen.layoutMode !== "NONE" && screen.paddingTop < STATUS_H) warnings.push(`"${screen.name}": content starts under the status bar (top padding ${screen.paddingTop} < ${STATUS_H}) \u2014 pad the top or start with a header that leaves room for it.`);
+    return warnings;
+  }
+  function mockupScreenOf(n) {
+    for (let p = n; p && p.type !== "PAGE"; p = p.parent) if (p.type === "FRAME" && hasMockup(p)) return p;
+    return null;
+  }
+  function keepChromeOnTop(screen) {
+    if (!screen) return;
+    for (const c of screen.children.filter(isChrome)) screen.appendChild(c);
+    const ind = screen.children.find((c) => isChrome(c) && c.name === "Home indicator");
+    if (ind) ind.y = screen.height - HOME.bottom - HOME.h;
+  }
+  var FIGMA_DEFAULT_CANVAS = [{ r: 0.96, g: 0.96, b: 0.96 }, { r: 0.898, g: 0.898, b: 0.898 }, { r: 0.118, g: 0.118, b: 0.118 }];
+  function ensureCanvas(page, sample) {
+    if (!page || page.getPluginData("canvas")) return;
+    const bg = page.backgrounds.find((p) => p.type === "SOLID");
+    const isDefault = !bg || FIGMA_DEFAULT_CANVAS.some((d) => Math.abs(d.r - bg.color.r) < 0.02 && Math.abs(d.g - bg.color.g) < 0.02 && Math.abs(d.b - bg.color.b) < 0.02);
+    if (!isDefault) {
+      page.setPluginData("canvas", "user");
+      return;
+    }
+    const light = sample ? luminance2(sample) >= 0.5 : true;
+    const color = light ? { r: 0.8, g: 0.8, b: 0.827 } : { r: 0.91, g: 0.91, b: 0.925 };
+    page.backgrounds = [{ type: "SOLID", color }];
+    page.setPluginData("canvas", "auto");
+  }
+  function setCanvas(page, color) {
+    page.backgrounds = [{ type: "SOLID", color }];
+    page.setPluginData("canvas", "user");
   }
 
   // src/plugin/props.ts
@@ -4126,7 +4440,7 @@ ${imageId}` : l;
     "pass-through": "PASS_THROUGH"
   };
   async function applyProps(node, s, inh, ctx, path, o) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f;
     const rtl = !!((_a = s.rtl) != null ? _a : inh.rtl);
     if (s.name !== void 0) node.name = s.name;
     if (s.visible !== void 0) node.visible = s.visible;
@@ -4158,7 +4472,13 @@ ${imageId}` : l;
     await applySizing(node, s, ctx, path, o);
     if (node.type === "TEXT") applyTruncation(node, s);
     if (s.device !== void 0) node.setPluginData("device", s.device);
-    if (s.prompt !== void 0 && !(o.isNew && node.getPluginData("role") === "image-placeholder")) await setImagePrompt(node, s.prompt, (f) => ctx.loadFont(f));
+    if (s.mockup !== void 0 && !o.isNew && node.type === "FRAME") {
+      const device = (_c = s.device) != null ? _c : node.getPluginData("device");
+      if (s.mockup && !isMockupDevice(device)) ctx.warn(`${path}.mockup: only iPhone screens get a mockup (set device: "iphone-16" \u2026); "${node.name}" has ${device ? `device "${device}"` : "no device"}.`);
+      else for (const w of await applyMockup(node, device, s.mockup)) ctx.warn(w);
+    }
+    const need = (_d = s.prompt) != null ? _d : s.supply;
+    if (need !== void 0 && !(o.isNew && node.getPluginData("role") === "image-placeholder")) await setImagePrompt(node, need, (f) => ctx.loadFont(f), s.prompt === void 0);
     if (s.fill !== void 0 && node.type !== "TEXT") await applyFills(node, s.fill, ctx, `${path}.fill`);
     if (s.stroke !== void 0) await applyStroke(node, s.stroke, ctx, `${path}.stroke`);
     if (s.radius !== void 0) {
@@ -4229,14 +4549,14 @@ ${imageId}` : l;
       if ("overflowDirection" in node) node.overflowDirection = { none: "NONE", vertical: "VERTICAL", horizontal: "HORIZONTAL", both: "BOTH" }[s.scroll];
       else ctx.warn(`${path}.scroll: only frames can scroll.`);
     }
-    if ((_c = s.annotations) == null ? void 0 : _c.length) {
+    if ((_e = s.annotations) == null ? void 0 : _e.length) {
       try {
         node.annotations = s.annotations.map((label) => ({ label }));
       } catch (e) {
         ctx.warn(`${path}.annotations: not applied (${e instanceof Error ? e.message : e}).`);
       }
     }
-    if ((_d = s.interactions) == null ? void 0 : _d.length) ctx.pendingInteractions.push({ node, items: s.interactions, path });
+    if ((_f = s.interactions) == null ? void 0 : _f.length) ctx.pendingInteractions.push({ node, items: s.interactions, path });
     if (s.rotation !== void 0) {
       if ("rotation" in node) node.rotation = s.rotation;
       else ctx.warn(`${path}.rotation: ${node.type.toLowerCase()} cannot rotate.`);
@@ -4244,7 +4564,6 @@ ${imageId}` : l;
   }
 
   // src/plugin/build.ts
-  var ICON_HOLDER_ROLE = "icons";
   async function preflight(spec, ctx, inherited) {
     const problems = [];
     const tasks = [];
@@ -4279,36 +4598,6 @@ ${imageId}` : l;
     if (problems.length) throw badRequest(`Nothing was created \u2014 fix these first:
 - ${[...new Set(problems)].join("\n- ")}`);
   }
-  async function iconHolder() {
-    await figma.loadAllPagesAsync();
-    for (const pg of figma.root.children) {
-      const found = pg.children.find((c) => c.type === "FRAME" && c.getPluginData("role") === ICON_HOLDER_ROLE);
-      if (found && pg.getPluginData("role") !== "trash") return found;
-    }
-    const { page } = await rolePage("components");
-    let left = Infinity;
-    let top = Infinity;
-    for (const c of page.children) {
-      left = Math.min(left, c.x);
-      top = Math.min(top, c.y);
-    }
-    const f = figma.createFrame();
-    f.name = "Icons";
-    f.setPluginData("role", ICON_HOLDER_ROLE);
-    f.layoutMode = "HORIZONTAL";
-    f.layoutWrap = "WRAP";
-    f.itemSpacing = 16;
-    f.counterAxisSpacing = 16;
-    f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 24;
-    f.fills = [];
-    f.resize(360, 100);
-    f.layoutSizingHorizontal = "FIXED";
-    f.layoutSizingVertical = "HUG";
-    page.appendChild(f);
-    f.x = Number.isFinite(left) ? Math.round(left - 360 - 200) : 0;
-    f.y = Number.isFinite(top) ? Math.round(top) : 0;
-    return f;
-  }
   async function iconComponent(name, svg, ctx) {
     const compName = `icon/${name.replace(":", "/")}`;
     try {
@@ -4321,7 +4610,7 @@ ${imageId}` : l;
     comp.name = compName;
     comp.fills = [];
     comp.description = `Icon ${name} (Iconify). Recolor through the instance's vector layers or a color variable.`;
-    const holder = await iconHolder();
+    const holder = await iconBoard();
     holder.appendChild(comp);
     ctx.registerComponent(comp);
     return comp;
@@ -4356,7 +4645,7 @@ ${imageId}` : l;
     throw badRequest(`${path}.variant: no variant of "${set.name}" matches ${JSON.stringify(want)}. Options \u2014 ${options}.`);
   }
   async function createNode(s, ctx, path, opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     switch (s.type) {
       case "frame":
         return { node: figma.createFrame() };
@@ -4420,13 +4709,14 @@ ${imageId}` : l;
         f.setPluginData("role", "image-placeholder");
         f.setPluginData("placeholder", (_f = s.placeholder) != null ? _f : "");
         const load = (fn) => ctx.loadFont(fn);
-        const imageId = s.prompt ? await setImagePrompt(f, s.prompt, load) : "";
+        const need = (_g = s.prompt) != null ? _g : s.supply;
+        const imageId = need ? await setImagePrompt(f, need, load, s.prompt === void 0) : "";
         const tiny = typeof s.w === "number" && s.w < 72 || typeof s.h === "number" && s.h < 48;
-        if (!tiny && (s.placeholder || imageId)) await addCaption(f, captionText((_h = (_g = s.placeholder) != null ? _g : s.name) != null ? _h : "", imageId), { family: DEFAULT_FAMILY, style: "Regular" }, load);
+        if (!tiny && (s.placeholder || imageId)) await addCaption(f, captionText((_i = (_h = s.placeholder) != null ? _h : s.name) != null ? _i : "", imageId), { family: DEFAULT_FAMILY, style: "Regular" }, load);
         return { node: f };
       }
       case "instance": {
-        const c = await ctx.component((_i = s.component) != null ? _i : "");
+        const c = await ctx.component((_j = s.component) != null ? _j : "");
         const comp = c.type === "COMPONENT_SET" ? findVariant(c, s.variant, path) : c;
         if (c.type === "COMPONENT" && s.variant && Object.keys(s.variant).length) ctx.warn(`${path}.variant: "${c.name}" has no variants; ignored.`);
         return { node: comp.createInstance() };
@@ -4611,7 +4901,7 @@ ${imageId}` : l;
     return { id: node.id, name: node.name, type: node.type, x: Math.round(node.x), y: Math.round(node.y), w: Math.round(node.width), h: Math.round(node.height) };
   }
   async function build(spec, opts = {}, existingCtx) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const ctx = existingCtx != null ? existingCtx : new Ctx();
     let parent = figma.currentPage;
     let createdPage;
@@ -4634,7 +4924,11 @@ ${imageId}` : l;
       const r = opts.page ? await ensurePage(opts.page) : await rolePage("components");
       if (r.created) createdPage = r.page;
       if (r.page !== figma.currentPage && ((_a = opts.switchPage) != null ? _a : spec.type !== "component")) await figma.setCurrentPageAsync(r.page);
-      parent = r.page;
+      parent = spec.type === "component" && r.page.getPluginData("role") === "components" ? await componentHome((_b = spec.name) != null ? _b : "") : r.page;
+    }
+    if (!replace && spec.type === "component" && spec.name && !opts.allowDuplicate) {
+      const twin = await ctx.localComponentNamed(spec.name);
+      if (twin) throw badRequest(`Component "${twin.name}" already exists (${twin.id}). Update that component (edit it or its variants) and place instances of it instead of making a second one.`);
     }
     const targetPage = parent.type === "PAGE" ? parent : pageOf(parent);
     if (isTrashPage(targetPage)) throw badRequest('That is the Trash page. Build on a content page (page: "App", "Web", "Dashboard", \u2026) or restore layers with edit {op: "restore"}.');
@@ -4674,6 +4968,11 @@ ${imageId}` : l;
         if (opts.x !== void 0) root.x = opts.x;
         if (opts.y !== void 0) root.y = opts.y;
       }
+      const topLevel = parent.type === "PAGE" || parent.type === "SECTION";
+      if (topLevel && root.type === "FRAME" && spec.mockup !== false && isMockupDevice(spec.device) && (targetPage == null ? void 0 : targetPage.getPluginData("role")) !== "components") {
+        for (const w of await applyMockup(root, spec.device)) ctx.warn(w);
+      } else if (!topLevel) keepChromeOnTop(mockupScreenOf(parent));
+      if (topLevel && (targetPage == null ? void 0 : targetPage.getPluginData("role")) !== "trash") ensureCanvas(targetPage, root);
       if (targetPage) fitSections(targetPage);
       const linked = await applyPendingInteractions(ctx);
       if (ctx.binds.length) {
@@ -4686,12 +4985,12 @@ ${imageId}` : l;
       }
       const ids = {};
       for (const [ref, n] of ctx.refs) ids[ref] = n.id;
-      return { root: summarize(root), page: (_b = pageOf(root)) == null ? void 0 : _b.name, ids, created: ctx.created.length, interactions: linked, warnings: ctx.warnings };
+      return { root: summarize(root), page: (_c = pageOf(root)) == null ? void 0 : _c.name, ids, created: ctx.created.length, interactions: linked, warnings: ctx.warnings };
     } catch (e) {
       const first = root != null ? root : ctx.created[0];
       try {
         if (first && !first.removed) first.remove();
-        for (const n of ctx.created) if (!n.removed && ((_c = n.parent) == null ? void 0 : _c.type) === "PAGE" && n !== first && n.getPluginData("role") !== ICON_HOLDER_ROLE) n.remove();
+        for (const n of ctx.created) if (!n.removed && ((_d = n.parent) == null ? void 0 : _d.type) === "PAGE" && n !== first && n.getPluginData("role") !== ICONS_ROLE) n.remove();
         if (createdPage && !createdPage.removed && !createdPage.children.length && figma.root.children.length > 1) {
           if (figma.currentPage === createdPage) await figma.setCurrentPageAsync(figma.root.children.find((p) => p !== createdPage));
           createdPage.remove();
@@ -4705,8 +5004,11 @@ ${imageId}` : l;
   // src/plugin/components.ts
   async function componentParent(p) {
     if (p.parentId) return p.parentId;
-    const { page } = p.page ? await ensurePage(p.page) : await rolePage("components");
-    return page.id;
+    if (p.page) {
+      const { page } = await ensurePage(p.page);
+      if (page.getPluginData("role") !== "components") return page.id;
+    }
+    return (await componentHome(p.name)).id;
   }
   var matches2 = (props, cond = {}) => Object.entries(cond).every(([k, v]) => Array.isArray(v) ? v.map(String).includes(props[k]) : String(v) === props[k]);
   function layoutVariantGrid(set, axes, gap) {
@@ -4746,7 +5048,7 @@ ${imageId}` : l;
     set.resizeWithoutConstraints(maxX + pad, maxY + pad);
   }
   async function createComponent(p) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     if (!p.name) throw badRequest("name is required.");
     if (/[=,]/.test(p.name)) throw badRequest('Component names cannot contain "=" or ",".');
     const issues = newIssues();
@@ -4784,12 +5086,12 @@ ${imageId}` : l;
     if (!("appendChild" in n)) throw badRequest(`parentId: a ${n.type.toLowerCase()} cannot contain layers.`);
     if (n.type === "PAGE") await n.loadAsync();
     const parent = n;
-    const twin = parent.children.find((c) => c.name.trim().toLowerCase() === p.name.trim().toLowerCase());
+    const twin = (_b = parent.children.find((c) => c.name.trim().toLowerCase() === p.name.trim().toLowerCase())) != null ? _b : await ctx.localComponentNamed(p.name);
     if (twin && !p.allowDuplicate) {
-      throw badRequest(`"${twin.name}" already exists on "${parent.name}" (${twin.id}). Update that component (edit its variants, or edit {op: "delete"} it first \u2014 it goes to the Trash page) instead of making a second one.`);
+      throw badRequest(`"${twin.name}" already exists (${twin.id}). Update that component (edit its variants, or edit {op: "delete"} it first \u2014 it goes to the Trash page) instead of making a second one.`);
     }
     await preflight(specs[0], ctx, inh);
-    const spot = p.x === void 0 && p.y === void 0 && (parent.type === "PAGE" || parent.type === "SECTION") ? freeSpot(parent) : { x: (_b = p.x) != null ? _b : 0, y: (_c = p.y) != null ? _c : 0 };
+    const spot = p.x === void 0 && p.y === void 0 && (parent.type === "PAGE" || parent.type === "SECTION") ? freeSpot(parent) : { x: (_c = p.x) != null ? _c : 0, y: (_d = p.y) != null ? _d : 0 };
     const comps = [];
     let set;
     try {
@@ -4800,7 +5102,7 @@ ${imageId}` : l;
       set = figma.combineAsVariants(comps, parent);
       set.name = p.name;
       if (p.description) set.description = p.description;
-      layoutVariantGrid(set, Object.keys(p.variants.axes), (_d = p.gap) != null ? _d : 24);
+      layoutVariantGrid(set, Object.keys(p.variants.axes), (_e = p.gap) != null ? _e : 24);
       set.x = spot.x;
       set.y = spot.y;
       ctx.registerComponent(set);
@@ -4811,12 +5113,12 @@ ${imageId}` : l;
       }
       await applyPendingInteractions(ctx);
       let wired = 0;
-      for (const [ri, rule] of ((_e = p.interactions) != null ? _e : []).entries()) {
+      for (const [ri, rule] of ((_f = p.interactions) != null ? _f : []).entries()) {
         const ruleIssues = newIssues();
-        const [base] = interactions({ trigger: (_f = rule.trigger) != null ? _f : "hover", changeTo: "x", transition: rule.transition }, `interactions[${ri}]`, ruleIssues);
+        const [base] = interactions({ trigger: (_g = rule.trigger) != null ? _g : "hover", changeTo: "x", transition: rule.transition }, `interactions[${ri}]`, ruleIssues);
         if (ruleIssues.errors.length) throw badRequest(ruleIssues.errors.join("\n"));
         for (const v of set.children) {
-          const props = (_g = v.variantProperties) != null ? _g : {};
+          const props = (_h = v.variantProperties) != null ? _h : {};
           if (!matches2(props, rule.from)) continue;
           const want = __spreadValues(__spreadValues({}, props), rule.to);
           const target = set.children.find((c) => Object.entries(want).every(([k, val]) => {
@@ -4838,7 +5140,7 @@ ${imageId}` : l;
       const ids = {};
       for (const [ref, n2] of ctx.refs) ids[ref] = n2.id;
       return {
-        componentSet: __spreadProps(__spreadValues({}, summarize(set)), { key: set.key, page: (_h = pageOf(set)) == null ? void 0 : _h.name }),
+        componentSet: __spreadProps(__spreadValues({}, summarize(set)), { key: set.key, page: (_i = pageOf(set)) == null ? void 0 : _i.name }),
         variants: comps.map((c) => ({ id: c.id, name: c.name })),
         properties: Object.keys(set.componentPropertyDefinitions),
         propertyKeys: keys,
@@ -4849,7 +5151,7 @@ ${imageId}` : l;
       try {
         if (set && !set.removed) set.remove();
         else for (const c of comps) if (!c.removed) c.remove();
-        for (const n2 of ctx.created) if (!n2.removed && ((_i = n2.parent) == null ? void 0 : _i.type) === "PAGE" && n2.getPluginData("role") !== "icons") n2.remove();
+        for (const n2 of ctx.created) if (!n2.removed && ((_j = n2.parent) == null ? void 0 : _j.type) === "PAGE" && n2.getPluginData("role") !== "icons") n2.remove();
       } catch (e2) {
       }
       throw e;
@@ -5187,6 +5489,22 @@ ${imageId}` : l;
   }
 
   // src/plugin/ds.ts
+  async function usageOf(n) {
+    const parts = n.type === "COMPONENT_SET" ? n.children.filter((c) => c.type === "COMPONENT") : [n];
+    let instances = 0;
+    let inDesigns = 0;
+    for (const c of parts) {
+      for (const inst of await c.getInstancesAsync()) {
+        let page = inst.parent;
+        while (page && page.type !== "PAGE") page = page.parent;
+        const role = page ? page.getPluginData("role") : "";
+        if (role === "trash") continue;
+        instances++;
+        if (!role) inDesigns++;
+      }
+    }
+    return { instances, inDesigns };
+  }
   async function listComponents(p = {}) {
     var _a, _b, _c, _d, _e;
     await figma.loadAllPagesAsync();
@@ -5209,7 +5527,7 @@ ${imageId}` : l;
           else props[k.split("#")[0]] = `${d.type.toLowerCase()}=${JSON.stringify(d.defaultValue)}`;
         }
         const sample = n.type === "COMPONENT_SET" ? (_e = n.defaultVariant) != null ? _e : n.children[0] : n;
-        out.push(__spreadProps(__spreadValues(__spreadValues(__spreadValues(__spreadValues({
+        out.push(__spreadValues(__spreadProps(__spreadValues(__spreadValues(__spreadValues(__spreadValues({
           id: n.id,
           key: n.key,
           name: n.name,
@@ -5217,7 +5535,7 @@ ${imageId}` : l;
           page: page.name
         }, n.description ? { description: n.description } : {}), Object.keys(axes).length ? { axes } : {}), Object.keys(props).length ? { props } : {}), n.type === "COMPONENT_SET" ? { variants: n.children.length } : {}), {
           size: sample ? `${round(sample.width)}\xD7${round(sample.height)}` : void 0
-        }));
+        }), p.usage && !/^icon\//i.test(n.name) ? await usageOf(n) : {}));
       }
     }
     return { components: out, total };
@@ -5292,7 +5610,7 @@ ${imageId}` : l;
     return { ok: true, results, ids, warnings: ctx.warnings };
   }
   async function runOp(op, ctx, label, i, touched, assets) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
     switch (op.op) {
       case "set": {
         const issues = newIssues();
@@ -5357,11 +5675,12 @@ ${imageId}` : l;
           if (op.y !== void 0) n.y = op.y;
           touched.push(n);
         }
+        keepChromeOnTop(mockupScreenOf((_g = parent != null ? parent : (_f = nodes[0]) == null ? void 0 : _f.parent) != null ? _g : null));
         return { ids: nodes.map((n) => n.id) };
       }
       case "duplicate": {
         const [n] = await idsOf(op, ctx, i);
-        const count = Math.max(1, Math.min((_f = op.count) != null ? _f : 1, 50));
+        const count = Math.max(1, Math.min((_h = op.count) != null ? _h : 1, 50));
         const parent = op.parent ? container(await ctx.node(op.parent, `${label}.parent`), label) : n.parent;
         const copies = [];
         for (let k = 0; k < count; k++) {
@@ -5371,7 +5690,7 @@ ${imageId}` : l;
           else parent.appendChild(c);
           if (!isAutoLayout(parent)) {
             if (op.x !== void 0) c.x = op.x;
-            else if (parent.type === "PAGE" || parent.type === "SECTION") c.x = n.x + (n.width + ((_g = op.gap) != null ? _g : 80)) * (k + 1);
+            else if (parent.type === "PAGE" || parent.type === "SECTION") c.x = n.x + (n.width + ((_i = op.gap) != null ? _i : 80)) * (k + 1);
             if (op.y !== void 0) c.y = op.y;
           }
           copies.push(c);
@@ -5384,12 +5703,13 @@ ${imageId}` : l;
         if (!op.parent) throw badRequest(`${label}: needs "parent".`);
         const parent = container(await ctx.node(op.parent, `${label}.parent`), label);
         const issues = newIssues();
-        const spec = normalizeSpec((_i = (_h = op.spec) != null ? _h : op.props) != null ? _i : {}, `${label}.spec`, issues);
+        const spec = normalizeSpec((_k = (_j = op.spec) != null ? _j : op.props) != null ? _k : {}, `${label}.spec`, issues);
         issues.errors.push(...applyAssets(spec, assets));
         if (issues.errors.length) throw badRequest(issues.errors.join("; "));
         ctx.warnings.push(...issues.warnings);
         await preflight(spec, ctx, { font: {} });
         const node = await buildNode(spec, parent, { font: {} }, ctx, label, { index: op.index, opts: { focus: false } });
+        keepChromeOnTop(mockupScreenOf(parent));
         if (op.ref) ctx.refs.set(op.ref, node);
         touched.push(node);
         return summarize(node);
@@ -5400,7 +5720,7 @@ ${imageId}` : l;
         if (!parent || nodes.some((n) => n.parent !== parent)) throw badRequest(`${label}: all layers must share the same parent.`);
         const index = Math.min(...nodes.map((n) => parent.children.indexOf(n)));
         const issues = newIssues();
-        const spec = normalizeSpec(__spreadValues({ type: "frame" }, (_k = (_j = op.spec) != null ? _j : op.props) != null ? _k : {}), `${label}.spec`, issues);
+        const spec = normalizeSpec(__spreadValues({ type: "frame" }, (_m = (_l = op.spec) != null ? _l : op.props) != null ? _m : {}), `${label}.spec`, issues);
         issues.errors.push(...applyAssets(spec, assets));
         if (issues.errors.length) throw badRequest(issues.errors.join("; "));
         delete spec.children;
@@ -5441,15 +5761,15 @@ ${imageId}` : l;
       case "swap": {
         const [n] = await idsOf(op, ctx, i);
         if (n.type !== "INSTANCE") throw badRequest(`${label}: only instances can be swapped.`);
-        const c = await ctx.component((_l = op.component) != null ? _l : "");
+        const c = await ctx.component((_n = op.component) != null ? _n : "");
         let comp;
         if (c.type === "COMPONENT_SET") {
-          const want = (_m = op.variant) != null ? _m : {};
+          const want = (_o = op.variant) != null ? _o : {};
           const variants = c.children;
-          comp = (_o = (_n = variants.find((v) => Object.entries(want).every(([k, val]) => {
+          comp = (_q = (_p = variants.find((v) => Object.entries(want).every(([k, val]) => {
             var _a2, _b2;
             return ((_b2 = (_a2 = v.variantProperties) == null ? void 0 : _a2[k]) == null ? void 0 : _b2.toLowerCase()) === val.toLowerCase();
-          }))) != null ? _n : c.defaultVariant) != null ? _o : variants[0];
+          }))) != null ? _p : c.defaultVariant) != null ? _q : variants[0];
         } else comp = c;
         await ctx.loadFontsIn(n);
         n.swapComponent(comp);
@@ -5474,7 +5794,7 @@ ${imageId}` : l;
         const nodes = await idsOf(op, ctx, i);
         const out = [];
         for (const n of nodes) {
-          const twin = await ctx.localComponentNamed((_p = op.name) != null ? _p : n.name);
+          const twin = await ctx.localComponentNamed((_r = op.name) != null ? _r : n.name);
           if (twin) ctx.warn(`${label}: a component named "${twin.name}" already exists (${twin.id}) \u2014 swap instances to it rather than keeping two.`);
           const c = figma.createComponentFromNode(n);
           if (op.name) c.name = op.name;
@@ -5501,14 +5821,11 @@ ${imageId}` : l;
               instance.layoutSizingHorizontal = sizing.h;
               instance.layoutSizingVertical = sizing.v;
             }
-            const spot = freeSpot(home, c);
-            home.appendChild(c);
+            (await componentHome(c.name)).appendChild(c);
             if (c.layoutSizingHorizontal === "FILL") c.layoutSizingHorizontal = "FIXED";
             if (c.layoutSizingVertical === "FILL") c.layoutSizingVertical = "FIXED";
-            c.x = spot.x;
-            c.y = spot.y;
           }
-          out.push(__spreadValues({ id: c.id, name: c.name, key: c.key, page: (_q = pageOf(c)) == null ? void 0 : _q.name }, instance ? { instance: instance.id } : {}));
+          out.push(__spreadValues({ id: c.id, name: c.name, key: c.key, page: (_s = pageOf(c)) == null ? void 0 : _s.name }, instance ? { instance: instance.id } : {}));
         }
         return { components: out };
       }
@@ -5537,7 +5854,7 @@ ${imageId}` : l;
         return { selected: nodes.map((n) => n.id) };
       }
       case "page": {
-        const name = (_s = (_r = op.name) != null ? _r : op.id) != null ? _s : "";
+        const name = (_u = (_t = op.name) != null ? _t : op.id) != null ? _u : "";
         let page = figma.root.children.find((pg) => pg.id === name || pg.name.toLowerCase() === name.toLowerCase());
         let created = false;
         if (!page) {
@@ -5547,6 +5864,11 @@ ${imageId}` : l;
           created = r.created;
         }
         await figma.setCurrentPageAsync(page);
+        if (op.background !== void 0) {
+          const c = parseColor(String(op.background));
+          if (!c) throw badRequest(`${label}.background: "${op.background}" is not a color (e.g. "#D4D4D8").`);
+          setCanvas(page, { r: c.r, g: c.g, b: c.b });
+        }
         return { page: { id: page.id, name: page.name }, created };
       }
       case "group": {
@@ -5575,7 +5897,7 @@ ${imageId}` : l;
       case "boolean": {
         const nodes = await idsOf(op, ctx, i);
         const parent = nodes[0].parent;
-        const fn = { union: figma.union, subtract: figma.subtract, intersect: figma.intersect, exclude: figma.exclude }[(_t = op.operation) != null ? _t : "union"];
+        const fn = { union: figma.union, subtract: figma.subtract, intersect: figma.intersect, exclude: figma.exclude }[(_v = op.operation) != null ? _v : "union"];
         const first = nodes[0];
         const fills = Array.isArray(first.fills) ? JSON.parse(JSON.stringify(first.fills)) : null;
         const b = fn.call(figma, nodes, parent);
@@ -5995,6 +6317,7 @@ ${p.code}
     async node(n, depth, parentAL) {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
       if (!n.visible && !this.p.includeHidden) return null;
+      if (isChrome(n)) return null;
       this.count++;
       const x = {
         id: n.id,
@@ -6055,7 +6378,8 @@ ${p.code}
         const fills = await this.paints(n.fills);
         if (fills) x.fills = fills;
       }
-      if ("strokes" in n && n.strokes.length) {
+      const mockup = hasMockup(n);
+      if ("strokes" in n && n.strokes.length && !mockup) {
         const s = n;
         const st = await this.styleName(s.strokeStyleId, "paint");
         if (st) styles.stroke = st;
@@ -6071,7 +6395,7 @@ ${p.code}
           if (s.dashPattern.length) x.dash = [...s.dashPattern];
         }
       }
-      if ("cornerRadius" in n) {
+      if ("cornerRadius" in n && !mockup) {
         const r = n.cornerRadius;
         if (r === figma.mixed && "topLeftRadius" in n) {
           const c = n;
@@ -6379,6 +6703,7 @@ ${p.code}
     };
     const visit = async (n, inInstance) => {
       var _a2, _b2, _c2, _d2;
+      if (isChrome(n)) return;
       stats.nodes++;
       if (!n.visible) {
         if (!inInstance) add("hidden", n, "hidden layer");
@@ -6395,7 +6720,7 @@ ${p.code}
       if (tokenRules && n.type === "GROUP" && n.children.length > 1 && !isVectorOnly(n)) add("group", n, "group used as a container");
       if (tokenRules && "detachedInfo" in n && n.detachedInfo) add("detached", n, "detached from its component");
       if (tokenRules && "fills" in n) await checkPaints(n, "fills");
-      if (tokenRules && "strokes" in n) await checkPaints(n, "strokes");
+      if (tokenRules && "strokes" in n && !hasMockup(n)) await checkPaints(n, "strokes");
       if ("layoutMode" in n) {
         const f = n;
         const kids = "children" in f ? f.children.filter((c) => c.visible) : [];
@@ -6424,7 +6749,7 @@ ${p.code}
           }
         }
       }
-      if (tokenRules && "cornerRadius" in n) {
+      if (tokenRules && "cornerRadius" in n && !hasMockup(n)) {
         const r = n.cornerRadius;
         const bv = (_b2 = n.boundVariables) != null ? _b2 : {};
         if (typeof r === "number" && r > 0 && !bv.topLeftRadius) {
@@ -6461,7 +6786,7 @@ ${p.code}
       }
       if ("reactions" in n && n.reactions.length && (n.width < 24 || n.height < 24)) add("touch-target", n, `interactive layer is ${round(n.width)}\xD7${round(n.height)}`);
       if ("children" in n && !(tokenRules && isVectorOnly(n))) {
-        for (const c of n.children) await visit(c, inInstance || n.type === "INSTANCE");
+        for (const c of n.children) if (c.getPluginData("role") !== "icons") await visit(c, inInstance || n.type === "INSTANCE");
       }
     };
     for (const r of roots) await visit(r, false);
@@ -6569,7 +6894,7 @@ ${p.code}
       pushState();
     };
     const isWrite = (m, params) => !!m && (typeof m.write === "function" ? m.write(params != null ? params : {}) : !!m.write);
-    const DEADLINES = { build: 23e4, create_component: 29e4, edit: 17e4, variables: 17e4, lint: 17e4, export: 17e4, extract: 11e4, design_system: 11e4, screenshot: 8e4, placeholders: 11e4 };
+    const DEADLINES = { build: 23e4, create_component: 29e4, edit: 17e4, variables: 17e4, lint: 17e4, export: 17e4, extract: 11e4, design_system: 11e4, screenshot: 8e4, placeholders: 11e4, components: 11e4 };
     const deadlineFor = (method, params) => {
       var _a, _b;
       return method === "execute" ? Math.min(Number((_a = params == null ? void 0 : params.timeoutMs) != null ? _a : 6e4), 3e5) + 5e3 : (_b = DEADLINES[method]) != null ? _b : 55e3;

@@ -11,6 +11,7 @@ and that behaves correctly at every size.
 - Conventions: file structure, naming, how similar screens are written. Read one or two comparable files.
 - A `DESIGN.md` (or a design-system skill) in the project is the identity for code: follow it ([identity.md](identity.md) §6).
 - Stop exploring once you know the stack, the primitives to reuse and how you will verify.
+- If `ui-ux-pro-max` is installed, `--stack <stack>` gives stack-specific UI rules (design.md, Design knowledge).
 
 ## 2. Tokens once, first
 - `export_tokens` in the project's format (`tailwind` for Tailwind v4, `css` otherwise, `dtcg` for token pipelines) — write to the project's theme file only when the project has no equivalent yet, or reconcile with the existing one.

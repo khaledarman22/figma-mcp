@@ -4,6 +4,7 @@
 import { composite, contrastRatio, toHex, type RGBA } from '../shared/color.ts';
 import { round } from '../shared/util.ts';
 import { Ctx } from './ctx.ts';
+import { hasMockup, isChrome } from './device.ts';
 import { isPlaceholderBox, neededPrompt } from './pages.ts';
 import { isVectorOnly } from './props.ts';
 
@@ -171,6 +172,7 @@ export async function lint(p: LintParams) {
   };
 
   const visit = async (n: SceneNode, inInstance: boolean) => {
+    if (isChrome(n)) return; // device chrome of a mocked-up iPhone screen
     stats.nodes++;
     if (!n.visible) {
       if (!inInstance) add('hidden', n, 'hidden layer');
@@ -190,7 +192,7 @@ export async function lint(p: LintParams) {
     if (tokenRules && 'detachedInfo' in n && (n as FrameNode).detachedInfo) add('detached', n, 'detached from its component');
 
     if (tokenRules && 'fills' in n) await checkPaints(n, 'fills');
-    if (tokenRules && 'strokes' in n) await checkPaints(n, 'strokes');
+    if (tokenRules && 'strokes' in n && !hasMockup(n)) await checkPaints(n, 'strokes');
 
     if ('layoutMode' in n) {
       const f = n as FrameNode;
@@ -220,7 +222,7 @@ export async function lint(p: LintParams) {
         }
       }
     }
-    if (tokenRules && 'cornerRadius' in n) {
+    if (tokenRules && 'cornerRadius' in n && !hasMockup(n)) {
       const r = (n as CornerMixin).cornerRadius;
       const bv = (n as FrameNode).boundVariables ?? {};
       if (typeof r === 'number' && r > 0 && !bv.topLeftRadius) {
@@ -258,7 +260,7 @@ export async function lint(p: LintParams) {
     if ('reactions' in n && (n as ReactionMixin).reactions.length && (n.width < 24 || n.height < 24)) add('touch-target', n, `interactive layer is ${round(n.width)}×${round(n.height)}`);
 
     if ('children' in n && !(tokenRules && isVectorOnly(n))) {
-      for (const c of (n as ChildrenMixin).children) await visit(c, inInstance || n.type === 'INSTANCE');
+      for (const c of (n as ChildrenMixin).children) if (c.getPluginData('role') !== 'icons') await visit(c, inInstance || n.type === 'INSTANCE');
     }
   };
   for (const r of roots) await visit(r, false);

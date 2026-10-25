@@ -1,0 +1,5 @@
+{
+  "//": "For editors: picks up the Figma plugin typings. npm run check uses ../../tsconfig.plugin.json.",
+  "extends": "../../tsconfig.plugin.json",
+  "include": ["../shared/**/*.ts", "./**/*.ts"]
+}

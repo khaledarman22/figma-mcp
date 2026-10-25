@@ -62,7 +62,7 @@ const waiting = [
   { nodeId: '20:3', imageId: 'IMG-002', name: 'Avatar', page: 'App', screen: 'Profile', path: 'Profile / Header', w: 96, h: 96, prompt: 'Portrait of a smiling woman, soft studio light' },
   { nodeId: '20:4', imageId: 'IMG-003', name: 'Logo', page: 'App', screen: 'Home', screenId: '10:1', path: 'Home / Header', w: 120, h: 40, prompt: 'The brand logo, transparent PNG or SVG', supply: true },
 ];
-const ws = path.join(project, 'design', 'test-file');
+const ws = path.join(project, 'design-test-file');
 const BRIEF = 'Shop app for Cairo.\n\n## Identity\nCalm, warm, trustworthy — never loud.\nIcons: lucide.\n\n## Decisions\n- 2026-10-01 iphone-16';
 const placedNodes = new Set<string>();
 const placeCalls: string[][] = [];
@@ -227,6 +227,7 @@ test('image prompts go to the workspace with previews; generated and supplied im
 test('components are catalogued in the workspace; hand-drawn copies and unused components are called out', async () => {
   const r1 = await A.client.callTool({ name: 'create_component', arguments: { name: 'Button', spec: { type: 'row', children: [{ type: 'text', text: 'Button' }] }, screenshot: false } });
   assert.match(text(r1), /COMPONENTS\.md in .* lists it now/);
+  assert.match(text(r1), /No design uses any component yet\. In screen work, build the section first/);
   const md = fs.readFileSync(path.join(ws, 'COMPONENTS.md'), 'utf8');
   assert.match(md, /\| `Button` \| Variant: Primary \/ Secondary \| Label \| \*\*unused\*\* \| Primary actions\. \|/);
   assert.match(md, /## Not used in any design yet[\s\S]*- `Button`/);
@@ -286,7 +287,7 @@ test('workspace sync writes the identity, tokens, references and a project skill
   assert.ok(fs.existsSync(path.join(ws, 'tokens', 'tokens.json')) && fs.existsSync(path.join(ws, 'references', 'REFERENCES.md')));
   const skill = fs.readFileSync(path.join(project, '.claude', 'skills', 'test-file-design', 'SKILL.md'), 'utf8');
   assert.match(skill, /^---\nname: test-file-design\ndescription: "The design identity of 'Test File' — the only design system/);
-  assert.match(skill, /design\/test-file\/DESIGN\.md/);
+  assert.match(skill, /design-test-file\/DESIGN\.md/);
   assert.equal(fs.readFileSync(path.join(foreign, 'SKILL.md'), 'utf8'), 'mine', 'a skill figma-mcp did not write is left alone');
   assert.match(text(r1), /skipped \.agents\/skills\/test-file-design\/SKILL\.md/);
 
@@ -296,7 +297,7 @@ test('workspace sync writes the identity, tokens, references and a project skill
   assert.match(d2, /Keep the hero calm\./);
   assert.equal(d2.match(/figma-mcp:start/g)?.length, 1);
   const st = await A.client.callTool({ name: 'status', arguments: {} });
-  assert.match(text(st), /Workspace: .*design\/test-file · synced/);
+  assert.match(text(st), /Workspace: .*design-test-file · synced/);
   const ws2 = await A.client.callTool({ name: 'workspace', arguments: {} });
   assert.match(text(ws2), /Components: 1 · not used in any design: Button/);
 });

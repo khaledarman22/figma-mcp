@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { ensureWorkspace, findWorkspace, identityBlock, instanceExample, lookalikes, usesInstances, type CatalogItem } from '../src/server/workspace.ts';
+import { ensureWorkspace, findWorkspace, identityBlock, writeSkill, instanceExample, lookalikes, usesInstances, type CatalogItem } from '../src/server/workspace.ts';
 
 const catalog: CatalogItem[] = [
   { id: '1:1', name: 'Forms/Input', kind: 'set', axes: { State: ['Default', 'Error'] }, props: { Label: 'text="Email"', 'Show icon': 'boolean=false', Icon: 'instance_swap="1:9"' } },
@@ -15,13 +15,30 @@ test('a workspace per Figma file: found again by key after a rename, twins by na
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'figma-mcp-ws-'));
   const a = ensureWorkspace({ name: 'Shop App', key: 'K1' }, project)!;
   assert.equal(a.created, true);
-  assert.equal(path.relative(project, a.dir), path.join('design', 'shop-app'));
+  assert.equal(path.relative(project, a.dir), 'design-shop-app');
   for (const f of ['references', 'images', 'assets', 'previews', 'tokens', 'README.md']) assert.ok(fs.existsSync(path.join(a.dir, f)), f);
   const renamed = findWorkspace({ name: 'Shop App v2', key: 'K1' }, project)!;
   assert.equal(renamed.dir, a.dir);
   assert.equal(renamed.meta.figma.name, 'Shop App v2');
   const other = ensureWorkspace({ name: 'Shop App v2', key: 'K2' }, project)!;
   assert.notEqual(other.dir, a.dir);
+});
+
+test('a workspace in the old design/<file>/ layout moves to design-<file>/ with its files and project skill', () => {
+  const project = fs.mkdtempSync(path.join(os.tmpdir(), 'figma-mcp-ws-'));
+  const old = path.join(project, 'design', 'qannas');
+  fs.mkdirSync(path.join(old, 'images'), { recursive: true });
+  fs.writeFileSync(path.join(old, 'workspace.json'), JSON.stringify({ figma: { name: 'qannas', key: 'Q1' }, created: '2026-10-25' }));
+  fs.writeFileSync(path.join(old, 'images', 'IMG-001.png'), 'x');
+  writeSkill({ dir: old, slug: 'qannas', meta: { figma: { name: 'qannas', key: 'Q1' }, created: '2026-10-25' } }, project);
+  fs.mkdirSync(path.join(project, 'design', 'notes')); // not a workspace: stays
+  const ws = findWorkspace({ name: 'qannas', key: 'Q1' }, project)!;
+  assert.equal(ws.dir, path.join(project, 'design-qannas'));
+  assert.equal(ws.slug, 'qannas');
+  assert.ok(fs.existsSync(path.join(ws.dir, 'images', 'IMG-001.png')));
+  assert.ok(!fs.existsSync(old));
+  assert.ok(fs.existsSync(path.join(project, 'design', 'notes')));
+  assert.match(fs.readFileSync(path.join(project, '.claude/skills/qannas-design/SKILL.md'), 'utf8'), /`design-qannas\/DESIGN\.md`/);
 });
 
 test('the Identity block is cut from the brief at the next level-2 heading', () => {

@@ -102,6 +102,13 @@
     if (/^I?\d+-\d+(;\d+-\d+)*$/.test(s)) return s.replace(/-/g, ":");
     return s;
   }
+  function isSectionNumber(text) {
+    const t = text.trim();
+    if (!t || t.length > 60 || t.includes("\n")) return false;
+    const num2 = "[0\u0660][1-9\u0661-\u0669]";
+    const notData = "(?![\\d\u0660-\u0669]|\\s*[:/.,]\\s*[\\d\u0660-\u0669])";
+    return new RegExp(`^[([/#\u2116]?\\s*${num2}${notData}`).test(t) || new RegExp(`(?:^|[\\s/\u2014\u2013-])${num2}[)\\]]?$`).test(t);
+  }
 
   // src/shared/spec.ts
   var newIssues = () => ({ errors: [], warnings: [] });
@@ -3133,7 +3140,7 @@
   }
 
   // src/plugin/inspect.ts
-  var PLUGIN_VERSION = true ? "1.0.0+6700814" : "dev";
+  var PLUGIN_VERSION = true ? "1.0.0+1300ce9" : "dev";
   function selectionSummary() {
     return figma.currentPage.selection.slice(0, 50).map((n) => ({ id: n.id, name: n.name, type: n.type, w: Math.round(n.width), h: Math.round(n.height) }));
   }
@@ -6570,6 +6577,7 @@ ${p.code}
     "text-style": { severity: "warn", about: "Text without a text style or typography variables." },
     "no-autolayout": { severity: "warn", about: "Frame with several children positioned by hand instead of auto layout." },
     "detached": { severity: "warn", about: "Detached component instance." },
+    "section-number": { severity: "warn", about: 'Decorative section number ("01 Why us") \u2014 an AI-look clich\xE9; only when the user or the references have it.' },
     "touch-target": { severity: "warn", about: "Interactive layer smaller than 24\xD724 (WCAG 2.2 target size)." },
     "unbound-spacing": { severity: "info", about: "Gap/padding not bound to a spacing variable.", fixable: true },
     "unbound-radius": { severity: "info", about: "Corner radius not bound to a radius variable.", fixable: true },
@@ -6770,6 +6778,7 @@ ${p.code}
         if (n.fontSize !== figma.mixed) bump(stats.fontSizes, n.fontSize);
         if (tokenRules && !n.textStyleId && !((_c2 = n.boundVariables) == null ? void 0 : _c2.fontSize)) add("text-style", n, `no text style (${fontName !== figma.mixed ? `${fontName.family} ${fontName.style}` : "mixed"} ${n.fontSize !== figma.mixed ? n.fontSize : ""})`);
         if (n.width < 2 && n.characters.trim().length > 0) add("text-collapsed", n, `text is ${round(n.width, 1)}px wide`);
+        if (isSectionNumber(n.characters)) add("section-number", n, `"${n.characters.trim()}" numbers a section as decoration \u2014 remove the number (and any marker square/dot/line beside it) unless the user or the references asked for it`);
         if (enabled.has("contrast") && Array.isArray(n.fills)) {
           const solid = n.fills.find((f) => f.visible !== false && f.type === "SOLID");
           const bg = backgroundOf(n);

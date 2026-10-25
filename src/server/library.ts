@@ -1,5 +1,5 @@
 // The image library of a workspace: images found on the web or given by the user, kept once in
-// design/<file>/library/ with what they show, their size and license (library.json + LIBRARY.md), so the
+// design-<file>/library/ with what they show, their size and license (library.json + LIBRARY.md), so the
 // next request reuses them — as they are, or as the base of an edit prompt — instead of searching again.
 
 import crypto from 'node:crypto';

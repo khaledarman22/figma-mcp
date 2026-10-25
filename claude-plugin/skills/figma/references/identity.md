@@ -34,7 +34,7 @@ Where it is written — one source of truth (Figma), three views in it and one c
   merge them when both are wanted): swatches bound to the color roles, the type ramp using each style, the spacing
   and radius scale, the icon set, one sample of each section pattern built from instances, and the do/don't
   pairs. Built with `build` so it follows the tokens when they change.
-- **The workspace** (`design/<file>/` in the project, main skill §3): `workspace sync` writes `DESIGN.md` and the
+- **The workspace** (`design-<file>/` in the project, main skill §3): `workspace sync` writes `DESIGN.md` and the
   tokens from the three views above, so people and agents outside Figma read the same identity. Run it whenever the
   identity changes.
 
@@ -171,7 +171,7 @@ When asked ("is everything consistent?", "وحّد التصميم"), before a ha
 ## 6. Carry it into code
 
 The same identity governs the user's code project, so design and code can't drift — the workspace does it:
-- **`workspace sync`** writes `design/<file>/DESIGN.md` (the `## Identity` block of the brief, tokens, styles,
+- **`workspace sync`** writes `design-<file>/DESIGN.md` (the `## Identity` block of the brief, tokens, styles,
   components with their descriptions, icon sets, references, rules), `tokens/` (`tokens.css`, `tailwind.css`,
   `tokens.json`) and a small project skill (`.claude/skills/<file>-design`, `.agents/skills/<file>-design`) whose only
   job is to send every agent in the project to `DESIGN.md`. A skill folder figma-mcp didn't write is never replaced
@@ -179,7 +179,7 @@ The same identity governs the user's code project, so design and code can't drif
 - Run it after every identity change and before code work. Never edit the generated part of `DESIGN.md` or the
   tokens by hand; notes below the generated part are kept.
 - To make the code use the tokens, follow to-code.md §2 (`export_tokens` into the project's theme file, or import
-  `design/<file>/tokens/…`). Map components to their code counterparts and write that map in the Notes part of
+  `design-<file>/tokens/…`). Map components to their code counterparts and write that map in the Notes part of
   `DESIGN.md` (`Button` → `src/components/ui/button.tsx`).
 - When identity and code disagree, the user decides which wins; then update the other side.
 

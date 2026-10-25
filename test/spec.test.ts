@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { applyAssets, collectAssetRefs, expandVariants, interactions, newIssues, normalizeSpec, transition } from '../src/shared/spec.ts';
 import { contrastRatio, parseColor, toHex } from '../src/shared/color.ts';
-import { kebab, normalizeNodeId, pascal, suggest } from '../src/shared/util.ts';
+import { isSectionNumber, kebab, normalizeNodeId, pascal, suggest } from '../src/shared/util.ts';
 
 test('normalizes CSS-ish aliases and shorthands', () => {
   const issues = newIssues();
@@ -209,4 +209,9 @@ test('mockup is a boolean screen option; hand-placed related content gets an aut
   const overlay = newIssues();
   normalizeSpec({ type: 'frame', name: 'Hero', dir: 'none', children: [{ type: 'image', src: '/x.png' }, { type: 'text', text: 'Badge', absolute: true }] }, 'spec', overlay);
   assert.doesNotMatch(overlay.warnings.join('\n'), /placed by hand/);
+});
+
+test('decorative section numbers are recognized; times, dates, phones and prices are not', () => {
+  for (const t of ['01 لماذا قنّاص', '01', '/02 Services', '(03) Process', 'Services — 04', 'خدماتنا 02', '٠١ من نحن', '01. Why us']) assert.ok(isSectionNumber(t), t);
+  for (const t of ['01:30', '01/12/2026', '01012345678', '0.5 mm', '2026', 'Step 1', '10 مشاريع', 'Call 0100 123 4567', '']) assert.ok(!isSectionNumber(t), t);
 });

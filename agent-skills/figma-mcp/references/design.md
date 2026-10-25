@@ -97,9 +97,29 @@ brand material sent **no reference** — find them (next section).
 
 When the user sends a reference (an image file, a link, a screenshot) or asks you to find one (finding them: the next section):
 1. **Put it in the file first.** On the `References` page (`build` with `page: "References"`): a frame named `Reference – <what> (<source>)` holding the image (`src` = the path or image URL) at its natural size, with a one-line note of what to take from it. Several references for one task sit side by side. Brand material the user sent goes there too, but named `Brand – <what> (user)` (`Brand – Logo (user)`, `Brand – Palette (user)`) — so it never counts as a reference. A reference that only exists inside the chat has no file — ask the user to save it and give you the path (or drop it into the project).
-2. **Read it for principles, not pixels:** structure, hierarchy, density, spacing rhythm, patterns, the feeling. Write down what you take and what you leave.
+2. **Turn it into a spec, not adjectives.** "Sharp dark/red hierarchy" is not something you can build. For each
+   reference, look at the image and write in its note:
+   - **Signature moves** — the 3–6 things that make it recognizable, concretely: "headline in heavy condensed
+     uppercase spanning ~90% of the width", "giant numerals 1 2 3 at ~3× the heading size", "red radial glow behind
+     a centered hero", "service list as rows with a red dot, not cards", "diagonal arrow glyphs", "pill outline
+     tags", "photo in a tilted frame", "marquee of names".
+   - **Measured values** — headline size relative to the frame (and in px at the product's width), weight and
+     case, line height; section padding; grid (columns, alignment: centered / split / asymmetric); corner radius;
+     border vs. fill; how much empty space; image treatment.
+   - **Section map** — which section of the product takes which reference part (hero ← MRKTAGCNY hero, services ←
+     Revolution list, process ← Digital agency numerals).
+   These become the tokens (type scale, spacing, radius), the component shapes and the section layouts. The
+   identity's colors and fonts stay; everything else follows the spec. A move the brand can't carry (an Arabic font
+   with no condensed weight, say) gets the closest equivalent — and you say so.
 3. **Design on the real page** (`App`, `Web`, …) with the file's own tokens and components, at the product's device size. If the user asked for "the same as this", recreate it faithfully — still with auto layout, tokens, components and real content — and say where you deviated and why (accessibility, platform conventions).
-4. References never go inside screens, and their images never become product images.
+4. **Check every section against its reference — side by side.** `screenshot` with `nodeIds: [<reference part>, <section>]`
+   (one call, both images) and tick each signature move of that part: present / missing. A missing move is fixed
+   before the next section. The test: put the screen next to the references — someone who sees both should say
+   "made from these". If the screen would look the same without the references (a stack of generic cards, a
+   centered title, the same template as any other product), it is not done.
+5. References never go inside screens, and their images never become product images. The logo is not an
+   illustration: never the hero image or a big decorative picture unless the references do exactly that with
+   their logo.
 
 ### No reference given → find them before designing
 A new screen, flow, landing page, dashboard or banner the user asked for **without** a reference starts with
@@ -124,7 +144,12 @@ shape the structure, so finding them after building is too late. Your plan names
    Use `site:` queries (`site:dribbble.com fintech app onboarding`) — the search results give you the shot/project
    URLs. **Dribbble, Behance, Land-book and Lapa answer plain HTTP fetches with a bot check (202/403)**: open them
    in a browser tool when your client has one (in Claude Code: Claude in Chrome or the built-in browser) — look for
-   it before you give up on those sites; blocked with no browser → the other sites in the table, not templates. Pinterest,
+   it before you give up on those sites. Blocked with no browser → **get the images, not the pages**: the image
+   CDNs answer plain downloads (`mir-s3-cdn-cf.behance.net`, `i.pinimg.com`), and an image search gives their
+   direct links — Bing Images (`https://www.bing.com/images/search?q=<words>+behance`; each result's original URL
+   is in the page as `murl`), or Pinterest search. Still nothing → the other sites in the table, not templates.
+   **A reference you haven't downloaded and looked at doesn't exist:** never pick, propose or "approve" one from
+   its title or a search snippet, and never ask the user to screenshot a reference you chose — pick one you can see. Pinterest,
    Godly, UpLabs, Pttrns, Awwwards and Screenlane usually open with a plain fetch. Never log in, solve or bypass
    a check, or scrape in bulk; a page you can't open is skipped — try the next site.
 2. **Get the image itself**, not the page: open the shot/project/pin page and take its main image — the
@@ -135,13 +160,16 @@ shape the structure, so finding them after building is too late. Your plan names
    `magick in.webp out.png` elsewhere).
 3. **Choose 2–4**, not a gallery: the ones that fit the product, the platform (no desktop shot for a mobile app)
    and the brief/identity. Throw away pure concept art (unreadable text, impossible layouts, decoration with no UI).
+   **Resolution:** take the largest file the source has (Behance `project_modules/2800_opt_1` or `max_3840`
+   over `max_808`, Pinterest `originals`, Dribbble without `resize`). A full-page shot narrower than the product's
+   width shows buttons and nav as a few blurry pixels — find a larger version or a detail shot before using it.
 4. **Mark the part you will use.** For each reference decide what you take — "the card list density", "the
    header with the search inside it", "the bottom sheet checkout", "the icon style" — and crop that region into its own file
    (`sips -c <h> <w> --cropOffset <y> <x> in.png --out part.png`, or `magick in.png -crop WxH+X+Y part.png`; check the
    crop by looking at it).
 5. **Upload to Figma** on `References`, one frame per reference, side by side: `Reference – <what> (<site>)`
-   holding the full image, the cropped part next to it, and a note text: what to take, what to leave, and the
-   source URL + author. Record them in the `brief` (append) so later screens reuse them.
+   holding the full image, the cropped part next to it, and a note text: its signature moves and measured values
+   (§ References, step 2), which section takes it, what to leave, and the source URL + author. Record them in the `brief` (append) so later screens reuse them.
 6. **Show the user before building anything on them**: the 2–4 references (the cropped parts) and one line each
    on what you take — then ask "these, or other ones?" and wait. References are a taste decision; tokens,
    components and screens built on references the user dislikes are all wasted. Approved → design (§ References,
@@ -178,14 +206,15 @@ No web access in this client → say so and ask the user for 1–3 references (f
 1. `status` → `brief` → `get_design_system` → `get_metadata` (neighbouring screens, same page).
 2. No UI reference from the user → find 2–4, put them on `References`, show them to the user and wait for a yes (§ No reference given). Plan: page, device, sections top→bottom, components per section, tokens, states, images.
 3. Find or `build` the page's auto-layout board and the relevant auto-layout flow/group within it. `build` the screen shell with `parentId` = that group's id and `device`: background token, padding, `align: "stretch"`, header/content/footer regions (refs), `fixed` bars.
-4. For each region in turn: the components **this region** needs and the file lacks → `create_component`, shaped after the region's reference part (icons as `icon` children inside their auto layout, in the icon set and style taken from the references — § Icons follow the references too; description `source: Reference – <name>`) → `build` the region into its ref (`parentId`) from instances (`"type": "instance"`, spec copied from `COMPONENTS.md`), real content, image placeholders with prompts. Frames and text only for what is not a component. No component for a region you are not building now.
-5. `screenshot` after each region, next to its reference part → `edit` fixes.
+4. For each region in turn — **reference first, components last**: zoom into the region's reference part (crop at full resolution; crop again around nav, buttons and cards until their details are legible) → write its spec in px → `build` the region with frames to match it (identity colors and fonts; parts that already exist as components go in as instances) → step 5 until it matches → `edit` `to-component` the parts that repeat or will be reused (button, nav link, card, list row) and `swap` their copies. Never `create_component` a part before a region has shown it. Real content, image placeholders with prompts.
+5. `screenshot` after each region together with its reference part (`nodeIds: [<reference part>, <region>]`) → tick the region's signature moves → `edit` fixes.
 6. States as their own frames (`edit` duplicate, then `rename` to `Screen – State` and `set` the changes).
 7. Wire the flow ([prototype.md](prototype.md)) when there is more than one screen.
 8. `COMPONENTS.md`: every component made for these screens is used (no *unused*) → `lint` → fix → final `screenshot` → `image_prompts` if images are waiting → report → `brief` append decisions.
 
 ## Checklist before you report
 - [ ] Icons: one set whose style, weight, size and container match the references.
+- [ ] Every section's signature moves from its reference are visible (side-by-side screenshot checked); the screen couldn't pass for a generic template.
 - [ ] References: the user's UI references, or 2–4 you found and placed on `References` before designing (brand material alone doesn't count).
 - [ ] On the right page (English name, created only for this); components on `Components`; nothing left on an empty page.
 - [ ] Every screen at the product's exact device size; one frame per screen/state; no duplicates or copies.
@@ -201,6 +230,11 @@ No web access in this client → say so and ask the user for 1–3 references (f
 
 ## Avoid
 - A default "AI look" imposed on every product (same gradient hero, glass cards, random shadows, emoji icons). The product's own direction decides.
+- **Section numbering and eyebrow decoration — never on your own initiative:** "01 لماذا قنّاص", "02 / Services",
+  "— 03", a small square/dot/tick/short line before a label, a tiny uppercase kicker above every section title. A
+  section title is just the title (plus a subtitle when there is something to say). Only when the user asks for it
+  or the approved references clearly do it — then say which reference. `build` and `lint` flag section numbers
+  (`section-number`); remove them, together with their marker.
 - Hardcoded hex/px when a token exists; one-off text sizes; spacing values off the scale.
 - Rectangles pretending to be layout; groups as containers; text boxes resized by hand.
 - Placeholder text, fake data that doesn't fit the product, icons from mixed sets, random stock images.

@@ -316,7 +316,7 @@ export const clients = [
     id: 'opencode',
     name: 'OpenCode',
     what: 'MCP + skills',
-    next: 'restart OpenCode (or `opencode reload`) · skills: /skills',
+    next: 'run `opencode service restart` (the background service keeps MCP servers running across chats) · skills: /skills',
     detect() {
       const { data } = readJson(opencodeConfig());
       return { found: !!which('opencode') || exists(path.dirname(opencodeConfig())), state: stateOf(data?.mcp?.servers?.[NAME] ?? data?.mcp?.[NAME]) };

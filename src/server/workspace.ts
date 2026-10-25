@@ -1,4 +1,4 @@
-// The design workspace: one folder per Figma file inside the user's project (design/<file>/) that
+// The design workspace: one folder per Figma file inside the user's project (design-<file>/) that
 // holds everything the design produces outside Figma — the identity (DESIGN.md), tokens, references,
 // image prompts with previews, generated images and the user's own assets — plus a small project
 // skill that points every agent at it. Figma stays the source of truth; `workspace sync` refreshes it.
@@ -9,7 +9,10 @@ import { kebab } from '../shared/util.ts';
 import { projectDir, resolveOutput } from './files.ts';
 import { summarizeVariables, type VariablesDump } from './tokens.ts';
 
-export const WORKSPACE_ROOT = 'design';
+/** Workspace folders sit in the project as "design-<file>". */
+export const WORKSPACE_PREFIX = 'design-';
+/** Where older versions kept them: design/<file>/ (moved on first use). */
+const LEGACY_ROOT = 'design';
 const META = 'workspace.json';
 export const FOLDERS = ['references', 'images', 'assets', 'previews', 'tokens', 'library'] as const;
 
@@ -47,14 +50,49 @@ function writeMeta(dir: string, meta: WorkspaceMeta): void {
   fs.writeFileSync(path.join(dir, META), JSON.stringify(meta, null, 2) + '\n');
 }
 
+const dirOf = (project: string, slug: string) => path.join(project, WORKSPACE_PREFIX + slug);
+
+/** Workspace folders of the project (design-<file>/), after moving any left in the old design/<file>/ layout. */
+function workspaceDirs(project: string): string[] {
+  migrateLegacy(project);
+  if (!fs.existsSync(project)) return [];
+  return fs
+    .readdirSync(project)
+    .filter((n) => n.startsWith(WORKSPACE_PREFIX) && fs.existsSync(path.join(project, n, META)))
+    .sort()
+    .map((n) => path.join(project, n));
+}
+
+/** design/<file>/ → design-<file>/ (the folder moves as it is; its project skill is rewritten with the new paths). */
+function migrateLegacy(project: string): void {
+  const root = path.join(project, LEGACY_ROOT);
+  if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) return;
+  for (const slug of fs.readdirSync(root)) {
+    const from = path.join(root, slug);
+    const meta = readMeta(from);
+    if (!meta) continue;
+    const to = dirOf(project, slug);
+    if (fs.existsSync(to)) continue;
+    try {
+      fs.renameSync(from, to);
+      if (['.claude/skills', '.agents/skills'].some((b) => fs.existsSync(path.join(project, b, `${slug}-design`.slice(0, 64), SKILL_MARK)))) writeSkill({ dir: to, slug, meta }, project);
+    } catch {
+      /* in use or not allowed: keep using it where it is next time */
+    }
+  }
+  try {
+    if (!fs.readdirSync(root).filter((n) => n !== '.DS_Store').length) fs.rmSync(root, { recursive: true });
+  } catch {
+    /* not empty or not ours */
+  }
+}
+
 /** The workspace of a Figma file in this project: matched by file key, else by name. */
 export function findWorkspace(file: FigmaFileRef, project = projectDir()): Workspace | null {
   if (!project) return null;
-  const root = path.join(project, WORKSPACE_ROOT);
-  if (!fs.existsSync(root)) return null;
   let byName: Workspace | null = null;
-  for (const slug of fs.readdirSync(root).sort()) {
-    const dir = path.join(root, slug);
+  for (const dir of workspaceDirs(project)) {
+    const slug = path.basename(dir).slice(WORKSPACE_PREFIX.length);
     const meta = readMeta(dir);
     if (!meta) continue;
     if (file.key && meta.figma.key === file.key) {
@@ -83,8 +121,8 @@ export function ensureWorkspace(file: FigmaFileRef, project = projectDir()): Wor
     return found;
   }
   let slug = slugOf(file.name);
-  for (let i = 2; fs.existsSync(path.join(project, WORKSPACE_ROOT, slug)); i++) slug = `${slugOf(file.name)}-${i}`;
-  const dir = resolveOutput(path.join(project, WORKSPACE_ROOT, slug));
+  for (let i = 2; fs.existsSync(dirOf(project, slug)); i++) slug = `${slugOf(file.name)}-${i}`;
+  const dir = resolveOutput(dirOf(project, slug));
   for (const f of FOLDERS) fs.mkdirSync(path.join(dir, f), { recursive: true });
   const meta: WorkspaceMeta = { figma: { name: file.name, key: file.key ?? null }, created: today() };
   writeMeta(dir, meta);

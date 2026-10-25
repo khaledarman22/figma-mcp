@@ -2,7 +2,7 @@
 // structure). Optional safe auto-fixes bind raw values to the one variable that matches exactly.
 
 import { composite, contrastRatio, toHex, type RGBA } from '../shared/color.ts';
-import { round } from '../shared/util.ts';
+import { isSectionNumber, round } from '../shared/util.ts';
 import { Ctx } from './ctx.ts';
 import { hasMockup, isChrome } from './device.ts';
 import { isPlaceholderBox, neededPrompt } from './pages.ts';
@@ -33,6 +33,7 @@ export const RULES: Record<string, { severity: Issue['severity']; about: string;
   'text-style': { severity: 'warn', about: 'Text without a text style or typography variables.' },
   'no-autolayout': { severity: 'warn', about: 'Frame with several children positioned by hand instead of auto layout.' },
   'detached': { severity: 'warn', about: 'Detached component instance.' },
+  'section-number': { severity: 'warn', about: 'Decorative section number ("01 Why us") — an AI-look cliché; only when the user or the references have it.' },
   'touch-target': { severity: 'warn', about: 'Interactive layer smaller than 24×24 (WCAG 2.2 target size).' },
   'unbound-spacing': { severity: 'info', about: 'Gap/padding not bound to a spacing variable.', fixable: true },
   'unbound-radius': { severity: 'info', about: 'Corner radius not bound to a radius variable.', fixable: true },
@@ -243,6 +244,7 @@ export async function lint(p: LintParams) {
       if (n.fontSize !== figma.mixed) bump(stats.fontSizes, n.fontSize);
       if (tokenRules && !n.textStyleId && !(n.boundVariables?.fontSize)) add('text-style', n, `no text style (${fontName !== figma.mixed ? `${fontName.family} ${fontName.style}` : 'mixed'} ${n.fontSize !== figma.mixed ? n.fontSize : ''})`);
       if (n.width < 2 && n.characters.trim().length > 0) add('text-collapsed', n, `text is ${round(n.width, 1)}px wide`);
+      if (isSectionNumber(n.characters)) add('section-number', n, `"${n.characters.trim()}" numbers a section as decoration — remove the number (and any marker square/dot/line beside it) unless the user or the references asked for it`);
       if (enabled.has('contrast') && Array.isArray(n.fills)) {
         const solid = (n.fills as Paint[]).find((f) => f.visible !== false && f.type === 'SOLID') as SolidPaint | undefined;
         const bg = backgroundOf(n);

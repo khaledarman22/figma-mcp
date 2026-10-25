@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { BridgeError, type PluginInfo } from '../shared/protocol.ts';
-import { clip, kebab, normalizeNodeId } from '../shared/util.ts';
+import { clip, isSectionNumber, kebab, normalizeNodeId } from '../shared/util.ts';
 import { loadAssetsFor, loadImage, searchIcons } from './assets.ts';
 import { BRIEF_FIELDS, briefGaps, groupUsages, imageIdOf, matchImageFiles, parsePromptsFile, ratio, renderPromptsFile, type Usage } from './images.ts';
 import { generate, type ComponentMapping, type XNode, type XVar } from './codegen.ts';
@@ -76,6 +76,19 @@ async function ensureFresh(c: Ctx, file?: string): Promise<void> {
   }
 }
 
+/**
+ * Version drift between this server and the plugin. When the plugin already runs the installed build, this
+ * server process is the stale one (clients like OpenCode keep MCP servers alive across chats): re-running the
+ * plugin can't fix that, and the work goes on — only a restart of the client's MCP server picks up the new build.
+ */
+export function versionNote(server: string, plugin: string): string {
+  const installed = figmaPluginBundle()?.match(/PLUGIN_VERSION = [^"]*"([^"]+)"/)?.[1];
+  if (installed === plugin) {
+    return `This figma-mcp server process (${server}) is older than the installed build (${plugin}), which the Figma plugin already runs. Keep working — every tool works. Tell the user once, at the end: restart the client's MCP servers to load the new build (OpenCode: \`opencode service restart\`; Codex: a new thread; Claude Code: /reload-plugins). Don't ask them to re-run the Figma plugin and don't switch to another Figma tool.`;
+  }
+  return `The Figma plugin build (${plugin}) differs from this server (${server}) and could not be updated in place. Keep working; if a tool fails with an unknown method, ask the user to close and re-run "Figma MCP" in Figma.`;
+}
+
 /** Calls the plugin and returns result + notes (multi-file choice, version drift). */
 async function call<T>(c: Ctx, method: string, params: unknown, file?: string, timeoutMs?: number): Promise<{ result: T; notes: string[]; plugin?: PluginInfo }> {
   await ensureFresh(c, file);
@@ -83,9 +96,7 @@ async function call<T>(c: Ctx, method: string, params: unknown, file?: string, t
   const notes: string[] = [];
   if (r.note) notes.push(r.note);
   const pv = r.plugin?.version;
-  if (pv && pv !== c.version && pv !== 'dev' && c.version !== 'dev' && !reloaded.get(r.plugin!.sessionId)) {
-    notes.push(`The Figma plugin build (${pv}) differs from this server (${c.version}). Close and re-run "Figma MCP" in Figma to load the current build.`);
-  }
+  if (pv && pv !== c.version && pv !== 'dev' && c.version !== 'dev' && !reloaded.get(r.plugin!.sessionId)) notes.push(versionNote(c.version, pv));
   return { result: r.result, notes, plugin: r.plugin };
 }
 
@@ -132,6 +143,24 @@ function componentWarnings(specs: unknown[], catalog: CatalogItem[] | null, topL
   const real = catalog.filter((x) => !/^icon\//i.test(x.name));
   if (topLevel && real.length && !specs.some(usesInstances)) out.push(`No component instance in this build, but the file has ${real.length} component(s) (${real.slice(0, 8).map((x) => x.name).join(', ')}${real.length > 8 ? ', …' : ''}) — COMPONENTS.md in the workspace says how to place each one.`);
   return out;
+}
+
+/** Texts in specs that number sections as decoration ("01 Why us") — the tool never adds that by itself. */
+function clicheWarnings(specs: unknown[]): string[] {
+  const found = new Set<string>();
+  const walk = (v: unknown) => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') {
+      for (const [k, x] of Object.entries(v)) {
+        if ((k === 'text' || k === 'characters') && typeof x === 'string' && isSectionNumber(x)) found.add(x.trim());
+        else walk(x);
+      }
+    }
+  };
+  specs.forEach(walk);
+  return found.size
+    ? [`Section numbers as decoration (${[...found].slice(0, 5).map((t) => `"${t}"`).join(', ')}): remove the number and any marker square/dot/line beside it — only when the user or the references asked for it.`]
+    : [];
 }
 
 const COMPONENT_OPS = new Set(['to-component', 'combine-variants', 'swap', 'detach', 'delete', 'restore']);
@@ -206,7 +235,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       lines.push('', `Pages: ${(r.pages ?? []).map((p) => p.name).join(' · ')}`);
       if (r.user) lines.push(`User: ${r.user}`);
       lines.push(r.brief ? `Brief: ${r.brief} (brief tool → full text)` : 'Brief: none yet — after understanding the product, save one with the brief tool.');
-      lines.push(ws ? `Workspace: ${ws.dir}${ws.meta.synced ? ` · synced ${ws.meta.synced.slice(0, 16).replace('T', ' ')}` : ' · not synced yet (workspace sync)'}` : projectDir() ? 'Workspace: none yet — opened in <project>/design/<file>/ on the first design change.' : 'Workspace: project folder unknown.');
+      lines.push(ws ? `Workspace: ${ws.dir}${ws.meta.synced ? ` · synced ${ws.meta.synced.slice(0, 16).replace('T', ' ')}` : ' · not synced yet (workspace sync)'}` : projectDir() ? 'Workspace: none yet — opened in <project>/design-<file>/ on the first design change.' : 'Workspace: project folder unknown.');
       return textResult(withNotes(lines.join('\n'), notes));
     }),
   );
@@ -588,7 +617,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       );
       const ws = openWorkspace(plugin, notes);
       if (ws && !pre) await refreshCatalog(c, ws, a.file);
-      const warnings = [...(result.warnings ?? []), ...componentWarnings([a.spec], catalog, !a.parentId)];
+      const warnings = [...(result.warnings ?? []), ...componentWarnings([a.spec], catalog, !a.parentId), ...clicheWarnings([a.spec])];
       const text = yaml(compact({ built: result.root, page: result.page, layers: result.created, interactions: result.interactions || undefined, ids: result.ids, warnings }));
       const wantShot = a.screenshot ?? !a.parentId;
       const shots = wantShot ? await screenshotOf(c, result.root.id, a.file) : [];
@@ -631,7 +660,8 @@ export function registerTools(server: McpServer, c: Ctx) {
       const { result, notes } = await call<Record<string, unknown>>(c, 'edit', { ops: normalized, focus, assets }, file, 180_000);
       const shots = screenshot ? await screenshotOf(c, normalizeNodeId(screenshot), file) : [];
       const res = result as { ok: boolean; warnings?: string[] };
-      const extra = componentWarnings(insertSpecs, catalog, false);
+      const setProps = (ops as Array<Record<string, unknown>>).filter((o) => o.op === 'text' || o.op === 'set').map((o) => (o.op === 'text' ? { text: o.text } : o.props));
+      const extra = [...componentWarnings(insertSpecs, catalog, false), ...clicheWarnings([...insertSpecs, ...setProps])];
       if (extra.length) res.warnings = [...(res.warnings ?? []), ...extra];
       if (ws && (ops as Array<Record<string, unknown>>).some((o) => COMPONENT_OPS.has(String(o.op)))) await refreshCatalog(c, ws, file);
       const out = textResult(withNotes(yaml(compact(result)), notes), shots);
@@ -728,11 +758,14 @@ export function registerTools(server: McpServer, c: Ctx) {
         300_000,
       );
       const ws = openWorkspace(plugin, notes);
+      notes.push(...clicheWarnings([a.spec, a.variants]));
       const catalog = await refreshCatalog(c, ws, a.file);
       if (catalog) {
         notes.push(`COMPONENTS.md in ${ws!.dir} lists it now — build screens with instances of it, and swap any hand-drawn copies (search by name → edit swap).`);
         const idle = catalog.filter((x) => x.inDesigns === 0 && !/^icon\//i.test(x.name) && x.name.toLowerCase() !== a.name.trim().toLowerCase());
-        if (idle.length >= 2) notes.push(`${idle.length} other components are not used by any design yet (${idle.slice(0, 8).map((x) => x.name).join(', ')}${idle.length > 8 ? ', …' : ''}). Stop making components: build the section that uses them now. Make a component only for the section you are building next (unless the user asked for a UI kit).`);
+        const real = catalog.filter((x) => !/^icon\//i.test(x.name));
+        if (real.length && real.every((x) => x.inDesigns === 0) && idle.length < 2) notes.push(`No design uses any component yet. In screen work, build the section first so it matches its reference part, then edit to-component its button / card / nav link — a component made before its section is drawn from a guess, not from the reference. (Fine if the user asked for a UI kit.)`);
+        if (idle.length >= 2) notes.push(`${idle.length} other components are not used by any design yet (${idle.slice(0, 8).map((x) => x.name).join(', ')}${idle.length > 8 ? ', …' : ''}). Stop making components: build the section that uses them now. In screen work, components come out of sections that already match their reference (build the section, then edit to-component its parts) — unless the user asked for a UI kit.`);
       }
       const id = result.componentSet?.id ?? result.component?.id;
       const shots = a.screenshot !== false && id ? await screenshotOf(c, id, a.file) : [];
@@ -903,7 +936,7 @@ export function registerTools(server: McpServer, c: Ctx) {
     {
       title: 'Image prompts → Markdown',
       description:
-        'Writes every image the design is waiting for into a Markdown hand-off file — by default IMAGE_PROMPTS.md in the file\'s design workspace (<project>/design/<file>/): IMG id, where it is used, exact pixel size and ratio, the file name to save as, a preview screenshot of the screen it goes into, and the generation prompt. Images the user supplies (built with {supply}: logo, product photos) are listed apart under "from you", to be saved into assets/. Layers wait for an image when they were built as {type: "image", prompt|supply} or got {prompt|supply} via edit set; the same prompt shares one id. Run it after adding or changing image placeholders. The user generates the images, then call place_images.',
+        'Writes every image the design is waiting for into a Markdown hand-off file — by default IMAGE_PROMPTS.md in the file\'s design workspace (<project>/design-<file>/): IMG id, where it is used, exact pixel size and ratio, the file name to save as, a preview screenshot of the screen it goes into, and the generation prompt. Images the user supplies (built with {supply}: logo, product photos) are listed apart under "from you", to be saved into assets/. Layers wait for an image when they were built as {type: "image", prompt|supply} or got {prompt|supply} via edit set; the same prompt shares one id. Run it after adding or changing image placeholders. The user generates the images, then call place_images.',
       inputSchema: {
         outFile: z.string().optional().describe('Markdown path (absolute, or relative to the project). Default: IMAGE_PROMPTS.md in the design workspace.'),
         imagesDir: z.string().optional().describe('Folder (relative to the Markdown file) the user saves generated images into. Default "images".'),
@@ -1065,7 +1098,7 @@ export function registerTools(server: McpServer, c: Ctx) {
     {
       title: 'Design workspace folder',
       description:
-        'The folder in the user\'s project that belongs to this Figma file (<project>/design/<file>/): DESIGN.md (the identity), tokens/, references/, IMAGE_PROMPTS.md with previews/, images/ (generated) and assets/ (the user\'s own files). It opens by itself on the first design change. action status (default): where it is and what is in it. open: create it now. sync: refresh it from Figma — DESIGN.md (the brief\'s ## Identity block, tokens, styles, components, icon sets, references; the generated part between markers is replaced, the user\'s notes kept), tokens (css, tailwind, dtcg), reference images, and a small project skill (.claude/skills and .agents/skills, <file>-design) that sends every agent to DESIGN.md. Run sync after the identity changes (tokens, styles, components, the Identity block, references).',
+        'The folder in the user\'s project that belongs to this Figma file (<project>/design-<file>/): DESIGN.md (the identity), tokens/, references/, IMAGE_PROMPTS.md with previews/, images/ (generated) and assets/ (the user\'s own files). It opens by itself on the first design change. action status (default): where it is and what is in it. open: create it now. sync: refresh it from Figma — DESIGN.md (the brief\'s ## Identity block, tokens, styles, components, icon sets, references; the generated part between markers is replaced, the user\'s notes kept), tokens (css, tailwind, dtcg), reference images, and a small project skill (.claude/skills and .agents/skills, <file>-design) that sends every agent to DESIGN.md. Run sync after the identity changes (tokens, styles, components, the Identity block, references).',
       inputSchema: {
         action: z.enum(['status', 'open', 'sync']).optional(),
         skill: z.boolean().optional().describe('sync: write the project skill (default true). Skill folders figma-mcp did not write are never replaced.'),
@@ -1082,7 +1115,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       if (!project) throw new PathError('The project folder is unknown, so there is no place for the workspace. Start the session in the user\'s project (or set FIGMA_MCP_PROJECT_DIR).');
       if (action === 'status') {
         const ws = findWorkspace(plugin.file);
-        if (!ws) return textResult(withNotes(`No workspace yet for "${plugin.file.name}" — it opens at ${path.join(project, 'design', '<file>')} on the first design change (or workspace open).`, notes));
+        if (!ws) return textResult(withNotes(`No workspace yet for "${plugin.file.name}" — it opens at ${path.join(project, 'design-<file>')} on the first design change (or workspace open).`, notes));
         const count = (d: string) => (fs.existsSync(path.join(ws.dir, d)) ? fs.readdirSync(path.join(ws.dir, d)).filter((f) => !f.startsWith('.')).length : 0);
         const has = (f: string) => (fs.existsSync(path.join(ws.dir, f)) ? '✓' : '—');
         const cat = (readCatalog(ws) ?? []).filter((x) => !/^icon\//i.test(x.name));
@@ -1157,7 +1190,7 @@ export function registerTools(server: McpServer, c: Ctx) {
     {
       title: 'Image library (workspace)',
       description:
-        'The images collected for this design — found on the web or given by the user — kept once in the workspace (design/<file>/library/, library.json, LIBRARY.md) and shown on the Figma page "Library", so later requests reuse them instead of searching again. ' +
+        'The images collected for this design — found on the web or given by the user — kept once in the workspace (design-<file>/library/, library.json, LIBRARY.md) and shown on the Figma page "Library", so later requests reuse them instead of searching again. ' +
         'action list (default): what is there, filtered by query (words in title/description/tags), orientation, minWidth/minHeight — check it before searching the web. add: items [{src: image URL or file path, title, description?, tags?, source? (page URL), author?, license?}] → downloads each into library/ (duplicates are recognized), records size/orientation, and places it on the Library page (upload: false to skip). remove: ids (file deleted, Figma frame to Trash). ' +
         'Use an entry as it is (build {type:"image", src: <its path>} or place_images files {"IMG-002": <its path>}), or as the base image of an edit prompt.',
       inputSchema: {

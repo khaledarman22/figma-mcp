@@ -184,7 +184,8 @@ npm run setup -- opencode
 - **السكيلز:** بتتنسخ في `~/.agents/skills/`، و OpenCode بيقرا منه. لو كان فيه في الإعدادات مسار قديم لفولدر `agent-skills` بيتشال، لأنه بيبوظ لو الفولدر اتنقل.
 
 **التشغيل:**
-- أعد تشغيل OpenCode أو اكتب `opencode reload`.
+- اكتب `opencode service restart`. OpenCode V2 بيشغّل سيرفرات MCP جوه background service بيفضل شغال حتى لو قفلت الشات أو فتحت واحد جديد، فأي تحديث لـ figma-mcp مش بيوصل غير بعد الأمر ده.
+- `opencode mcp list` ممكن يقول "No MCP servers configured" وهو شغال عادي. اتأكد من اللوج بدل كده: `grep "server=figma-mcp" ~/.local/share/opencode/log/opencode.log | tail -3` لازم يطلع فيه `mcp connected`.
 - السكيلز: `/skills` أو `@figma-mcp`.
 
 **ملاحظات:**

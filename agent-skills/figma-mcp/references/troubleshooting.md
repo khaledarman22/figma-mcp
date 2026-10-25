@@ -10,7 +10,8 @@
 | `TIMEOUT` | Figma was busy (very large build/extract) or frozen. Check the canvas (`get_metadata`, `screenshot`) before retrying; split big work into sections. If Figma is frozen, close and re-run the plugin. |
 | `PLUGIN_DISCONNECTED` during a call | The plugin/file closed mid-operation. Check what was applied, then continue. |
 | `HUB_UNAVAILABLE` | The Claude session hosting the hub just ended; this session takes over automatically — retry in a moment. |
-| "plugin build differs" note | Normally the server pushes the new build into the running plugin by itself. If the note stays (e.g. the panel UI changed), ask the user to close and re-run the plugin. |
+| "server process is older than the installed build" note | Not a blocker — keep working, every tool works. The client keeps an old server process alive (OpenCode's background service, a long Codex thread). At the end tell the user to restart the client's MCP servers (`opencode service restart`; Codex: new thread; Claude Code: `/reload-plugins`). Re-running the Figma plugin does not help. |
+| "plugin build differs" note | Not a blocker — keep working. Normally the server pushes the new build into the running plugin by itself; only if a tool then fails with `UNKNOWN_METHOD`, ask the user to close and re-run the plugin. |
 | "Limited to 1 modes" / "cannot use Set Variable Mode" | Figma plan limits (Starter: one mode per collection, no set-mode prototype actions). Report it and continue with what the plan allows. |
 | `UNKNOWN_METHOD` | Plugin older than the server — re-run the plugin. |
 | Font errors | Use `fonts` to see exact families/styles; install missing fonts on the machine (Figma Desktop sees local fonts). |

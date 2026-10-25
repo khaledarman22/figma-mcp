@@ -119,3 +119,15 @@ export function errorMessage(e: unknown): string {
     return String(e);
   }
 }
+
+/**
+ * "01 لماذا قنّاص", "/02 Services", "Services — 03", "٠١": a section number used as decoration — an AI-look
+ * cliché the tool never adds by itself. Times, dates and phone numbers don't match.
+ */
+export function isSectionNumber(text: string): boolean {
+  const t = text.trim();
+  if (!t || t.length > 60 || t.includes('\n')) return false;
+  const num = '[0٠][1-9١-٩]';
+  const notData = '(?![\\d٠-٩]|\\s*[:/.,]\\s*[\\d٠-٩])';
+  return new RegExp(`^[([/#№]?\\s*${num}${notData}`).test(t) || new RegExp(`(?:^|[\\s/—–-])${num}[)\\]]?$`).test(t);
+}

@@ -3,7 +3,7 @@
 The user makes the images themselves (Midjourney, ChatGPT/DALL·E, Imagen, Firefly, Flux… or a photographer or
 illustrator). Your part: decide which images the design needs, leave an honest placeholder where each one goes,
 write a brief so complete that whoever makes the image produces *this* design's picture and not a generic one,
-and put the images in when they come back. Everything lives in the file's workspace (`design/<file>/`, main skill §3).
+and put the images in when they come back. Everything lives in the file's workspace (`design-<file>/`, main skill §3).
 
 ## Two kinds of image
 

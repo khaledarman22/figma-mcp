@@ -3,16 +3,15 @@
 This guide does not prescribe colors, fonts, radii or a style. It prescribes **how the work is done**, so
 that whatever direction the product takes, the result is consistent, buildable and easy to hand to code.
 The visual language comes from (in this order): what the user says → the brand/brief → the file's existing
-design → a reference the user picked ([references.md](references.md)) → a direction you propose and the user approves. Once it is written down as the
+design → the references merged from the board ([references.md](references.md)) → a direction you propose and the user approves. Once it is written down as the
 file's identity, it governs every screen and banner ([identity.md](identity.md)).
 
 ## The method
 
 ### 1. Understand before drawing
-- Read the stored brief (`brief` get). If there is none, or the task enters a new area, establish:
-  product & audience · the job of this screen/flow · platform & device size · primary action · content that will really be there · constraints (brand, accessibility, RTL, existing code).
+- Read the stored brief (`brief` get). No `## Product` block, or the task enters a new area → the request analysis ([analysis.md](analysis.md)): product & audience · the job of this screen/flow · pages and sections with their content · platform & device size · primary action · constraints (brand, accessibility, RTL, existing code) · assumptions · search queries per section.
 - How many products? One mobile app → page `App`; two apps (customer + driver) → `App – Customer` and `App – Driver`; plus `Web` / `Dashboard` / `Banners` as needed (main skill, §3).
-- New screen/section/page/banner → references first ([references.md](references.md)): the lettered board, the user picks, then you build. Not for changes, states or fixes of existing screens.
+- New screen/section/page/banner → references first ([references.md](references.md)): the lettered board, the automatic merge into crops, then you build — in the same turn. Not for changes, states or fixes of existing screens.
 - Ask only questions whose answers change the design. Otherwise state assumptions and proceed.
 - Save what you learn and decide: `brief` set (once) / append (each decision: device size per product, pages, art direction). The next session starts from it.
 
@@ -30,6 +29,21 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 - Every container is an auto-layout frame (rows, columns, grids). Spacing is `gap`/`pad`, never manual nudging.
 - Decide sizing intentionally: **fill** for things that stretch with the screen, **hug** for things sized by content, **fixed** only for real constraints (icons, avatars, media ratios, max widths).
 - Free positioning only for overlays: badges, floating buttons, decorations (`absolute` + constraints).
+  **Following a reference closely is never a reason for `dir: "none"`** — a hero, a split layout or a collage is
+  rows and columns with gaps, fixed widths and `fill`; only a background photo or a badge over it is absolute.
+  `build` says "Not auto layout: …" when parts are placed by x/y — rebuild those with rows/columns.
+- **Direction (Arabic RTL, English LTR)** — set `rtl: true` once on the screen (or section component) root; it is
+  inherited, also by anything built inside it later (`parentId`, `insert`). Write children **in reading order**
+  (first = where reading starts: the right in Arabic) — never pre-mirror them by hand, the tool does it, and doing
+  both mirrors twice. Use logical values: `justify`/`align`/`textAlign` `start`/`end` (start = right in RTL), never
+  `left`/`right` for text that follows the language. Icons that point (arrows, chevrons, "next") point toward the
+  reading direction: make both sides as icon components (`arrow-left` and `arrow-right`) so mirroring can swap them.
+- **Both languages** — one design, two directions, not two designs: the components get a `Dir` variant
+  (`edit` `mirror` with `addVariant: true` on the component set → `Dir=RTL` + its mirrored `Dir=LTR`); the other
+  language's page is the page duplicated (`edit` `duplicate`) and mirrored (`edit` `mirror`, `dir: "ltr"`) — rows
+  reverse, alignment flips, instances switch to their `Dir=LTR` variant — then its texts replaced with the real
+  copy (`text`). Name them `Home – AR` / `Home – EN` side by side. A warning that an instance "can't be rearranged"
+  means its component still needs the `Dir` variant.
 - **Screens are plain top-level frames sized with `device`** — one size for every screen of a product, kept in the brief: an iOS or cross-platform app → `iphone-16` (393×852) unless the file already uses another; Android-only → `android` (412×917); tablet → `ipad`; web and dashboards → `desktop` (1440×1024); banners and posts → their format (`instagram-post`, `instagram-story`, `facebook-post`, `x-header`, `ad-medium-rectangle`…). No device mockups or bezels around screens.
 - Long screens keep the device width and grow in height with the content (`h: "hug"`, `minH` = the device height); header and tab bar `fixed: true` so they stay put while the rest scrolls.
 - A responsive web page is one desktop frame with its tablet/mobile frames **beside it on the same page**, built from the same components (a size/breakpoint variant where a component changes shape) — never a parallel set of "mobile" components or a separate copy of the design.
@@ -37,6 +51,13 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 
 ### 5. One of each thing
 - One frame per screen and per state; one component per thing. To change a screen, change it (`edit`), or rebuild it with `replaceId` (the old version goes to Trash) — never "Home 2", "Home – new" or a second redraw beside the first. `build` refuses a same-name twin on a page; that refusal means *update the existing one*.
+- **Component first — nothing is drawn straight onto a page.** Every part goes into a component on the `Components`
+  page first, then an instance goes on the page: the buttons, inputs, icons and cards, **and every section**
+  (`Section/Nav`, `Section/Hero`, `Section/Services`, … built from instances of the smaller ones). The page frame
+  is a column of section instances. Variants for what changes: `Dir` (RTL/LTR) for a product in two languages,
+  `Device` (Desktop/Mobile) when the section changes shape, `Tone` (Light/Dark), states. A change to a section is a
+  change to its component (it updates every page that uses it); per-page content is an override (text, image,
+  instance swap). `build` says when a section or a repeated part was built as plain frames.
 - A pattern used twice is a component (or an instance of an existing one). Screens are built from instances, not copies. Components live on the `Components` page.
 - Variants for visual states and sizes; text/boolean/instance-swap properties for content. Interactive states (hover/pressed) are wired in the component.
 - Never detach to make a one-off change; add the variant or property instead.
@@ -70,16 +91,19 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 ## References
 
 A reference the user sent, "design it like this", or "find references" → [references.md](references.md): the
-references go on a lettered board on `References`, the user picks one, and you rebuild it closely in the identity
+references go on a lettered board on `References`, you merge them automatically (what to take from each → crops) and rebuild closely in the identity
 (no write-up), then make the changes they ask for. References never go inside screens, and their images never
 become product images.
 
 ## Screen recipe
 
 1. `status` → `brief` → `get_design_system` → `get_metadata` (neighbouring screens, same page).
-2. New screen → `references` board → the user's letter ([references.md](references.md)). Then plan: page, device, sections top→bottom, components per section, tokens, states, images.
-3. `build` the screen shell on its page (`page: "App"`, `device`): background token, padding, `align: "stretch"`, header/content/footer regions (refs), `fixed` bars.
-4. `build` each region into its ref (`parentId`), instances first, real content, image placeholders with prompts.
+2. New screen → analysis ([analysis.md](analysis.md)) → `references` board → the user's letter ([references.md](references.md)). Then plan: page, device, sections top→bottom, components per section, tokens, states, images.
+3. Components first (Component first, §5): the small parts from their crops, then one component per section
+   (`create_component` `Section/Hero`, `rtl` on its root, variants it needs) — `screenshot` each.
+4. `build` the screen on its page (`page: "App"`, `device`, `rtl` for Arabic): background token, `align: "stretch"`,
+   and the sections as instances in order (`{ "type": "instance", "component": "Section/Hero" }`), `fixed` bars.
+   Content that differs per page → instance overrides (`props`), not detached copies.
 5. `screenshot` after each region → `edit` fixes.
 6. States as their own frames (`edit` duplicate, then `rename` to `Screen – State` and `set` the changes).
 7. Wire the flow ([prototype.md](prototype.md)) when there is more than one screen.
@@ -89,6 +113,9 @@ become product images.
 - [ ] On the right page (English name, created only for this); components on `Components`; nothing left on an empty page.
 - [ ] Every screen at the product's exact device size; one frame per screen/state; no duplicates or copies.
 - [ ] Every container uses auto layout; no stray absolute layers except intentional overlays.
+- [ ] Every section on the page is an instance of a `Section/…` component; every repeated part is an instance.
+- [ ] Direction: `rtl` on the root, children in reading order, text `start`-aligned follows it; arrows point the
+      reading way; a two-language product has `Dir` variants and an AR and an EN page.
 - [ ] Colors, spacing, radii, type come from variables/styles; no orphan values.
 - [ ] Repeated things are instances of components; nothing detached.
 - [ ] Real content; long/short/empty cases considered; states designed where they matter.

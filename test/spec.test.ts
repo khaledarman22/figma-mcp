@@ -185,3 +185,10 @@ test('image prompts: prompt makes an image node; images without src or prompt ge
   assert.equal(partial.prompt, 'Product shot');
   assert.equal(partial.type, undefined);
 });
+
+test('text alignment start/end stays logical (resolved by direction in the plugin)', () => {
+  const issues = newIssues();
+  assert.equal(normalizeSpec({ type: 'text', text: 'x', textAlign: 'start' }, 't', issues).textAlign, 'start');
+  assert.equal(normalizeSpec({ type: 'text', text: 'x', align: 'end' }, 't', issues).textAlign, 'end');
+  assert.equal(normalizeSpec({ type: 'text', text: 'x', textAlign: 'left' }, 't', issues).textAlign, 'left');
+});

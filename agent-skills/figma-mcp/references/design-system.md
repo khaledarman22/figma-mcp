@@ -9,7 +9,11 @@ the product's direction; this guide only defines the structure and the method.
 - If a system exists, **extend it in its own conventions**. Never create a parallel set of tokens or a second Button.
 - The system is half of the product's identity; the other half (component catalog, section patterns, icon set, imagery, voice) and how to lock it so every request follows it: [identity.md](identity.md).
 - If the project already has code tokens (CSS variables, Tailwind theme), mirror their names so design and code match (set `codeSyntax`).
-- **Where it lives:** every component and variant set on the `Components` page (created the first time a component is made — `create_component` does it), icons on its Icons board. Variables and styles live in the file's panels, not on a page. Never a component inside a screen page; a frame that should become a component → `edit` `to-component` (the main component moves to `Components`, an instance stays in place).
+- **Where it lives:** every component and variant set on the `Components` page, inside its one main auto layout
+  frame `Components` — a column where each component sits under the previous one: the Icons board first, then the
+  components, then the sections (`Section/…`) last. `create_component`, `build` of a component, `to-component` and
+  icons file them there in order by themselves (the frame is made on first use, and components already on the page
+  move into it); don't position components by hand or build them beside it. Variables and styles live in the file's panels, not on a page. Never a component inside a screen page; a frame that should become a component → `edit` `to-component` (the main component moves to `Components`, an instance stays in place).
 
 ## 2. Variable architecture
 | Layer | Collection | Contents | Scopes |
@@ -47,6 +51,16 @@ Rules:
 `styles` upserts by name; re-running is safe.
 
 ## 4. Components
+**Component first**: in design work everything on a page is an instance — atoms (button, input, icon), molecules
+(cards, list rows, nav) and **sections** (`Section/Hero`, `Section/Footer`) are components on `Components`, built
+from each other's instances; the page only arranges section instances. Variants carry what changes between uses:
+`Dir=RTL|LTR` (two languages — `edit` `mirror` `addVariant: true` makes the mirrored one), `Device=Desktop|Mobile`,
+`Tone`, states.
+
+Where they come from: the existing components first; otherwise the **reference crops** of the design they're for —
+anatomy, structure, proportions and variants from the crop, the skin from the identity, the source crop recorded in
+the `description` ([multi-reference.md](multi-reference.md) §4). Never invented on the spot for one screen.
+
 Anatomy first: what is the root (auto layout), what grows (`fill`), what hugs, which parts are optional.
 
 | Need | Use |
@@ -59,10 +73,10 @@ Anatomy first: what is the root (auto layout), what grows (`fill`), what hugs, w
 
 Rules:
 - One component per thing. To change it, update it (`edit` on the component or its variants) — a second "Button 2" / "Button new" is never the answer, and `create_component` refuses a same-name twin. Screen sizes are a variant/property of the same component (`Size=Mobile|Desktop`) when a component changes shape across breakpoints — not separate "mobile" components.
-- Name components like code, with slashes for groups when there are many (`Navigation/Tab bar`, `Forms/Input`); arrange the `Components` page by those groups.
+- Name components like code, with slashes for groups when there are many (`Navigation/Tab bar`, `Forms/Input`); sections are `Section/<Name>` (they go to the end of the stack).
 - Root and every part bound to tokens; no raw values.
 - Axis names and values read like code props: `Variant` (primary/secondary/ghost), `Size` (sm/md/lg), `State` (default/hover/pressed/disabled/focus). Keep matrices small; split very different things into separate components.
-- Every component gets a `description` (what it's for, when not to use it).
+- Every component gets a `description` (what it's for, when not to use it, and `From: references/crops/<file>.png`). In new design work every component is made from a tight crop of one instance in a reference (multi-reference.md §4) — `create_component` says when it has none.
 - Icons are instances of icon components (build `icon` does this) so they swap via instance properties.
 - Verify the set: the tool returns a screenshot of the grid of variants; check every cell (text not clipped, states visibly different, sizes consistent).
 
@@ -100,7 +114,7 @@ Patches merge into the base by `ref` (`root` = the component itself); later patc
 - Record system decisions in the `brief`.
 
 ## Checklist
-- [ ] Every component on the `Components` page; no duplicates; nothing left on empty pages.
+- [ ] Every component in the `Components` page's stack, one under the other; no duplicates; nothing left on empty pages.
 - [ ] Semantic tokens alias primitives; screens/components use semantic tokens only.
 - [ ] Scopes set; code syntax set; modes named (no "Mode 1").
 - [ ] Type scale as text styles; elevation as effect styles.

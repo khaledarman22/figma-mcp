@@ -63,7 +63,15 @@ function fullSize(u: string): string {
       url.searchParams.delete('crop');
       url.searchParams.delete('format');
     } else if (h.endsWith('behance.net')) {
-      url.pathname = url.pathname.replace(/\/project_modules\/(?:max_\d+|disp|fs|1400|1400_opt_1|2800_opt_1|max_\d+_webp)\//, '/project_modules/max_3840/');
+      url.pathname = url.pathname
+        .replace(/\/project_modules\/(?:max_\d+|disp|fs|1400|1400_opt_1|2800_opt_1|max_\d+_webp)\//, '/project_modules/max_3840/')
+        .replace(/\/projects\/(?:\d+|max_\d+)(?:_webp)?\//, '/projects/original/');
+    } else if (h === 'assets.onepagelove.com' && url.pathname.startsWith('/cdn-cgi/image/')) {
+      // A resized crop of the full-page screenshot → the screenshot itself.
+      return `https://onepagelove.com${url.pathname.replace(/^\/cdn-cgi\/image\/[^/]+/, '')}`;
+    } else if (h === 'cdn.land-book.com') {
+      const shot = url.pathname.match(/\/website\/\d+\/[^/]+-screenshot\.(?:jpe?g|png|webp)$/)?.[0];
+      if (shot) return `https://cdn.land-book.com${shot}`;
     } else if (h === 'assets.awwwards.com') {
       url.pathname = url.pathname.replace(/\/media\/cache\/[^/]+\//, '/');
     } else if (h === 'images.unsplash.com') {
@@ -99,8 +107,25 @@ export function pageImages(html: string, baseUrl: string, max = 4): string[] {
   const all = (re: RegExp) => [...html.matchAll(re)].map((m) => m[0]);
   // The share image is the cover the author picked (and the only image of most production sites).
   add(meta(html, 'og:image') ?? meta(html, 'og:image:url') ?? meta(html, 'twitter:image') ?? meta(html, 'twitter:image:src'));
-  if (host.endsWith('dribbble.com')) all(/https:\/\/cdn\.dribbble\.com\/userupload\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)(?:\?[^"'\s)]*)?/gi).forEach(add);
-  else if (host.endsWith('behance.net')) all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/project_modules\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi).forEach(add);
+  if (host.endsWith('land-book.com')) {
+    // The full-page screenshots of this site (desktop first: the one offered at the largest width).
+    const id = new URL(baseUrl).pathname.match(/\/websites\/(\d+)/)?.[1];
+    if (id) {
+      const widest = new Map<string, number>();
+      for (const m of html.matchAll(new RegExp(`https://cdn\\.land-book\\.com/(?:image/(\\d+)x\\d+/[^"'\\s]*?)?website/${id}/[a-z0-9]+-screenshot\\.(?:jpe?g|png|webp)`, 'gi'))) {
+        const full = fullSize(m[0]);
+        widest.set(full, Math.max(widest.get(full) ?? 0, Number(m[1] ?? 0)));
+      }
+      found.length = 0;
+      [...widest.entries()].sort((a, b) => b[1] - a[1]).forEach(([u]) => add(u));
+      if (!found.length) add(meta(html, 'og:image'));
+    }
+  } else if (host.endsWith('dribbble.com')) all(/https:\/\/cdn\.dribbble\.com\/userupload\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)(?:\?[^"'\s)]*)?/gi).forEach(add);
+  else if (host.endsWith('behance.net')) {
+    all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/project_modules\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi).forEach(add);
+    // The embed page carries only the project cover, in several sizes: one is enough (→ original).
+    if (!found.length) add(all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/projects\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi)[0]);
+  }
   else if (host.endsWith('awwwards.com')) all(/https:\/\/assets\.awwwards\.com\/awards\/(?:media\/cache\/[^/]+\/)?submissions\/[^"'\s)]+?\.(?:png|jpe?g|webp)/gi).forEach(add);
   return found.slice(0, Math.max(1, max));
 }
@@ -222,7 +247,15 @@ export async function fetchPage(url: string, max: number, maxBytes: number): Pro
   }
   const html = (await readCapped(res, MAX_HTML))?.toString('utf8') ?? '';
   const blocked = blockedReason(res.status, html, res.url || url);
-  if (blocked) throw new FetchRefused(`${hostOf(url)}: ${blocked}. Open it in your browser and save a screenshot (or ask the user for one), then pass the file path.`);
+  if (blocked) {
+    // Behance refuses automated page loads but serves its official embed page (the project cover).
+    const project = hostOf(url).endsWith('behance.net') ? new URL(url).pathname.match(/\/gallery\/(\d+)/)?.[1] : undefined;
+    if (project && !url.includes('/embed/')) {
+      const cover = await fetchPage(`https://www.behance.net/embed/project/${project}`, 1, maxBytes).catch(() => null);
+      if (cover) return { ...cover, skipped: [...cover.skipped, `${hostOf(url)}: ${blocked} — took the project cover from the embed page; the case-study screens need a browser screenshot`] };
+    }
+    throw new FetchRefused(`${hostOf(url)}: ${blocked}. Open it in a browser (your browser tool, or ask the user) and save a screenshot or the image itself into the project, then pass the file path.`);
+  }
   if (!/html|xml/i.test(type)) throw new FetchRefused(`not a page or image (${type || 'unknown type'})`);
   const candidates = pageImages(html, res.url || url, max + 2);
   if (!candidates.length) throw new FetchRefused('the page exposes no image (no share image) — take a screenshot of it instead');
@@ -273,4 +306,128 @@ export function letterIndex(name: string): number {
   const m = name.match(/^([A-Z]{1,2}) [–-] /);
   if (!m) return -1;
   return [...m[1]].reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) - 1;
+}
+
+/* ---------- rejected references ---------- */
+
+/** One spelling per page: no protocol/www, no tracking parameters, no fragment or trailing slash. */
+export function canonicalUrl(url: string): string {
+  try {
+    const u = new URL(url.trim());
+    for (const k of [...u.searchParams.keys()]) if (/^(utm_|fbclid|gclid|ref$|ref_src|mc_|igshid|si$)/i.test(k)) u.searchParams.delete(k);
+    const q = u.searchParams.toString();
+    return `${u.hostname.toLowerCase().replace(/^(www|m)\./, '')}${u.pathname.replace(/\/+$/, '')}${q ? `?${q}` : ''}`;
+  } catch {
+    return url.trim();
+  }
+}
+
+/** The brief line that records a rejected reference (read back by rejectedInBrief). */
+export const rejectionLine = (board: string, letter: string, url: string, reason: string) => `Rejected: ${board} ← ${letter} (${url}) — "${reason.replace(/"/g, "'")}"`;
+
+/** Rejected reference URLs recorded in the brief → the reason given. */
+export function rejectedInBrief(brief: string | null | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const line of (brief ?? '').split('\n')) {
+    if (!/\bRejected:/i.test(line)) continue;
+    const reason = line.match(/—\s*"([^"]*)"/)?.[1] ?? line.replace(/^.*?Rejected:\s*/i, '');
+    for (const m of line.matchAll(/https?:\/\/[^\s)"]+/g)) out.set(canonicalUrl(m[0]), reason);
+  }
+  return out;
+}
+
+/* ---------- sections that need a reference ---------- */
+
+/** "hero", "Hero", "Home – Hero", "testimonials section" → "hero" / "testimonials" style ids for matching. */
+export const sectionId = (name: string) => name.toLowerCase().replace(/^.*[–—-]\s*/, '').replace(/\bsection\b/g, '').replace(/[^a-z0-9\u0600-\u06ff]+/g, ' ').trim();
+
+/** The planned sections per page from the brief: "Sections – Home: nav, hero, clients, …" (the last line per page wins). */
+export function plannedSections(brief: string | null | undefined): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const line of (brief ?? '').split('\n')) {
+    const m = line.match(/Sections\s*[–—-]\s*([^:]+):\s*(.+)$/i);
+    if (!m) continue;
+    const list = m[2].split(/[,→>·|]+/).map((x) => sectionId(x.replace(/\(.*?\)/g, ''))).filter(Boolean);
+    if (list.length) out.set(m[1].trim(), [...new Set(list)]);
+  }
+  return out;
+}
+
+export interface Mark {
+  letter: string;
+  board: string;
+  section?: string;
+  take?: string;
+  label: string;
+}
+
+/** Which planned sections have a skeleton reference (a mark named with the section only), which only borrowings, which nothing. */
+export function coverage(planned: Map<string, string[]>, marks: Mark[]): Array<{ page: string; covered: Array<{ section: string; from: string }>; borrowedOnly: string[]; missing: string[] }> {
+  const skeleton = new Map<string, string>();
+  const borrowed = new Set<string>();
+  for (const m of marks) {
+    // "hero" alone = that section's skeleton; "hero: headline" = a borrowing for it.
+    if (m.section) borrowed.add(sectionId(m.section));
+    else {
+      const id = sectionId(m.label);
+      if (id && !skeleton.has(id)) skeleton.set(id, `${m.letter} on ${m.board || 'the board'}`);
+    }
+  }
+  return [...planned.entries()].map(([page, sections]) => ({
+    page,
+    covered: sections.filter((x) => skeleton.has(x)).map((x) => ({ section: x, from: skeleton.get(x)! })),
+    borrowedOnly: sections.filter((x) => !skeleton.has(x) && borrowed.has(x)),
+    missing: sections.filter((x) => !skeleton.has(x) && !borrowed.has(x)),
+  }));
+}
+
+export function coverageText(cov: ReturnType<typeof coverage>): string {
+  return cov.map((c) => {
+    const lines = [`Sections – ${c.page}: ${c.covered.length}/${c.covered.length + c.borrowedOnly.length + c.missing.length} have a reference to build on.`];
+    if (c.covered.length) lines.push(`  ✓ ${c.covered.map((x) => `${x.section} (${x.from})`).join(', ')}`);
+    if (c.borrowedOnly.length) lines.push(`  ~ only borrowings, no skeleton: ${c.borrowedOnly.join(', ')}`);
+    if (c.missing.length) lines.push(`  ✗ no reference yet: ${c.missing.join(', ')} — get references for each (its own board, or crop it from a full-page screenshot) before building it.`);
+    return lines.join('\n');
+  }).join('\n');
+}
+
+/* ---------- components that need a reference ---------- */
+
+const componentKey = (name: string) => name.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9؀-ۿ]+/g, ' ').trim();
+
+/** The planned components from the brief: "Components: button (primary, outline), service card, …, icons" (the last line wins). */
+export function plannedComponents(brief: string | null | undefined): string[] {
+  let out: string[] = [];
+  for (const line of (brief ?? '').split('\n')) {
+    const m = line.match(/(?:^|[\s\-*])Components\s*:\s*(.+)$/i);
+    if (m) out = [...new Set(m[1].replace(/\(.*?\)/g, '').split(/[,·|]+/).map(componentKey).filter(Boolean))];
+  }
+  return out;
+}
+
+/** "Forms/Input", "Service card", "Button" → whether it is the planned "input", "service card", "button". */
+export function componentMatch(name: string, planned: string[]): string | undefined {
+  const key = componentKey(name.replace(/^.*\//, ''));
+  const full = componentKey(name);
+  return planned.find((p) => p === key || p === full);
+}
+
+/** Which planned components have a crop to be made from (a mark "component: <name>"). */
+export function componentCoverage(planned: string[], marks: Mark[]): { covered: Array<{ component: string; from: string }>; missing: string[] } {
+  const from = new Map<string, string>();
+  for (const m of marks) {
+    if (!/^components?$/i.test(m.section?.trim() ?? '') || !m.take) continue;
+    const hit = componentMatch(m.take, planned);
+    if (hit && !from.has(hit)) from.set(hit, `${m.letter} on ${m.board || 'the board'}`);
+  }
+  return { covered: planned.filter((p) => from.has(p)).map((p) => ({ component: p, from: from.get(p)! })), missing: planned.filter((p) => !from.has(p)) };
+}
+
+export function componentCoverageText(cov: ReturnType<typeof componentCoverage>): string {
+  const total = cov.covered.length + cov.missing.length;
+  if (!total) return '';
+  const lines = [`Components: ${cov.covered.length}/${total} have a crop to be made from.`];
+  if (cov.covered.length) lines.push(`  ✓ ${cov.covered.map((x) => `${x.component} (${x.from})`).join(', ')}`);
+  if (cov.missing.length) lines.push(`  ✗ no crop yet: ${cov.missing.join(', ')} — crop each from the reference that shows it best (region {ref, section: "component", take: "<name>"}, tight around one instance) before create_component.`);
+  return lines.join('\n');
 }

@@ -79,7 +79,8 @@ Inside auto layout children flow; to overlay something (badge, close button, dec
 Top-level frames are placed in free canvas space automatically unless you pass `x`/`y` (to the tool or the spec).
 
 ### RTL
-`"rtl": true` on a container (inherited): rows are mirrored (write children in reading order), `start` alignment becomes the right side, text aligns right. Pair with an Arabic-capable font (check `fonts`).
+`"rtl": true` on a container (inherited, also by later builds inside it via `parentId`/`insert`): rows are mirrored (write children in reading order — never pre-mirror), `start` alignment becomes the right side, text aligns right; `textAlign: "start"|"end"` follows the direction (text without `rtl` around it follows its script: Arabic → right). Pair with an Arabic-capable font (check `fonts`).
+The other direction of an existing design: `edit` `{op: "mirror", ids, dir?: "ltr"|"rtl"}` (rows reverse, alignment, padding and absolute positions flip, text alignment swaps, `…-left`/`…-right` icon instances swap, instances switch their `Dir` variant); `{op: "mirror", ids: [component set], addVariant: true}` adds `Dir=RTL` + `Dir=LTR` variants.
 
 ## 3. Appearance
 
@@ -168,7 +169,7 @@ Details and the full action list: the `prototype` tool / [prototype.md](prototyp
 
 **image_prompts**: `outFile` (default `IMAGE_PROMPTS.md` in the project), `imagesDir` (default `images`), `scale` (default 2), `style` (shared art direction), `within`. **place_images**: `files` (`{"IMG-001": "/path"}` or a stock photo link), `dir`, `promptsFile`, `fit`.
 
-**references**: `for` (what they are for — names the section `References – <for>`), `sources` (page URLs, image URLs, file paths, or `{src, note}`), `perSource` (1–4 images per page), `saveTo` (default `references` in the project), `place` (default true). **stock_photos**: `query`, `orientation`, `count`, `previews`.
+**references**: `for` (what they are for — names the section `References – <for>`), `sources` (page URLs, image URLs, file paths, or `{src, note}`; links rejected in the brief or already on the board are refused), `reject` (`[{letter, reason}]` → `Rejected:` in the brief + Trash), `perSource` (1–4 images per page), `saveTo` (default `references` in the project), `place` (default true). **reference_crops**: `for` (the board) or `within` (section/frame id), `regions` (`[{ref: "A", section?, take?, x, y, w, h}]` fractions of the image — drawn as dashed marks, replacing your earlier ones), `letters`, `maxPx` (default 2000), `saveTo` (default `references/crops`). **stock_photos**: `query`, `orientation`, `count`, `previews`.
 
 **variables**: `collections: [{ name, modes?, hidden?, renameModes?, variables: [{ name, value | values: {Mode: v}, type?, scopes?, codeSyntax?, description?, hidden? }] }]`, `delete`, `deleteCollections`. Aliases: `"$name"` / `"$Collection:name"`.
 

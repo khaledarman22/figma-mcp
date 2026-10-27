@@ -26028,12 +26028,6 @@ function normalizeNodeId(input) {
   return s;
 }
 
-// src/server/assets.ts
-import { execFileSync } from "node:child_process";
-import fs4 from "node:fs";
-import os4 from "node:os";
-import path4 from "node:path";
-
 // src/shared/spec.ts
 var newIssues = () => ({ errors: [], warnings: [] });
 var CONTAINER_TYPES = /* @__PURE__ */ new Set(["frame", "component", "group", "section"]);
@@ -26435,11 +26429,11 @@ var JUSTIFY = {
 };
 var TEXT_ALIGN = {
   left: "left",
-  start: "left",
+  start: "start",
   center: "center",
   middle: "center",
   right: "right",
-  end: "right",
+  end: "end",
   justify: "justify",
   justified: "justify"
 };
@@ -27578,6 +27572,51 @@ function collectAssetRefs(spec, into = { icons: /* @__PURE__ */ new Set(), image
   return into;
 }
 
+// src/server/structure.ts
+var CONTAINER = /* @__PURE__ */ new Set(["frame", "component"]);
+var sectionKey = (name) => name.toLowerCase().replace(/^.*[–—-]\s*/, "").replace(/[^a-z0-9؀-ۿ]+/g, " ").trim();
+function shapeOf(s, depth = 0) {
+  if (depth > 3) return s.type;
+  return `${s.type}${s.dir ? `:${s.dir}` : ""}(${(s.children ?? []).map((k) => shapeOf(k, depth + 1)).join(",")})`;
+}
+function structureNotes(raw, sections = []) {
+  let spec;
+  try {
+    spec = normalizeSpec(raw, "spec", newIssues());
+  } catch {
+    return [];
+  }
+  const free = [];
+  const repeated = [];
+  const walk = (s, path8) => {
+    const kids = s.children ?? [];
+    if (CONTAINER.has(s.type) && s.dir === "none" && kids.filter((k) => !k.absolute && k.type !== "image" && k.type !== "rect" && k.type !== "ellipse").length >= 2) free.push(s.name ?? path8);
+    const seen = /* @__PURE__ */ new Map();
+    for (const k of kids) {
+      if (!CONTAINER.has(k.type) || !(k.children ?? []).length) continue;
+      const key = shapeOf(k);
+      seen.set(key, [...seen.get(key) ?? [], k.name ?? "?"]);
+    }
+    for (const names of seen.values()) if (names.length >= 2) repeated.push(`${names[0]} \xD7${names.length}`);
+    kids.forEach((k, i) => walk(k, `${path8}.children[${i}]`));
+  };
+  walk(spec, "spec");
+  const planned = new Set(sections.map(sectionKey));
+  const isSection = (s, top) => CONTAINER.has(s.type) && s.type !== "component" && (planned.has(sectionKey(s.name ?? "")) || top && !!spec.device && !planned.size);
+  const plain = [spec, ...spec.children ?? []].filter((s, i) => isSection(s, i > 0) && (s.children ?? []).length).map((s) => s.name ?? "?");
+  const notes = [];
+  if (free.length) notes.push(`Not auto layout: ${free.join(", ")} \u2014 parts placed by x/y. Use row/column (with gap, padding, alignment); only overlays (a background, a badge on a photo) are absolute.`);
+  if (plain.length) notes.push(`Built as plain frames, not components: ${plain.join(", ")}. Make each section a component first (create_component "Section/<Name>", with Dir/Device variants when it needs them) and put an instance on the page \u2014 see design-system.md, Component first.`);
+  if (repeated.length) notes.push(`Repeated as plain frames: ${repeated.join(", ")} \u2014 make it a component and use instances.`);
+  return notes;
+}
+
+// src/server/assets.ts
+import { execFileSync } from "node:child_process";
+import fs4 from "node:fs";
+import os4 from "node:os";
+import path4 from "node:path";
+
 // src/server/references.ts
 var USER_AGENT = "figma-mcp (design reference fetcher; local)";
 var MAX_HTML = 4 * 1024 * 1024;
@@ -27639,7 +27678,12 @@ function fullSize(u) {
       url.searchParams.delete("crop");
       url.searchParams.delete("format");
     } else if (h.endsWith("behance.net")) {
-      url.pathname = url.pathname.replace(/\/project_modules\/(?:max_\d+|disp|fs|1400|1400_opt_1|2800_opt_1|max_\d+_webp)\//, "/project_modules/max_3840/");
+      url.pathname = url.pathname.replace(/\/project_modules\/(?:max_\d+|disp|fs|1400|1400_opt_1|2800_opt_1|max_\d+_webp)\//, "/project_modules/max_3840/").replace(/\/projects\/(?:\d+|max_\d+)(?:_webp)?\//, "/projects/original/");
+    } else if (h === "assets.onepagelove.com" && url.pathname.startsWith("/cdn-cgi/image/")) {
+      return `https://onepagelove.com${url.pathname.replace(/^\/cdn-cgi\/image\/[^/]+/, "")}`;
+    } else if (h === "cdn.land-book.com") {
+      const shot = url.pathname.match(/\/website\/\d+\/[^/]+-screenshot\.(?:jpe?g|png|webp)$/)?.[0];
+      if (shot) return `https://cdn.land-book.com${shot}`;
     } else if (h === "assets.awwwards.com") {
       url.pathname = url.pathname.replace(/\/media\/cache\/[^/]+\//, "/");
     } else if (h === "images.unsplash.com") {
@@ -27668,9 +27712,23 @@ function pageImages(html, baseUrl, max = 4) {
   };
   const all = (re) => [...html.matchAll(re)].map((m) => m[0]);
   add(meta(html, "og:image") ?? meta(html, "og:image:url") ?? meta(html, "twitter:image") ?? meta(html, "twitter:image:src"));
-  if (host.endsWith("dribbble.com")) all(/https:\/\/cdn\.dribbble\.com\/userupload\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)(?:\?[^"'\s)]*)?/gi).forEach(add);
-  else if (host.endsWith("behance.net")) all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/project_modules\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi).forEach(add);
-  else if (host.endsWith("awwwards.com")) all(/https:\/\/assets\.awwwards\.com\/awards\/(?:media\/cache\/[^/]+\/)?submissions\/[^"'\s)]+?\.(?:png|jpe?g|webp)/gi).forEach(add);
+  if (host.endsWith("land-book.com")) {
+    const id = new URL(baseUrl).pathname.match(/\/websites\/(\d+)/)?.[1];
+    if (id) {
+      const widest = /* @__PURE__ */ new Map();
+      for (const m of html.matchAll(new RegExp(`https://cdn\\.land-book\\.com/(?:image/(\\d+)x\\d+/[^"'\\s]*?)?website/${id}/[a-z0-9]+-screenshot\\.(?:jpe?g|png|webp)`, "gi"))) {
+        const full = fullSize(m[0]);
+        widest.set(full, Math.max(widest.get(full) ?? 0, Number(m[1] ?? 0)));
+      }
+      found.length = 0;
+      [...widest.entries()].sort((a, b) => b[1] - a[1]).forEach(([u]) => add(u));
+      if (!found.length) add(meta(html, "og:image"));
+    }
+  } else if (host.endsWith("dribbble.com")) all(/https:\/\/cdn\.dribbble\.com\/userupload\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)(?:\?[^"'\s)]*)?/gi).forEach(add);
+  else if (host.endsWith("behance.net")) {
+    all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/project_modules\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi).forEach(add);
+    if (!found.length) add(all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/projects\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi)[0]);
+  } else if (host.endsWith("awwwards.com")) all(/https:\/\/assets\.awwwards\.com\/awards\/(?:media\/cache\/[^/]+\/)?submissions\/[^"'\s)]+?\.(?:png|jpe?g|webp)/gi).forEach(add);
   return found.slice(0, Math.max(1, max));
 }
 function blockedReason(status, html, finalUrl) {
@@ -27770,7 +27828,14 @@ async function fetchPage(url, max, maxBytes) {
   }
   const html = (await readCapped(res, MAX_HTML))?.toString("utf8") ?? "";
   const blocked = blockedReason(res.status, html, res.url || url);
-  if (blocked) throw new FetchRefused(`${hostOf(url)}: ${blocked}. Open it in your browser and save a screenshot (or ask the user for one), then pass the file path.`);
+  if (blocked) {
+    const project = hostOf(url).endsWith("behance.net") ? new URL(url).pathname.match(/\/gallery\/(\d+)/)?.[1] : void 0;
+    if (project && !url.includes("/embed/")) {
+      const cover = await fetchPage(`https://www.behance.net/embed/project/${project}`, 1, maxBytes).catch(() => null);
+      if (cover) return { ...cover, skipped: [...cover.skipped, `${hostOf(url)}: ${blocked} \u2014 took the project cover from the embed page; the case-study screens need a browser screenshot`] };
+    }
+    throw new FetchRefused(`${hostOf(url)}: ${blocked}. Open it in a browser (your browser tool, or ask the user) and save a screenshot or the image itself into the project, then pass the file path.`);
+  }
   if (!/html|xml/i.test(type)) throw new FetchRefused(`not a page or image (${type || "unknown type"})`);
   const candidates = pageImages(html, res.url || url, max + 2);
   if (!candidates.length) throw new FetchRefused("the page exposes no image (no share image) \u2014 take a screenshot of it instead");
@@ -27817,6 +27882,94 @@ function letterIndex(name) {
   const m = name.match(/^([A-Z]{1,2}) [–-] /);
   if (!m) return -1;
   return [...m[1]].reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) - 1;
+}
+function canonicalUrl(url) {
+  try {
+    const u = new URL(url.trim());
+    for (const k of [...u.searchParams.keys()]) if (/^(utm_|fbclid|gclid|ref$|ref_src|mc_|igshid|si$)/i.test(k)) u.searchParams.delete(k);
+    const q = u.searchParams.toString();
+    return `${u.hostname.toLowerCase().replace(/^(www|m)\./, "")}${u.pathname.replace(/\/+$/, "")}${q ? `?${q}` : ""}`;
+  } catch {
+    return url.trim();
+  }
+}
+var rejectionLine = (board, letter, url, reason) => `Rejected: ${board} \u2190 ${letter} (${url}) \u2014 "${reason.replace(/"/g, "'")}"`;
+function rejectedInBrief(brief) {
+  const out = /* @__PURE__ */ new Map();
+  for (const line of (brief ?? "").split("\n")) {
+    if (!/\bRejected:/i.test(line)) continue;
+    const reason = line.match(/—\s*"([^"]*)"/)?.[1] ?? line.replace(/^.*?Rejected:\s*/i, "");
+    for (const m of line.matchAll(/https?:\/\/[^\s)"]+/g)) out.set(canonicalUrl(m[0]), reason);
+  }
+  return out;
+}
+var sectionId = (name) => name.toLowerCase().replace(/^.*[–—-]\s*/, "").replace(/\bsection\b/g, "").replace(/[^a-z0-9\u0600-\u06ff]+/g, " ").trim();
+function plannedSections(brief) {
+  const out = /* @__PURE__ */ new Map();
+  for (const line of (brief ?? "").split("\n")) {
+    const m = line.match(/Sections\s*[–—-]\s*([^:]+):\s*(.+)$/i);
+    if (!m) continue;
+    const list = m[2].split(/[,→>·|]+/).map((x) => sectionId(x.replace(/\(.*?\)/g, ""))).filter(Boolean);
+    if (list.length) out.set(m[1].trim(), [...new Set(list)]);
+  }
+  return out;
+}
+function coverage(planned, marks) {
+  const skeleton = /* @__PURE__ */ new Map();
+  const borrowed = /* @__PURE__ */ new Set();
+  for (const m of marks) {
+    if (m.section) borrowed.add(sectionId(m.section));
+    else {
+      const id = sectionId(m.label);
+      if (id && !skeleton.has(id)) skeleton.set(id, `${m.letter} on ${m.board || "the board"}`);
+    }
+  }
+  return [...planned.entries()].map(([page, sections]) => ({
+    page,
+    covered: sections.filter((x) => skeleton.has(x)).map((x) => ({ section: x, from: skeleton.get(x) })),
+    borrowedOnly: sections.filter((x) => !skeleton.has(x) && borrowed.has(x)),
+    missing: sections.filter((x) => !skeleton.has(x) && !borrowed.has(x))
+  }));
+}
+function coverageText(cov) {
+  return cov.map((c) => {
+    const lines = [`Sections \u2013 ${c.page}: ${c.covered.length}/${c.covered.length + c.borrowedOnly.length + c.missing.length} have a reference to build on.`];
+    if (c.covered.length) lines.push(`  \u2713 ${c.covered.map((x) => `${x.section} (${x.from})`).join(", ")}`);
+    if (c.borrowedOnly.length) lines.push(`  ~ only borrowings, no skeleton: ${c.borrowedOnly.join(", ")}`);
+    if (c.missing.length) lines.push(`  \u2717 no reference yet: ${c.missing.join(", ")} \u2014 get references for each (its own board, or crop it from a full-page screenshot) before building it.`);
+    return lines.join("\n");
+  }).join("\n");
+}
+var componentKey = (name) => name.toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9؀-ۿ]+/g, " ").trim();
+function plannedComponents(brief) {
+  let out = [];
+  for (const line of (brief ?? "").split("\n")) {
+    const m = line.match(/(?:^|[\s\-*])Components\s*:\s*(.+)$/i);
+    if (m) out = [...new Set(m[1].replace(/\(.*?\)/g, "").split(/[,·|]+/).map(componentKey).filter(Boolean))];
+  }
+  return out;
+}
+function componentMatch(name, planned) {
+  const key = componentKey(name.replace(/^.*\//, ""));
+  const full = componentKey(name);
+  return planned.find((p) => p === key || p === full);
+}
+function componentCoverage(planned, marks) {
+  const from = /* @__PURE__ */ new Map();
+  for (const m of marks) {
+    if (!/^components?$/i.test(m.section?.trim() ?? "") || !m.take) continue;
+    const hit = componentMatch(m.take, planned);
+    if (hit && !from.has(hit)) from.set(hit, `${m.letter} on ${m.board || "the board"}`);
+  }
+  return { covered: planned.filter((p) => from.has(p)).map((p) => ({ component: p, from: from.get(p) })), missing: planned.filter((p) => !from.has(p)) };
+}
+function componentCoverageText(cov) {
+  const total = cov.covered.length + cov.missing.length;
+  if (!total) return "";
+  const lines = [`Components: ${cov.covered.length}/${total} have a crop to be made from.`];
+  if (cov.covered.length) lines.push(`  \u2713 ${cov.covered.map((x) => `${x.component} (${x.from})`).join(", ")}`);
+  if (cov.missing.length) lines.push(`  \u2717 no crop yet: ${cov.missing.join(", ")} \u2014 crop each from the reference that shows it best (region {ref, section: "component", take: "<name>"}, tight around one instance) before create_component.`);
+  return lines.join("\n");
 }
 
 // src/server/assets.ts
@@ -27900,6 +28053,33 @@ function figmaImage(buf, src) {
     return { data: png.toString("base64"), bytes: png };
   }
   throw new Error(`image ${src} is not an image Figma can use (PNG, JPEG, GIF, WebP or AVIF).`);
+}
+var FIGMA_MAX_PX = 4096;
+function figmaTiles(file, size2, width = 1440, tileH = 4e3) {
+  if (size2.w <= FIGMA_MAX_PX && size2.h <= FIGMA_MAX_PX) return [{ file, ...size2 }];
+  if (process.platform !== "darwin") throw new Error(`${path4.basename(file)} is ${size2.w}\xD7${size2.h}px \u2014 Figma takes at most ${FIGMA_MAX_PX}px a side. Save a shorter screenshot (or one section of the page).`);
+  const ext = path4.extname(file) || ".jpg";
+  const base = file.slice(0, file.length - ext.length);
+  const w = Math.min(size2.w, width);
+  const h = Math.round(size2.h * w / size2.w);
+  const scaled = `${base}-w${w}${ext}`;
+  execFileSync("sips", ["--resampleWidth", String(w), file, "--out", scaled], { stdio: "ignore", timeout: 6e4 });
+  if (h <= FIGMA_MAX_PX) return [{ file: scaled, w, h }];
+  const tiles = [];
+  for (let y = 0, k = 1; y < h; y += tileH, k++) {
+    const th = Math.min(tileH, h - y);
+    const out = `${base}-tile-${k}${ext}`;
+    const sips = (...args) => execFileSync("sips", args, { stdio: "ignore", timeout: 6e4 });
+    sips("-c", String(y + th), String(w), "--cropOffset", "0", "0", scaled, "--out", out);
+    if (y > 0) {
+      sips("-f", "vertical", out);
+      sips("-c", String(th), String(w), "--cropOffset", "0", "0", out);
+      sips("-f", "vertical", out);
+    }
+    tiles.push({ file: out, w, h: th });
+  }
+  fs4.rmSync(scaled, { force: true });
+  return tiles;
 }
 var GALLERY_IMAGE_REFUSED = (src) => `${src} is from a design gallery \u2014 other people's work is a reference, never a product image. Put it on the References page (the references tool, or build with page: "References"); in the design use the user's assets, a placeholder with a prompt, or a free stock photo.`;
 async function loadImage(src) {
@@ -29320,6 +29500,20 @@ function assetsPrefixFor(dir) {
   if (proj && dir.startsWith(proj)) return `./${path7.relative(proj, dir).split(path7.sep).join("/")}/`;
   return `./${path7.basename(dir)}/`;
 }
+async function referenceCoverage(c, file, brief) {
+  const text = brief !== void 0 ? brief : (await call(c, "brief", { action: "get" }, file)).result.brief;
+  const planned = plannedSections(text);
+  const components = plannedComponents(text);
+  if (!planned.size && !components.length) return null;
+  let marks = [];
+  try {
+    marks = (await call(c, "reference_marks", { list: true }, file, 6e4)).result.marks ?? [];
+  } catch {
+  }
+  const sections = coverage(planned, marks);
+  const comps = componentCoverage(components, marks);
+  return { sections, components: comps, text: [coverageText(sections), componentCoverageText(comps)].filter(Boolean).join("\n") };
+}
 async function loadAssetsOrThrow(raws, opts) {
   const { assets, errors } = await loadAssetsFor(raws, opts);
   if (errors.length) throw new BridgeError("BAD_REQUEST", `Nothing was created \u2014 could not load assets:
@@ -29697,6 +29891,16 @@ ${lines.join("\n")}`, notes));
       const text = yaml(compact({ built: result.root, page: result.page, layers: result.created, interactions: result.interactions || void 0, ids: result.ids, warnings: result.warnings }));
       const wantShot = a.screenshot ?? !a.parentId;
       const shots = wantShot ? await screenshotOf(c, result.root.id, a.file) : [];
+      const name = typeof a.spec.name === "string" ? sectionId(a.spec.name) : "";
+      const designPage = !/^(references|components|trash)$/i.test(a.page?.trim() ?? "");
+      const brief = designPage ? await call(c, "brief", { action: "get" }, a.file).then((r) => r.result.brief).catch(() => null) : null;
+      if (designPage) notes.push(...structureNotes(a.spec, [...plannedSections(brief).values()].flat()));
+      if (name && designPage) {
+        const planned = [...plannedSections(brief).values()].some((list) => list.includes(name));
+        const cov = planned ? await referenceCoverage(c, a.file, brief).catch(() => null) : null;
+        const page = cov?.sections.find((p) => p.missing.includes(name) || p.borrowedOnly.includes(name));
+        if (page) notes.push(`"${a.spec.name}" is a planned section of ${page.page} with no reference to build on (no skeleton mark). Find references for it and crop one (references.md) \u2014 unless the user said to design it without.`);
+      }
       return textResult(withNotes(text, notes), shots);
     })
   );
@@ -29704,7 +29908,7 @@ ${lines.join("\n")}`, notes));
     "edit",
     {
       title: "Edit layers",
-      description: "Batch changes to existing layers, in order, sharing refs: set {id|ids, props: any build prop}, text {id, text}, rename, delete {ids} (moves them to the Trash page; permanent: true really deletes), restore {ids, parent?} (back from Trash), move {id, parent?, index?, x?, y?}, duplicate {id, count?, ref?}, insert {parent, index?, spec}, wrap {ids, spec: frame props}, unwrap, swap {id, component, variant?}, detach, reset (overrides), to-component, combine-variants {ids, name}, group, ungroup, flatten, boolean {ids, operation}, select {ids}, page {name, create?}, place-image {id, src} (put a real image into a placeholder). Stops at the first failing op and reports what was applied.",
+      description: 'Batch changes to existing layers, in order, sharing refs: set {id|ids, props: any build prop}, text {id, text}, rename, delete {ids} (moves them to the Trash page; permanent: true really deletes), restore {ids, parent?} (back from Trash), move {id, parent?, index?, x?, y?}, duplicate {id, count?, ref?}, insert {parent, index?, spec}, wrap {ids, spec: frame props}, unwrap, swap {id, component, variant?}, detach, reset (overrides), to-component, combine-variants {ids, name}, group, ungroup, flatten, boolean {ids, operation}, select {ids}, page {name, create?}, place-image {id, src} (put a real image into a placeholder). mirror {ids, dir?: "rtl"|"ltr"} flips a layout between Arabic and English (rows reverse, alignment/padding/free positions flip, text alignment swaps, left/right icons swap, instances switch their Dir variant; text is not translated) \u2014 duplicate first to keep the original; mirror {ids: [component or component set], addVariant: true} gives the component a Dir variant (RTL + mirrored LTR) so instances switch direction. Stops at the first failing op and reports what was applied.',
       inputSchema: {
         ops: external_exports.array(external_exports.record(external_exports.any())).min(1).describe('[{op: "set", id: "12:3", props: {fill: "$color/bg", pad: 16}}, \u2026]'),
         focus: external_exports.boolean().optional(),
@@ -29815,6 +30019,17 @@ ${lines.join("\n")}`, notes));
       );
       const id = result.componentSet?.id ?? result.component?.id;
       const shots = a.screenshot !== false && id ? await screenshotOf(c, id, a.file) : [];
+      const brief = await call(c, "brief", { action: "get" }, a.file).then((r) => r.result.brief).catch(() => null);
+      const planned = plannedComponents(brief);
+      const hit = componentMatch(a.name, planned);
+      const fromCrop = /From:\s*\S*crops\/\S+\.png/i.test(a.description ?? "");
+      if (hit) {
+        const cov = await referenceCoverage(c, a.file, brief).catch(() => null);
+        if (cov?.components.missing.includes(hit)) notes.push(`"${a.name}" is a planned component with no crop to be made from. Crop it from the reference that shows it best (reference_crops region {section: "component", take: "${hit}"}), look at the crop, then update this component to match it.`);
+        else if (!fromCrop) notes.push(`Add "From: references/crops/<file>.png" (its crop) to the description of "${a.name}".`);
+      } else if ((planned.length || plannedSections(brief).size) && !fromCrop) {
+        notes.push(`"${a.name}" has no reference crop (no "From: \u2026crops/\u2026.png" in its description). Components come from the references: crop one first, or build it in the style of the components that did (multi-reference.md \xA74) and say so in the description.`);
+      }
       return textResult(withNotes(yaml(compact(result)), notes), shots);
     })
   );
@@ -30084,10 +30299,11 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
     "references",
     {
       title: "References \u2192 lettered board",
-      description: `Puts design references on the References page as a lettered board (A, B, C\u2026) in a section "References \u2013 <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site \u2014 the work's images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. Returns a screenshot of the board.`,
+      description: `Puts design references on the References page as a lettered board (A, B, C\u2026) in a section "References \u2013 <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site \u2014 the work's images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. reject: [{letter, reason}] records references the user turned down in the brief and moves them to Trash; rejected links (any board, recorded in the brief) and links already on the board are refused. Returns a screenshot of the board.`,
       inputSchema: {
         for: external_exports.string().min(1).describe('What the references are for, e.g. "Home \u2013 Hero", "Checkout", "Brand". Names the section "References \u2013 <for>".'),
-        sources: external_exports.array(external_exports.union([external_exports.string(), external_exports.object({ src: external_exports.string(), note: external_exports.string().optional() })])).min(1).max(12).describe("Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one."),
+        sources: external_exports.array(external_exports.union([external_exports.string(), external_exports.object({ src: external_exports.string(), note: external_exports.string().optional() })])).max(12).optional().describe("Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one."),
+        reject: external_exports.array(external_exports.object({ letter: external_exports.string().min(1), reason: external_exports.string().min(3).describe(`The user's reason in their words ("\u062A\u0642\u064A\u0644 \u0648\u0645\u0632\u062F\u062D\u0645").`) })).max(12).optional().describe('References on this board the user turned down: recorded as "Rejected:" in the brief (never offered again) and moved to Trash.'),
         perSource: external_exports.number().int().min(1).max(4).optional().describe("Images per page (default 1; 2\u20134 for a case study with several screens)."),
         saveTo: external_exports.string().optional().describe('Folder for downloaded images (default "references" in the project).'),
         place: external_exports.boolean().optional().describe("Build the board in Figma (default true). false: only download and return the images."),
@@ -30096,7 +30312,52 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       annotations: { destructiveHint: false, openWorldHint: true }
     },
     wrap(async (a) => {
+      const sources = a.sources ?? [];
+      if (!sources.length && !a.reject?.length) throw new BridgeError("BAD_REQUEST", "Pass sources to add, reject to turn references down, or both.");
       const slug = kebab(a.for) || "reference";
+      const sectionName = `References \u2013 ${a.for.trim()}`;
+      const notes = [];
+      const briefNow = (await call(c, "brief", { action: "get" }, a.file)).result.brief;
+      const rejected = rejectedInBrief(briefNow);
+      let board0 = null;
+      if (a.place !== false || a.reject?.length) {
+        const found = await call(c, "execute", {
+          code: `const page = await h.page('References');
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+if (!s) return null;
+const caption = (f) => { const t = 'children' in f ? f.children.filter((k) => k.type === 'TEXT') : []; return t.length ? t[t.length - 1].characters : ''; };
+return { id: s.id, frames: s.children.map((k) => ({ id: k.id, name: k.name, caption: caption(k) })) };`,
+          params: { name: sectionName }
+        }, a.file, 6e4);
+        notes.push(...found.notes);
+        board0 = found.result.result;
+      }
+      const urlOf = (f) => f.caption.split(" \u2014 ")[0].trim();
+      const turnedDown = [];
+      if (a.reject?.length) {
+        if (!board0) throw new BridgeError("BAD_REQUEST", `No board "${sectionName}" to reject from.`);
+        const trash = [];
+        for (const r of a.reject) {
+          const f = board0.frames.find((k) => letterIndex(k.name) === letterIndex(`${r.letter.trim().toUpperCase()} \u2013 `));
+          if (!f) {
+            turnedDown.push(`${r.letter}: not on the board`);
+            continue;
+          }
+          const url = urlOf(f);
+          await call(c, "brief", { action: "append", text: rejectionLine(sectionName, r.letter.trim().toUpperCase(), url, r.reason) }, a.file);
+          if (/^https?:/i.test(url)) rejected.set(canonicalUrl(url), r.reason);
+          trash.push(f.id);
+          turnedDown.push(`${r.letter.trim().toUpperCase()} rejected (${url}) \u2014 "${r.reason}"`);
+        }
+        if (trash.length) await call(c, "edit", { ops: [{ op: "delete", ids: trash }], focus: false }, a.file);
+        board0.frames = board0.frames.filter((f) => !trash.includes(f.id));
+      }
+      const onBoard = new Map((board0?.frames ?? []).filter((f) => /^https?:/i.test(urlOf(f))).map((f) => [canonicalUrl(urlOf(f)), f.name.split(" ")[0]]));
+      const rejectText = turnedDown.length ? `Turned down:
+${turnedDown.map((t) => `- ${t}`).join("\n")}
+` : "";
+      if (!sources.length) return textResult(withNotes(`${rejectText}Recorded in the brief; these links won't be offered again. Find new ones with a different angle (feedback.md), then call references with sources.`, notes));
       let outDir = null;
       const save = (buf, ext, name) => {
         outDir ??= resolveOutput(a.saveTo ?? "references");
@@ -30107,11 +30368,14 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       };
       const refs = [];
       const failed = [];
-      for (const [i, s] of a.sources.entries()) {
+      for (const [i, s] of sources.entries()) {
         const src = typeof s === "string" ? s.trim() : s.src.trim();
         const note = typeof s === "string" ? void 0 : s.note;
         try {
           if (/^https?:\/\//i.test(src)) {
+            const key = canonicalUrl(src);
+            if (rejected.has(key)) throw new Error(`rejected earlier (brief): "${rejected.get(key)}" \u2014 find a different one`);
+            if (onBoard.has(key)) throw new Error(`already on the board as ${onBoard.get(key)}`);
             const page = await fetchPage(src, a.perSource ?? 1, 25 * 1024 * 1024);
             const host = new URL(src).hostname.replace(/^www\./, "");
             const images = page.images.map((img, k) => {
@@ -30144,31 +30408,25 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       const failText = failed.length ? `
 Not added:
 ${failed.map((f) => `- ${f}`).join("\n")}` : "";
-      if (!refs.length) throw new BridgeError("BAD_REQUEST", `No reference could be added.${failText}`);
+      if (!refs.length) throw new BridgeError("BAD_REQUEST", `${rejectText}No reference could be added.${failText}`);
       if (a.place === false) {
         const lines = refs.map((r, i) => `${boardLetter(i)} ${r.title ?? r.src}${r.host ? ` (${r.host})` : ""}: ${r.images.map((m) => `${m.file} ${m.w}\xD7${m.h}`).join(", ")}`);
         const imgs = refs.flatMap((r) => r.images).filter((m) => m.buf.length < 15e5).slice(0, 8).map((m) => ({ type: "image", data: m.buf.toString("base64"), mimeType: m.buf[0] === 137 ? "image/png" : m.buf[0] === 255 ? "image/jpeg" : "image/gif" }));
         return textResult(`${lines.join("\n")}${failText}`, imgs);
       }
-      const sectionName = `References \u2013 ${a.for.trim()}`;
-      const found = await call(c, "execute", {
-        code: `const page = await h.page('References');
-const want = params.name.trim().toLowerCase();
-const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
-return s ? { id: s.id, names: s.children.map((k) => k.name) } : null;`,
-        params: { name: sectionName }
-      }, a.file, 6e4);
-      const notes = [...found.notes];
-      let sectionId = found.result.result?.id;
-      let next = Math.max(-1, ...(found.result.result?.names ?? []).map(letterIndex)) + 1;
-      if (!sectionId) {
+      let boardId = board0?.id;
+      const earlier = [...(briefNow ?? "").matchAll(/Rejected: (.+?) ← ([A-Z]{1,2}) /g)].filter((m) => m[1].trim().toLowerCase() === sectionName.toLowerCase()).map((m) => `${m[2]} \u2013 `);
+      const used = [...(board0?.frames ?? []).map((f) => f.name), ...earlier, ...(a.reject ?? []).map((r) => `${r.letter.trim().toUpperCase()} \u2013 `)];
+      let next = Math.max(-1, ...used.map(letterIndex)) + 1;
+      if (!boardId) {
         const built = await call(c, "build", { spec: { type: "section", name: sectionName }, page: "References", focus: false }, a.file, 6e4);
-        sectionId = built.result.root.id;
+        boardId = built.result.root.id;
       }
       const board = [];
       for (const r of refs) {
         const letter = boardLetter(next++);
         const widths = r.images.map((m) => Math.min(m.w, r.images.length > 1 ? 1200 : 1440));
+        const tiles = r.images.map((m, k) => figmaTiles(m.file, m, widths[k]));
         const caption = [r.src, r.note].filter(Boolean).join(" \u2014 ");
         const spec = {
           type: "frame",
@@ -30180,20 +30438,95 @@ return s ? { id: s.id, names: s.children.map((k) => k.name) } : null;`,
           w: widths.reduce((x, y) => x + y, 0) + 24 * (widths.length - 1) + 64,
           children: [
             { type: "text", text: letter, size: 48, weight: 700, color: "#111111" },
-            { type: "frame", name: "Images", dir: "row", gap: 24, children: r.images.map((m, k) => ({ type: "image", name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ""}`, src: m.file, w: widths[k] })) },
+            // Each image sits in a free frame ("Reference A"), so shapes the user draws over it to mark what to take land inside it.
+            { type: "frame", name: "Images", dir: "row", gap: 24, children: r.images.map((m, k) => {
+              const scale = widths[k] / tiles[k][0].w;
+              let y = 0;
+              const parts = tiles[k].map((t, j) => {
+                const part = { type: "image", name: j ? `Image ${j + 1}` : "Image", src: t.file, x: 0, y: Math.round(y), w: widths[k], h: Math.round(t.h * scale) };
+                y += t.h * scale;
+                return part;
+              });
+              return { type: "frame", name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ""}`, dir: "none", clip: true, w: widths[k], h: Math.round(y), children: parts };
+            }) },
             { type: "text", text: caption, w: "fill", size: 14, color: "#666666" }
           ]
         };
         const assets = await loadAssetsOrThrow([{ spec }], { references: true });
-        const built = await call(c, "build", { spec, assets, parentId: sectionId, focus: false }, a.file, 12e4);
+        const built = await call(c, "build", { spec, assets, parentId: boardId, focus: false }, a.file, 12e4);
         board.push({ letter, id: built.result.root.id, source: r.src, files: r.images.map((m) => m.file) });
       }
-      await call(c, "edit", { ops: [{ op: "select", ids: [sectionId] }], focus: true }, a.file).catch(() => void 0);
-      const shots = await screenshotOf(c, sectionId, a.file, 1600);
-      const text = yaml(compact({ section: { id: sectionId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
-      return textResult(withNotes(`${text}${failText}
+      await call(c, "edit", { ops: [{ op: "select", ids: [boardId] }], focus: true }, a.file).catch(() => void 0);
+      const shots = await screenshotOf(c, boardId, a.file, 1600);
+      const text = yaml(compact({ section: { id: boardId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
+      const cov = await referenceCoverage(c, a.file, briefNow).catch(() => null);
+      if (cov?.text) notes.push(cov.text);
+      return textResult(withNotes(`${rejectText}${text}${failText}
 
-Show the user the board and ask which letter to build from (references.md: rebuild the chosen one in the identity, no write-up).`, notes), shots);
+Next (references.md): look at the references, choose what to take from each (automatic merge) and call reference_crops with regions \u2014 then build from the crops in the identity, no write-up. The user steers by naming letters or moving marks.`, notes), shots);
+    })
+  );
+  server.registerTool(
+    "reference_crops",
+    {
+      title: "Marked parts of references \u2192 crops",
+      description: `Turns the parts to take from the references board into crops of the original images at full resolution (saved in <project>/references/crops), to build from \u2014 not from a description; hand the crop files to any agent that designs. Automatic merge: pass regions = the parts you chose ({ref: "A", section: "hero", take: "headline", x, y, w, h} as fractions of that image; a region named with a section only is that section's skeleton) \u2014 they are drawn on the board as dashed marks (replacing your earlier ones) so the user can see and move them. Marks the user drew (rectangles named "hero: headline", or with a text label inside) are read too. Unmarked references are listed.`,
+      inputSchema: {
+        for: external_exports.string().optional().describe('The board, as given to references ("Home \u2013 Hero") \u2014 or a section/frame id in within.'),
+        within: external_exports.string().optional().describe("Section or frame id on the References page (default: the whole page)."),
+        letters: external_exports.array(external_exports.string()).optional().describe('Only these references, e.g. ["A", "C"].'),
+        regions: external_exports.array(external_exports.object({
+          ref: external_exports.string().describe('Board letter ("A"), or "A2" for the second image of A.'),
+          section: external_exports.string().optional().describe('Section it is for ("hero"). Only a section = its skeleton.'),
+          take: external_exports.string().optional().describe('What to take ("headline", "stats strip", "cards").'),
+          x: external_exports.number().min(0).max(1),
+          y: external_exports.number().min(0).max(1),
+          w: external_exports.number().min(0).max(1),
+          h: external_exports.number().min(0).max(1)
+        })).max(40).optional().describe("Parts you chose to take (automatic merge), as fractions of the reference image."),
+        maxPx: external_exports.number().int().min(256).max(4096).optional().describe("Longest side of a crop (default 2000)."),
+        saveTo: external_exports.string().optional().describe('Folder for the crops (default "references/crops" in the project).'),
+        file: fileParam
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false }
+    },
+    wrap(async (a) => {
+      let within = a.within && normalizeNodeId(a.within);
+      if (!within && a.for) {
+        const found = await call(c, "execute", {
+          code: `const page = figma.root.children.find((p) => p.getPluginData('role') === 'references' || p.name.trim().toLowerCase() === 'references');
+if (!page) return null;
+await page.loadAsync();
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+return s ? { id: s.id } : null;`,
+          params: { name: `References \u2013 ${a.for.trim()}` }
+        }, a.file, 6e4);
+        within = found.result.result?.id;
+        if (!within) throw new BridgeError("BAD_REQUEST", `No board "References \u2013 ${a.for.trim()}" on the References page.`);
+      }
+      const { result, notes } = await call(c, "reference_marks", { within, letters: a.letters, maxPx: a.maxPx, regions: a.regions }, a.file, 12e4);
+      if (!result.crops.length) {
+        return textResult(withNotes(`No marks on the board (references: ${result.references.map((r) => r.letter).join(", ")}). Choose the parts to take yourself and pass them as regions (multi-reference.md), or use marks the user drew.${result.problems?.length ? `
+Regions not drawn: ${result.problems.join("; ")}.` : ""}`, notes));
+      }
+      const dir = resolveOutput(a.saveTo ?? "references/crops");
+      fs7.mkdirSync(dir, { recursive: true });
+      const slug = kebab(a.for ?? "") || "board";
+      const lines = [];
+      const images = [];
+      for (const [i, cr] of result.crops.entries()) {
+        const target = uniquePath(dir, `${slug}-${cr.letter}-${i + 1}${cr.take ? `-${kebab(cr.take).slice(0, 40)}` : ""}`, "png", false);
+        fs7.writeFileSync(target, Buffer.from(cr.data, "base64"));
+        lines.push(`${i + 1}. ${cr.letter}${cr.section ? ` \u2192 ${cr.section}` : ""}${cr.auto ? "" : " (user mark)"}: ${cr.take ?? "(unnamed mark \u2014 ask what it is for, or use it for the section it obviously is)"} \u2014 ${target} (${cr.px.w}\xD7${cr.px.h}px, ${Math.round(cr.region.x * 100)}%,${Math.round(cr.region.y * 100)}% of ${cr.reference})`);
+        if (images.length < 10) images.push({ type: "image", data: cr.data, mimeType: "image/png" });
+      }
+      if (result.unmarked.length) lines.push(`Not marked: ${result.unmarked.join(", ")}.`);
+      if (result.problems?.length) lines.push(`Regions not drawn: ${result.problems.join("; ")}.`);
+      const cov = await referenceCoverage(c, a.file).catch(() => null);
+      if (cov?.text) lines.push("", cov.text);
+      lines.push("", "Build from these crops (multi-reference.md): each crop is what to take; the identity is the skin. A designer agent gets these files, not a description.");
+      return textResult(withNotes(lines.join("\n"), notes), images);
     })
   );
   server.registerTool(
@@ -30253,7 +30586,7 @@ Errors: ${r.errors.join("; ")}` : ""} Try other words.`);
 }
 
 // src/server/index.ts
-var VERSION = true ? "1.0.0+27fe23a" : "dev";
+var VERSION = true ? "1.0.0+d06ab2a" : "dev";
 var INSTRUCTIONS = [
   'figma-mcp \u2014 local bridge to Figma Desktop through the "Figma MCP" development plugin (read + write: layout, auto layout, variables, styles, components & variants, prototype, design\u2192code).',
   'Before the first call load the figma-mcp skill ("figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere) \u2014 the single entry point: its router tells you which guide to read for design, design systems/components, prototypes, design\u2192code and images, and it covers the tool workflow and build-spec vocabulary. Pick the guides yourself for every request; the user should not have to name them.',

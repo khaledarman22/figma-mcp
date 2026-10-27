@@ -46,6 +46,9 @@ function pageRank(name: string): number {
  * The page with this name (or role), created on demand. A file that only has an untouched
  * "Page 1" gets that page renamed instead of keeping an empty page around.
  */
+/** A neutral gray canvas on the pages this tool makes, so white screens and components stand out. */
+const CANVAS: Paint[] = [{ type: 'SOLID', color: { r: 0.831, g: 0.831, b: 0.831 } }];
+
 export async function ensurePage(name: string, role?: PageRole): Promise<{ page: PageNode; created: boolean }> {
   const clean = name.trim();
   if (!clean) throw badRequest('page name is empty.');
@@ -68,12 +71,14 @@ export async function ensurePage(name: string, role?: PageRole): Promise<{ page:
     blank.name = clean;
     if (role) blank.setPluginData('role', role);
     blank.setPluginData('createdBy', CREATED_BY);
+    if (role !== 'trash') blank.backgrounds = CANVAS;
     return { page: blank, created: false };
   }
   const page = figma.createPage();
   page.name = clean;
   if (role) page.setPluginData('role', role);
   page.setPluginData('createdBy', CREATED_BY);
+  if (role !== 'trash') page.backgrounds = CANVAS;
   const rank = pageRank(clean);
   const pages = figma.root.children.filter((p) => p !== page);
   const at = pages.findIndex((p) => pageRank(p.name) > rank);
@@ -391,4 +396,60 @@ export async function placeImage(p: { ids: string[]; imageData: string; fit?: ke
     placed.push({ id: n.id, name: n.name });
   }
   return { placed };
+}
+
+/* ---------- the Components page: one auto layout stack ---------- */
+
+const STACK_ROLE = 'components-stack';
+export const isComponentsStack = (n: BaseNode | null | undefined) => !!n && 'getPluginData' in n && n.getPluginData('role') === STACK_ROLE;
+
+/** Where an item sits in the stack: the icons board first, then components, then the page sections ("Section/…"). */
+const stackRank = (n: SceneNode) => (n.getPluginData('role') === 'icons' ? 0 : /^sections?\//i.test(n.name) ? 2 : 1);
+const isStackItem = (n: SceneNode) => n.type === 'COMPONENT' || n.type === 'COMPONENT_SET' || n.getPluginData('role') === 'icons';
+
+/**
+ * The main auto layout frame of the Components page — every component goes in it, one under the other. Made on
+ * first use; components already on the page move into it (top to bottom as they were), anything else on the page
+ * moves out of its way.
+ */
+export async function componentsStack(): Promise<FrameNode> {
+  const { page } = await rolePage('components');
+  const found = page.children.find(isComponentsStack) as FrameNode | undefined;
+  if (found) return found;
+  const items = page.children.filter(isStackItem).sort((a, b) => a.y - b.y || a.x - b.x);
+  const others = page.children.filter((n) => !isStackItem(n));
+  const f = figma.createFrame();
+  f.name = 'Components';
+  f.setPluginData('role', STACK_ROLE);
+  f.layoutMode = 'VERTICAL';
+  f.primaryAxisSizingMode = 'AUTO';
+  f.counterAxisSizingMode = 'AUTO';
+  f.counterAxisAlignItems = 'MIN';
+  f.itemSpacing = 96;
+  f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 80;
+  f.fills = [];
+  f.clipsContent = false;
+  page.appendChild(f);
+  f.x = items.length ? Math.min(...items.map((n) => n.x)) : 0;
+  f.y = items.length ? Math.min(...items.map((n) => n.y)) : 0;
+  for (const n of [...items].sort((a, b) => stackRank(a) - stackRank(b))) f.appendChild(n);
+  // Boards that are not components (Identity, Foundations…) keep their layout, to the right of the stack.
+  const left = others.length ? Math.min(...others.map((n) => n.x)) : 0;
+  const shift = f.x + f.width + 200 - left;
+  if (others.length && shift > 0 && others.some((n) => n.x < f.x + f.width && n.y < f.y + f.height && n.y + n.height > f.y)) for (const n of others) n.x += shift;
+  return f;
+}
+
+/** Puts a component (set) or the icons board into the stack, in its place: after the last item of its kind. */
+export async function fileInStack(n: SceneNode): Promise<void> {
+  const stack = await componentsStack();
+  const rank = stackRank(n);
+  const kids = stack.children.filter((k) => k !== n);
+  let at = kids.length;
+  for (let i = 0; i < kids.length; i++) if (stackRank(kids[i]) > rank) {
+    at = i;
+    break;
+  }
+  stack.insertChild(at, n);
+  if ('layoutPositioning' in n) n.layoutPositioning = 'AUTO';
 }

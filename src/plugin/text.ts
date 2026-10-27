@@ -123,6 +123,8 @@ async function applySegmentOverrides(node: TextNode, segments: SegmentSpec[], ba
  * Applies text content and typography. `isNew` nodes get inherited font/color defaults;
  * existing nodes only change what the spec mentions.
  */
+const RTL_SCRIPT = /[\u0590-\u05ff\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/;
+
 export async function applyText(node: TextNode, spec: Partial<Spec>, inh: Inherit, ctx: Ctx, path: string, isNew: boolean): Promise<void> {
   if (!isNew) await ctx.loadFontsIn(node);
 
@@ -164,7 +166,11 @@ export async function applyText(node: TextNode, spec: Partial<Spec>, inh: Inheri
     else node.fills = r.paints;
   }
 
-  const align = spec.textAlign ?? (isNew && inh.rtl ? 'right' : undefined);
+  // Direction: the inherited rtl, else the text itself (Arabic/Hebrew script → right-to-left).
+  const rtl = inh.rtl ?? RTL_SCRIPT.test(node.characters);
+  let align = spec.textAlign ?? (isNew && rtl ? 'right' : undefined);
+  if (align === 'start') align = rtl ? 'right' : 'left';
+  else if (align === 'end') align = rtl ? 'left' : 'right';
   if (align) node.textAlignHorizontal = ({ left: 'LEFT', center: 'CENTER', right: 'RIGHT', justify: 'JUSTIFIED' } as const)[align];
   if (spec.valign) node.textAlignVertical = ({ top: 'TOP', center: 'CENTER', bottom: 'BOTTOM' } as const)[spec.valign];
   if (spec.paragraphSpacing !== undefined) node.paragraphSpacing = spec.paragraphSpacing;

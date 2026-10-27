@@ -20,7 +20,10 @@ figma-mcp again.
 | The request is about… | Read first |
 |---|---|
 | Screens, flows, landing pages, dashboards, banners, redesigns, polish | [references/design.md](references/design.md) |
-| References: finding them, the lettered board, building from the one the user picked (adapt it to the identity — no write-up) | [references/references.md](references/references.md) |
+| Understanding a new request first: product, audience, goal, pages and sections, language/RTL, assumptions, search queries per section → `## Product` in the brief | [references/analysis.md](references/analysis.md) |
+| References: finding them, the lettered board, adapting them to the identity (no write-up) | [references/references.md](references/references.md) |
+| Several references → one design, merged automatically: one board per section, you choose what to take from each, mark and crop it (`reference_crops` regions), components from the crops, build from the crops; the user can override | [references/multi-reference.md](references/multi-reference.md) |
+| The user's feedback on a design: refine it, change a section's reference ("مش عاجبني الهيرو، غيّره"), a new direction, keep/remove/restore — never offering again what they rejected | [references/feedback.md](references/feedback.md) |
 | One identity for everything: define or lock the brand, extract it from a site/screenshots, unify or audit consistency, carry it to code (`DESIGN.md`) | [references/identity.md](references/identity.md) |
 | Variables/tokens, styles, components and variants, themes, a UI kit | [references/design-system.md](references/design-system.md) |
 | A clickable prototype: links, transitions, overlays, scrolling, flows | [references/prototype.md](references/prototype.md) |
@@ -30,14 +33,14 @@ figma-mcp again.
 | Something only the Plugin API can do (`execute`) | [references/execute.md](references/execute.md) |
 | An error or odd behavior | [references/troubleshooting.md](references/troubleshooting.md) |
 
-**Anything new to design starts from references.** A new screen, section, page, landing page or banner —
-"اعمل هيرو", "صمم الهوم", a logo with "design the site" — goes references → design: find references, show the
-lettered board, the user picks a letter, then you build it in the identity. Skip the board only when the user
+**Anything new to design starts with analysis, then references.** A new product, screen, section, page, landing page or banner —
+"اعمل هيرو", "صمم الهوم", a logo with "design the site" — goes analysis → references → design: understand the request and plan the sections with their search queries
+([references/analysis.md](references/analysis.md)), find references for **every** section on its own board (`References – Home – Hero`, `References – Home – Services`… — nav to footer, not only the hero; full-page sources like Land-book give every section of a site to crop from; the tools report which planned sections still have none), merge them automatically (what to take from each → crops), make the components from the crops, and build it in the identity — without waiting for a pick. Skip the board only when the user
 gave or picked a reference already, says to design directly ("من غير ريفرنس", "صمم على طول"), or the work is a
 change, a state or a fix of an existing screen, or a region an identity pattern already covers.
 
-Usual combinations: a new screen/section → references + design (+ identity when the file has none yet — a logo
-alone seeds it); "design it like this" / a link or screenshot → references + design; "design the app" → references
+Usual combinations: a new screen/section → analysis + references + design (+ identity when the file has none yet — a logo
+alone seeds it); "design it like this" / a link or screenshot → references + design (several → + multi-reference); "design the app" → references
 per key section + design (+ design-system when it needs components or tokens;
 + identity when the file has no `## Identity` in its brief yet, or the work is for a new product);
 "make it look like <brand/site>" → identity + design-system;
@@ -67,6 +70,7 @@ If your client does not show images returned by tools, call `screenshot` with `s
 | Prototype links, flows, scrolling | `prototype` |
 | Audit against principles (+ safe auto-fix) | `lint` |
 | References → lettered board on `References` (pages, image links, screenshots) | `references` |
+| What to take from each reference (your regions, or marks the user drew) → full-resolution crops to build from | `reference_crops` |
 | Images the design waits for → prompts file; generated images → into place | `image_prompts`, `place_images` |
 | Free stock photos (Unsplash/Pexels) for product images | `stock_photos` |
 | Design → code | `get_design_context`, `export_tokens`, `export` |
@@ -88,10 +92,10 @@ If your client does not show images returned by tools, call `screenshot` with `s
 
 ## 2. The loop
 
-**Orient → References (new work) → Plan → Build in sections → Look → Fix → Report.**
+**Orient → Analyse + References (new work) → Plan → Build in sections → Look → Fix → Report.**
 
 1. **Orient.** `status` (pages!) → `brief` (get) → `get_design_system` (tokens, styles, components to reuse) → `get_metadata` on the area you will touch. A `## Identity` block in the brief is binding: its tokens, components, patterns, icon set and imagery words are the only ones you use ([references/identity.md](references/identity.md)). Never design blind and never assume a file is empty — check other pages. Something with the same name already there? Update it, don't make a second one.
-2. **References for new work**: new screen/section/page/banner → the board and the user's pick first ([references/references.md](references/references.md)); you build only after they choose.
+2. **Analysis + references for new work**: new screen/section/page/banner → the short analysis (`## Product` in the brief, queries per section — [references/analysis.md](references/analysis.md)), then the board and the automatic merge into crops ([references/references.md](references/references.md), [references/multi-reference.md](references/multi-reference.md)); build from the crops in the same turn.
 3. **Plan in words** (3–8 lines; show the user when non-trivial): purpose, which page, device size, structure top→bottom, components to reuse vs. create, tokens to use, states to cover, images needed. Ask only questions whose answers change the result.
 4. **Build in sections.** One meaningful region per `build` call (a header, a form, a card list) — big enough to be efficient, small enough to retry. Use `ref` names so later calls can target layers.
 5. **Look.** `build` returns a screenshot for top-level work; otherwise call `screenshot`. Check: clipped or overflowing text, collapsed widths, overlaps, alignment, spacing rhythm, hierarchy, contrast. Fix with `edit` before moving on.
@@ -153,8 +157,9 @@ Components, References, Trash.
 - `align: "stretch"` makes children fill the cross axis. A `fill` child needs a parent with a real size on that axis — a hugging parent collapses it (build warns you).
 - Text wraps only with a width (`w: "fill"` or a number); otherwise it is one auto-width line.
 - `"$name"` binds a variable, `"@Name"` uses a style; both must exist (build checks every name first and suggests corrections).
-- `font`, `color` and `rtl` set on a container are inherited by the text and icons inside it.
-- Icons: `"icon": "set:name"` from Iconify (`icons` tool to search). They become reusable components `icon/<set>/<name>` on the Icons board of the Components page; the instance takes `color` and `size`.
+- `font`, `color` and `rtl` set on a container are inherited by the text and icons inside it — and by anything built inside it later (`parentId`). Children in reading order; `start`/`end` follow the direction. Arabic ↔ English: `edit` `mirror` (a copy of a page, or `addVariant: true` on a component for a `Dir` variant).
+- Component first: sections and repeated parts are components (`Section/Hero`…) and the page holds their instances (design.md §4–5).
+- Icons: `"icon": "set:name"` from Iconify (`icons` tool to search). They become reusable components `icon/<set>/<name>` on the Icons board, first in the Components page's stack (one auto layout column holding every component, sections last); the instance takes `color` and `size`.
 - Images: `src` = absolute file path or URL (PNG/JPG/GIF; WebP/AVIF converted on macOS; an Unsplash/Pexels/Pixabay photo page resolves to its photo). An image that doesn't exist yet: `{ "type": "image", "name": "<what it is>", "prompt": "<full generation prompt>" }` → a gray placeholder with an id (IMG-001); then `image_prompts`.
 - Nothing is created if validation fails; if Figma fails mid-way the partial result is removed. Read `warnings` in every result.
 

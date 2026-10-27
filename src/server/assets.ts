@@ -103,6 +103,41 @@ export function figmaImage(buf: Buffer, src: string): { data?: string; svg?: str
   throw new Error(`image ${src} is not an image Figma can use (PNG, JPEG, GIF, WebP or AVIF).`);
 }
 
+const FIGMA_MAX_PX = 4096;
+
+/**
+ * Figma refuses images over 4096 px on a side. A full-page screenshot (e.g. 2880×28000) is scaled to the board
+ * width and cut into stacked tiles; the tiles are saved next to the file. macOS only (sips).
+ */
+export function figmaTiles(file: string, size: { w: number; h: number }, width = 1440, tileH = 4000): Array<{ file: string; w: number; h: number }> {
+  if (size.w <= FIGMA_MAX_PX && size.h <= FIGMA_MAX_PX) return [{ file, ...size }];
+  if (process.platform !== 'darwin') throw new Error(`${path.basename(file)} is ${size.w}×${size.h}px — Figma takes at most ${FIGMA_MAX_PX}px a side. Save a shorter screenshot (or one section of the page).`);
+  const ext = path.extname(file) || '.jpg';
+  const base = file.slice(0, file.length - ext.length);
+  const w = Math.min(size.w, width);
+  const h = Math.round((size.h * w) / size.w);
+  const scaled = `${base}-w${w}${ext}`;
+  execFileSync('sips', ['--resampleWidth', String(w), file, '--out', scaled], { stdio: 'ignore', timeout: 60_000 });
+  if (h <= FIGMA_MAX_PX) return [{ file: scaled, w, h }];
+  const tiles: Array<{ file: string; w: number; h: number }> = [];
+  for (let y = 0, k = 1; y < h; y += tileH, k++) {
+    const th = Math.min(tileH, h - y);
+    const out = `${base}-tile-${k}${ext}`;
+    // sips ignores --cropOffset near the bottom edge, so only crop from the top: down to the tile's bottom, flip,
+    // keep the tile's height, flip back.
+    const sips = (...args: string[]) => execFileSync('sips', args, { stdio: 'ignore', timeout: 60_000 });
+    sips('-c', String(y + th), String(w), '--cropOffset', '0', '0', scaled, '--out', out);
+    if (y > 0) {
+      sips('-f', 'vertical', out);
+      sips('-c', String(th), String(w), '--cropOffset', '0', '0', out);
+      sips('-f', 'vertical', out);
+    }
+    tiles.push({ file: out, w, h: th });
+  }
+  fs.rmSync(scaled, { force: true });
+  return tiles;
+}
+
 export const GALLERY_IMAGE_REFUSED = (src: string) =>
   `${src} is from a design gallery — other people's work is a reference, never a product image. Put it on the References page (the references tool, or build with page: "References"); in the design use the user's assets, a placeholder with a prompt, or a free stock photo.`;
 

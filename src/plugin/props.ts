@@ -407,7 +407,7 @@ export async function applyProps(node: SceneNode, s: Partial<Spec>, inh: Inherit
     // empty text node freezes its width at 0 and FILL can no longer widen it.
     const textSpec: Partial<Spec> = { ...s };
     if (s.align !== undefined && s.textAlign === undefined)
-      textSpec.textAlign = ({ start: 'left', center: 'center', end: 'right', baseline: 'left', stretch: 'justify' } as const)[s.align];
+      textSpec.textAlign = ({ start: 'start', center: 'center', end: 'end', baseline: 'start', stretch: 'justify' } as const)[s.align];
     if (s.fill !== undefined && s.color === undefined) textSpec.color = s.fill ?? [];
     await applyText(node, textSpec, inh, ctx, path, o.isNew);
   }

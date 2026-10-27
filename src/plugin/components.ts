@@ -5,7 +5,7 @@ import { applyAssets, expandVariants, interactions as normalizeInteractions, new
 import { build, buildNode, defineComponentProps, preflight, summarize } from './build.ts';
 import { Ctx } from './ctx.ts';
 import { pageOf } from './inspect.ts';
-import { ensurePage, fitSections, freeSpot, rolePage } from './pages.ts';
+import { ensurePage, fitSections, freeSpot, rolePage, componentsStack, fileInStack, isComponentsStack } from './pages.ts';
 import { badRequest } from './errors.ts';
 import { applyPendingInteractions, toReaction } from './prototype.ts';
 import type { Inherit } from './text.ts';
@@ -33,7 +33,8 @@ export interface CreateComponentParams {
 async function componentParent(p: CreateComponentParams): Promise<string | undefined> {
   if (p.parentId) return p.parentId;
   const { page } = p.page ? await ensurePage(p.page) : await rolePage('components');
-  return page.id;
+  // On the Components page every component goes into its one auto layout stack.
+  return page.getPluginData('role') === 'components' ? (await componentsStack()).id : page.id;
 }
 
 const matches = (props: Record<string, string>, cond: Record<string, string | string[]> = {}) =>
@@ -85,6 +86,7 @@ export async function createComponent(p: CreateComponentParams) {
     if (p.props) spec.props = p.props as Spec['props'];
     const res = await build(spec, { parentId: await componentParent(p), x: p.x, y: p.y, focus: p.focus, switchPage: false, allowDuplicate: p.allowDuplicate });
     const node = (await figma.getNodeByIdAsync(res.root.id)) as ComponentNode;
+    if (isComponentsStack(node.parent)) await fileInStack(node);
     return {
       component: { ...res.root, key: node.key, page: res.page },
       properties: Object.keys(node.componentPropertyDefinitions),
@@ -129,8 +131,11 @@ export async function createComponent(p: CreateComponentParams) {
     set.name = p.name;
     if (p.description) set.description = p.description;
     layoutVariantGrid(set, Object.keys(p.variants.axes), p.gap ?? 24);
-    set.x = spot.x;
-    set.y = spot.y;
+    if (isComponentsStack(parent)) await fileInStack(set);
+    else {
+      set.x = spot.x;
+      set.y = spot.y;
+    }
     ctx.registerComponent(set);
 
     const keys = p.props ? await defineComponentProps(set, p.props, ctx, 'props') : {};

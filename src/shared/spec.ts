@@ -160,7 +160,8 @@ export interface Spec {
   style?: string;
   font?: FontSpec;
   color?: PaintSpec[];
-  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  /** start/end follow the direction: start = right in RTL. */
+  textAlign?: 'left' | 'center' | 'right' | 'justify' | 'start' | 'end';
   valign?: 'top' | 'center' | 'bottom';
   maxLines?: number;
   truncate?: boolean;
@@ -374,8 +375,8 @@ const JUSTIFY: Record<string, 'start' | 'center' | 'end' | 'between' | 'around' 
   between: 'between', 'space-between': 'between', spacebetween: 'between', space_between: 'between',
   around: 'around', 'space-around': 'around', evenly: 'evenly', 'space-evenly': 'evenly',
 };
-const TEXT_ALIGN: Record<string, 'left' | 'center' | 'right' | 'justify'> = {
-  left: 'left', start: 'left', center: 'center', middle: 'center', right: 'right', end: 'right', justify: 'justify', justified: 'justify',
+const TEXT_ALIGN: Record<string, 'left' | 'center' | 'right' | 'justify' | 'start' | 'end'> = {
+  left: 'left', start: 'start', center: 'center', middle: 'center', right: 'right', end: 'end', justify: 'justify', justified: 'justify',
 };
 const VALIGN: Record<string, 'top' | 'center' | 'bottom'> = { top: 'top', start: 'top', center: 'center', middle: 'center', bottom: 'bottom', end: 'bottom' };
 const FIT: Record<string, 'fill' | 'fit' | 'crop' | 'tile'> = {

@@ -64,6 +64,9 @@ const waiting = [
   { nodeId: '20:3', imageId: 'IMG-002', name: 'Avatar', page: 'App', screen: 'Profile', path: 'Profile / Header', w: 96, h: 96, prompt: 'Portrait of a smiling woman, soft studio light' },
 ];
 const placedNodes = new Set<string>();
+let briefText = '';
+let boardNow: { id: string; frames: Array<{ id: string; name: string; caption: string }> } | null = null;
+const trashed: string[] = [];
 const placeCalls: string[][] = [];
 
 const handlers = {
@@ -79,6 +82,7 @@ const handlers = {
   }),
   screenshot: () => ({ images: [{ nodeId: '5:1', name: 'x', type: 'FRAME', w: 1, h: 1, scale: 1, format: 'PNG', data: PNG }] }),
   extract: () => extractFixture,
+  create_component: () => ({ component: { id: '7:1', name: 'x' } }),
   export: (p: { items: unknown[] }) => ({ files: p.items.map(() => ({ nodeId: '1:2', name: 'icon', ext: 'svg', data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64') })) }),
   placeholders: () => ({ placeholders: waiting.filter((w) => !placedNodes.has(w.nodeId)) }),
   place_image: (p: { ids: string[]; imageData: string }) => {
@@ -86,7 +90,20 @@ const handlers = {
     placeCalls.push(p.ids);
     return { placed: p.ids.map((id) => ({ id, name: 'Image' })) };
   },
-  execute: () => ({ result: null, logs: [], warnings: [] }),
+  execute: () => ({ result: boardNow, logs: [], warnings: [] }),
+  brief: (p: { action?: string; text?: string }) => {
+    if (p.action === 'append') briefText = `${briefText ? `${briefText}\n` : ''}- 2026-10-27: ${p.text}`;
+    return { brief: briefText || null };
+  },
+  edit: (p: { ops: Array<{ op: string; ids?: string[] }> }) => {
+    for (const o of p.ops) if (o.op === 'delete') trashed.push(...(o.ids ?? []));
+    return { ok: true, applied: p.ops.length };
+  },
+  reference_marks: (p: { list?: boolean }) => p.list ? { marks: [{ letter: 'A', board: 'References – Home – Hero', label: 'hero' }, { letter: 'C', board: 'References – Home – Services', label: 'component: service card', section: 'component', take: 'service card' }], references: [] } : ({
+    crops: [{ letter: 'A', reference: 'A – Clinic landing', markId: '9:1', label: 'hero: headline', section: 'hero', take: 'headline', region: { x: 0.1, y: 0.2, w: 0.5, h: 0.3 }, px: { w: 1, h: 1 }, data: PNG }],
+    unmarked: ['B'],
+    references: [{ letter: 'A', reference: 'A – Clinic landing' }, { letter: 'B', reference: 'B – hero' }],
+  }),
   variables_read: () => ({
     collections: [{ id: 'c', name: 'Theme', modes: [{ id: 'l', name: 'Light' }, { id: 'd', name: 'Dark' }], defaultModeId: 'l' }],
     variables: [{ id: 'v', name: 'color/surface', collectionId: 'c', type: 'COLOR', scopes: ['FRAME_FILL'], codeSyntax: {}, values: { l: { r: 1, g: 1, b: 1, a: 1 }, d: { r: 0, g: 0, b: 0, a: 1 } } }],
@@ -112,7 +129,7 @@ after(async () => {
 test('lists all tools', async () => {
   const { tools } = await A.client.listTools();
   const names = tools.map((t) => t.name).sort();
-  for (const n of ['status', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'references', 'stock_photos', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
+  for (const n of ['status', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'references', 'reference_crops', 'stock_photos', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
   for (const t of tools) assert.ok((t.description ?? '').length < 4000, `${t.name} description too long`);
 });
 
@@ -221,6 +238,79 @@ test('references: pages and screenshots become a lettered board; robots.txt and 
     assert.ok(fs.readdirSync(path.join(project, 'references')).some((f) => f.startsWith('home-hero-1')));
   } finally {
     site.close();
+  }
+});
+
+test('reference_crops: the user marks come back as image crops saved in the project', async () => {
+  const r = (await A.client.callTool({ name: 'reference_crops', arguments: { within: '5:1' } })) as { content: Array<{ type: string }> };
+  const t = text(r);
+  assert.match(t, /1\. A → hero \(user mark\): headline — .*references\/crops\/board-A-1-headline\.png/);
+  assert.match(t, /Not marked: B/);
+  assert.ok(r.content.some((c) => c.type === 'image'), 'crop attached as an image');
+  assert.ok(fs.existsSync(path.join(project, 'references', 'crops', 'board-A-1-headline.png')));
+  // Automatic merge: the agent's chosen parts go to the plugin to be drawn and cropped.
+  const regions = [{ ref: 'B', section: 'hero', x: 0, y: 0, w: 1, h: 0.4 }, { ref: 'A', section: 'hero', take: 'headline', x: 0.1, y: 0.1, w: 0.5, h: 0.2 }];
+  await A.client.callTool({ name: 'reference_crops', arguments: { within: '5:1', regions } });
+  const sent = plugin.requests.filter((q) => q.method === 'reference_marks').at(-1)!.params as { regions: unknown };
+  assert.deepEqual(sent.regions, regions);
+  const missing = (await A.client.callTool({ name: 'reference_crops', arguments: { for: 'Nope' } })) as { isError?: boolean };
+  assert.equal(missing.isError, true);
+});
+
+test('references: a turned-down reference is recorded in the brief, trashed and never offered again', async () => {
+  const site = http.createServer((req, res) => {
+    if (req.url === '/robots.txt') return res.writeHead(404).end();
+    if (req.url === '/shot.png') return res.writeHead(200, { 'content-type': 'image/png' }).end(Buffer.from(PNG, 'base64'));
+    res.writeHead(200, { 'content-type': 'text/html' }).end('<html><head><title>Ref</title><meta property="og:image" content="/shot.png"></head></html>');
+  });
+  await new Promise<void>((r) => site.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${(site.address() as AddressInfo).port}`;
+  boardNow = { id: '7:1', frames: [{ id: '7:2', name: 'A – Ref (127.0.0.1)', caption: `${base}/a` }, { id: '7:3', name: 'B – Ref (127.0.0.1)', caption: `${base}/b — light` }] };
+  try {
+    const r = await A.client.callTool({ name: 'references', arguments: { for: 'Home – Hero', reject: [{ letter: 'b', reason: 'تقيل ومزدحم' }], sources: [`${base}/b?utm_source=x`, `${base}/a`, `${base}/c`] } });
+    const t = text(r);
+    assert.match(t, /B rejected \(http:\/\/127\.0\.0\.1:\d+\/b\) — "تقيل ومزدحم"/);
+    assert.match(t, /\/b\?utm_source=x: rejected earlier \(brief\): "تقيل ومزدحم"/);
+    assert.match(t, /\/a: already on the board as A/);
+    assert.match(t, /letter: C/, 'the next letter after the rejected B');
+    assert.deepEqual(trashed, ['7:3']);
+    assert.match(briefText, /Rejected: References – Home – Hero ← B \(http:\/\/127\.0\.0\.1:\d+\/b\) — "تقيل ومزدحم"/);
+
+    // A later session: the board no longer shows B, the brief still refuses it and C is not reused.
+    boardNow = { id: '7:1', frames: [{ id: '7:2', name: 'A – Ref (127.0.0.1)', caption: `${base}/a` }] };
+    const again = await A.client.callTool({ name: 'references', arguments: { for: 'Home – Hero', sources: [`${base}/b`, `${base}/d`] } });
+    assert.match(text(again), /\/b: rejected earlier/);
+    assert.match(text(again), /letter: C/);
+  } finally {
+    site.close();
+    boardNow = null;
+  }
+});
+
+test('build warns when a planned section has no reference to build on', async () => {
+  const saved = briefText;
+  briefText = 'Sections – Home: hero, process';
+  try {
+    const hero = await A.client.callTool({ name: 'build', arguments: { page: 'Web', parentId: '1:1', spec: { type: 'frame', name: 'Hero' } } });
+    assert.doesNotMatch(text(hero), /no reference to build on/);
+    const process = await A.client.callTool({ name: 'build', arguments: { page: 'Web', parentId: '1:1', spec: { type: 'frame', name: 'Process' } } });
+    assert.match(text(process), /"Process" is a planned section of Home with no reference to build on/);
+  } finally {
+    briefText = saved;
+  }
+});
+
+test('create_component says when a component is not made from a reference crop', async () => {
+  const saved = briefText;
+  briefText = 'Sections – Home: hero\nComponents: button (primary, outline), service card';
+  try {
+    const call = (name: string, description?: string) => A.client.callTool({ name: 'create_component', arguments: { name, description, spec: { type: 'row' }, screenshot: false } });
+    assert.match(text(await call('Button')), /"Button" is a planned component with no crop/);
+    assert.match(text(await call('Cards/Service card')), /Add "From: references\/crops/);
+    assert.doesNotMatch(text(await call('Service card', 'Service tile. From: references/crops/home-services-C-1-service-card.png')), /crop/);
+    assert.match(text(await call('Badge')), /"Badge" has no reference crop/);
+  } finally {
+    briefText = saved;
   }
 });
 

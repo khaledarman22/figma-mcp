@@ -504,11 +504,11 @@
   };
   var TEXT_ALIGN = {
     left: "left",
-    start: "left",
+    start: "start",
     center: "center",
     middle: "center",
     right: "right",
-    end: "right",
+    end: "end",
     justify: "justify",
     justified: "justify"
   };
@@ -2843,8 +2843,9 @@
       if (seg.link) node.setRangeHyperlink(start2, end, { type: "URL", value: seg.link });
     }
   }
+  var RTL_SCRIPT = /[\u0590-\u05ff\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/;
   async function applyText(node, spec, inh, ctx, path, isNew) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     if (!isNew) await ctx.loadFontsIn(node);
     let styleFont;
     if (spec.style) {
@@ -2874,12 +2875,15 @@
       if (r.styleId) await node.setFillStyleIdAsync(r.styleId);
       else node.fills = r.paints;
     }
-    const align = (_e = spec.textAlign) != null ? _e : isNew && inh.rtl ? "right" : void 0;
+    const rtl = (_e = inh.rtl) != null ? _e : RTL_SCRIPT.test(node.characters);
+    let align = (_f = spec.textAlign) != null ? _f : isNew && rtl ? "right" : void 0;
+    if (align === "start") align = rtl ? "right" : "left";
+    else if (align === "end") align = rtl ? "left" : "right";
     if (align) node.textAlignHorizontal = { left: "LEFT", center: "CENTER", right: "RIGHT", justify: "JUSTIFIED" }[align];
     if (spec.valign) node.textAlignVertical = { top: "TOP", center: "CENTER", bottom: "BOTTOM" }[spec.valign];
     if (spec.paragraphSpacing !== void 0) node.paragraphSpacing = spec.paragraphSpacing;
     if (spec.link) node.setRangeHyperlink(0, node.characters.length, { type: "URL", value: spec.link });
-    if ((_f = spec.segments) == null ? void 0 : _f.length) await applySegmentOverrides(node, spec.segments, base != null ? base : { family: DEFAULT_FAMILY, style: "Regular" }, inh.font, ctx, path);
+    if ((_g = spec.segments) == null ? void 0 : _g.length) await applySegmentOverrides(node, spec.segments, base != null ? base : { family: DEFAULT_FAMILY, style: "Regular" }, inh.font, ctx, path);
   }
   function applyTruncation(node, spec) {
     var _a;
@@ -3116,7 +3120,7 @@
   }
 
   // src/plugin/inspect.ts
-  var PLUGIN_VERSION = true ? "1.0.0+27fe23a" : "dev";
+  var PLUGIN_VERSION = true ? "1.0.0+d06ab2a" : "dev";
   function selectionSummary() {
     return figma.currentPage.selection.slice(0, 50).map((n) => ({ id: n.id, name: n.name, type: n.type, w: Math.round(n.width), h: Math.round(n.height) }));
   }
@@ -3153,7 +3157,7 @@
     if (p.nodeId) roots.push(await ctx.node(p.nodeId));
     else if (figma.currentPage.selection.length) roots.push(...figma.currentPage.selection);
     else roots.push(figma.currentPage);
-    const walk = async (n, d, indent) => {
+    const walk2 = async (n, d, indent) => {
       var _a2, _b2;
       if (count >= max) {
         truncated = true;
@@ -3162,7 +3166,7 @@
       count++;
       if (n.type === "PAGE") {
         lines.push(`${indent}<page id="${n.id}" name="${esc(n.name)}" children="${n.children.length}">`);
-        for (const c of n.children) await walk(c, d + 1, indent + "  ");
+        for (const c of n.children) await walk2(c, d + 1, indent + "  ");
         lines.push(`${indent}</page>`);
         return;
       }
@@ -3193,10 +3197,10 @@
         return;
       }
       lines.push(`${indent}<${tag} ${attrs}>`);
-      for (const c of kids) await walk(c, d + 1, indent + "  ");
+      for (const c of kids) await walk2(c, d + 1, indent + "  ");
       lines.push(`${indent}</${tag}>`);
     };
-    for (const r of roots) await walk(r, 0, "");
+    for (const r of roots) await walk2(r, 0, "");
     return { xml: lines.join("\n"), nodes: count, truncated, page: { id: figma.currentPage.id, name: figma.currentPage.name } };
   }
   async function varLabel(alias, cache) {
@@ -3495,6 +3499,7 @@
     for (const [re, rank] of PAGE_ORDER) if (re.test(n)) return rank;
     return 50;
   }
+  var CANVAS = [{ type: "SOLID", color: { r: 0.831, g: 0.831, b: 0.831 } }];
   async function ensurePage(name, role) {
     const clean = name.trim();
     if (!clean) throw badRequest("page name is empty.");
@@ -3517,12 +3522,14 @@
       blank.name = clean;
       if (role) blank.setPluginData("role", role);
       blank.setPluginData("createdBy", CREATED_BY);
+      if (role !== "trash") blank.backgrounds = CANVAS;
       return { page: blank, created: false };
     }
     const page = figma.createPage();
     page.name = clean;
     if (role) page.setPluginData("role", role);
     page.setPluginData("createdBy", CREATED_BY);
+    if (role !== "trash") page.backgrounds = CANVAS;
     const rank = pageRank(clean);
     const pages = figma.root.children.filter((p) => p !== page);
     const at = pages.findIndex((p) => pageRank(p.name) > rank);
@@ -3785,6 +3792,48 @@ ${imageId}` : l;
       placed.push({ id: n.id, name: n.name });
     }
     return { placed };
+  }
+  var STACK_ROLE = "components-stack";
+  var isComponentsStack = (n) => !!n && "getPluginData" in n && n.getPluginData("role") === STACK_ROLE;
+  var stackRank = (n) => n.getPluginData("role") === "icons" ? 0 : /^sections?\//i.test(n.name) ? 2 : 1;
+  var isStackItem = (n) => n.type === "COMPONENT" || n.type === "COMPONENT_SET" || n.getPluginData("role") === "icons";
+  async function componentsStack() {
+    const { page } = await rolePage("components");
+    const found = page.children.find(isComponentsStack);
+    if (found) return found;
+    const items = page.children.filter(isStackItem).sort((a, b) => a.y - b.y || a.x - b.x);
+    const others = page.children.filter((n) => !isStackItem(n));
+    const f = figma.createFrame();
+    f.name = "Components";
+    f.setPluginData("role", STACK_ROLE);
+    f.layoutMode = "VERTICAL";
+    f.primaryAxisSizingMode = "AUTO";
+    f.counterAxisSizingMode = "AUTO";
+    f.counterAxisAlignItems = "MIN";
+    f.itemSpacing = 96;
+    f.paddingTop = f.paddingBottom = f.paddingLeft = f.paddingRight = 80;
+    f.fills = [];
+    f.clipsContent = false;
+    page.appendChild(f);
+    f.x = items.length ? Math.min(...items.map((n) => n.x)) : 0;
+    f.y = items.length ? Math.min(...items.map((n) => n.y)) : 0;
+    for (const n of [...items].sort((a, b) => stackRank(a) - stackRank(b))) f.appendChild(n);
+    const left = others.length ? Math.min(...others.map((n) => n.x)) : 0;
+    const shift = f.x + f.width + 200 - left;
+    if (others.length && shift > 0 && others.some((n) => n.x < f.x + f.width && n.y < f.y + f.height && n.y + n.height > f.y)) for (const n of others) n.x += shift;
+    return f;
+  }
+  async function fileInStack(n) {
+    const stack = await componentsStack();
+    const rank = stackRank(n);
+    const kids = stack.children.filter((k) => k !== n);
+    let at = kids.length;
+    for (let i = 0; i < kids.length; i++) if (stackRank(kids[i]) > rank) {
+      at = i;
+      break;
+    }
+    stack.insertChild(at, n);
+    if ("layoutPositioning" in n) n.layoutPositioning = "AUTO";
   }
 
   // src/plugin/props.ts
@@ -4150,7 +4199,7 @@ ${imageId}` : l;
       await ctx.loadFontsIn(node);
       const textSpec = __spreadValues({}, s);
       if (s.align !== void 0 && s.textAlign === void 0)
-        textSpec.textAlign = { start: "left", center: "center", end: "right", baseline: "left", stretch: "justify" }[s.align];
+        textSpec.textAlign = { start: "start", center: "center", end: "end", baseline: "start", stretch: "justify" }[s.align];
       if (s.fill !== void 0 && s.color === void 0) textSpec.color = (_b = s.fill) != null ? _b : [];
       await applyText(node, textSpec, inh, ctx, path, o.isNew);
     }
@@ -4281,16 +4330,16 @@ ${imageId}` : l;
   }
   async function iconHolder() {
     await figma.loadAllPagesAsync();
+    const isHolder = (c) => c.type === "FRAME" && c.getPluginData("role") === ICON_HOLDER_ROLE;
     for (const pg of figma.root.children) {
-      const found = pg.children.find((c) => c.type === "FRAME" && c.getPluginData("role") === ICON_HOLDER_ROLE);
-      if (found && pg.getPluginData("role") !== "trash") return found;
-    }
-    const { page } = await rolePage("components");
-    let left = Infinity;
-    let top = Infinity;
-    for (const c of page.children) {
-      left = Math.min(left, c.x);
-      top = Math.min(top, c.y);
+      if (pg.getPluginData("role") === "trash") continue;
+      for (const c of pg.children) {
+        if (isHolder(c)) return c;
+        if (isComponentsStack(c)) {
+          const inner = c.children.find(isHolder);
+          if (inner) return inner;
+        }
+      }
     }
     const f = figma.createFrame();
     f.name = "Icons";
@@ -4304,9 +4353,7 @@ ${imageId}` : l;
     f.resize(360, 100);
     f.layoutSizingHorizontal = "FIXED";
     f.layoutSizingVertical = "HUG";
-    page.appendChild(f);
-    f.x = Number.isFinite(left) ? Math.round(left - 360 - 200) : 0;
-    f.y = Number.isFinite(top) ? Math.round(top) : 0;
+    await fileInStack(f);
     return f;
   }
   async function iconComponent(name, svg, ctx) {
@@ -4435,6 +4482,13 @@ ${imageId}` : l;
         throw badRequest("internal: groups are built by buildGroup");
     }
   }
+  function dirOf(n) {
+    for (let q = n; q && q.type !== "PAGE" && q.type !== "DOCUMENT"; q = q.parent) {
+      const d = q.getPluginData("dir");
+      if (d) return d === "rtl";
+    }
+    return void 0;
+  }
   async function buildNode(spec, parent, inh, ctx, path, o) {
     var _a, _b, _c, _d, _e;
     if (spec.type === "group") return buildGroup(spec, parent, inh, ctx, path, o);
@@ -4443,6 +4497,7 @@ ${imageId}` : l;
     }
     if (parent.type === "INSTANCE") throw badRequest(`${path}: cannot add layers inside an instance; edit its main component or use overrides.`);
     const { node, natural } = await createNode(spec, ctx, path, o.opts);
+    if (spec.rtl !== void 0) node.setPluginData("dir", spec.rtl ? "rtl" : "ltr");
     if (o.index !== void 0 && o.index >= 0 && o.index <= parent.children.length) parent.insertChild(o.index, node);
     else parent.appendChild(node);
     ctx.created.push(node);
@@ -4634,11 +4689,11 @@ ${imageId}` : l;
       const r = opts.page ? await ensurePage(opts.page) : await rolePage("components");
       if (r.created) createdPage = r.page;
       if (r.page !== figma.currentPage && ((_a = opts.switchPage) != null ? _a : spec.type !== "component")) await figma.setCurrentPageAsync(r.page);
-      parent = r.page;
+      parent = spec.type === "component" && r.page.getPluginData("role") === "components" ? await componentsStack() : r.page;
     }
     const targetPage = parent.type === "PAGE" ? parent : pageOf(parent);
     if (isTrashPage(targetPage)) throw badRequest('That is the Trash page. Build on a content page (page: "App", "Web", "Dashboard", \u2026) or restore layers with edit {op: "restore"}.');
-    if (!replace && (parent.type === "PAGE" || parent.type === "SECTION") && spec.name && !opts.allowDuplicate) {
+    if (!replace && (parent.type === "PAGE" || parent.type === "SECTION" || isComponentsStack(parent)) && spec.name && !opts.allowDuplicate) {
       const want = spec.name.trim().toLowerCase();
       const twin = parent.children.find((c) => c.name.trim().toLowerCase() === want);
       if (twin) {
@@ -4650,7 +4705,7 @@ ${imageId}` : l;
     if (parent.type === "PAGE" && (targetPage == null ? void 0 : targetPage.getPluginData("role")) === "components" && spec.type !== "component" && spec.type !== "section") {
       ctx.warn("Built on the Components page: keep only components (and their documentation) there; screens go on their own page (App, Web, Dashboard\u2026).");
     }
-    const inh = { font: {}, color: void 0, rtl: void 0 };
+    const inh = { font: {}, color: void 0, rtl: dirOf(parent) };
     try {
       await ctx.loadFont({ family: DEFAULT_FAMILY, style: "Regular" });
     } catch (e) {
@@ -4661,6 +4716,7 @@ ${imageId}` : l;
     let root;
     try {
       root = await buildNode(spec, parent, inh, ctx, "spec", { index, crossFill: false, opts });
+      if (isComponentsStack(parent) && !replace) await fileInStack(root);
       if (replace) {
         if (!isAutoLayout(parent)) {
           root.x = replace.x;
@@ -4706,7 +4762,7 @@ ${imageId}` : l;
   async function componentParent(p) {
     if (p.parentId) return p.parentId;
     const { page } = p.page ? await ensurePage(p.page) : await rolePage("components");
-    return page.id;
+    return page.getPluginData("role") === "components" ? (await componentsStack()).id : page.id;
   }
   var matches2 = (props, cond = {}) => Object.entries(cond).every(([k, v]) => Array.isArray(v) ? v.map(String).includes(props[k]) : String(v) === props[k]);
   function layoutVariantGrid(set, axes, gap) {
@@ -4760,6 +4816,7 @@ ${imageId}` : l;
       if (p.props) spec.props = p.props;
       const res = await build(spec, { parentId: await componentParent(p), x: p.x, y: p.y, focus: p.focus, switchPage: false, allowDuplicate: p.allowDuplicate });
       const node = await figma.getNodeByIdAsync(res.root.id);
+      if (isComponentsStack(node.parent)) await fileInStack(node);
       return {
         component: __spreadProps(__spreadValues({}, res.root), { key: node.key, page: res.page }),
         properties: Object.keys(node.componentPropertyDefinitions),
@@ -4801,8 +4858,11 @@ ${imageId}` : l;
       set.name = p.name;
       if (p.description) set.description = p.description;
       layoutVariantGrid(set, Object.keys(p.variants.axes), (_d = p.gap) != null ? _d : 24);
-      set.x = spot.x;
-      set.y = spot.y;
+      if (isComponentsStack(parent)) await fileInStack(set);
+      else {
+        set.x = spot.x;
+        set.y = spot.y;
+      }
       ctx.registerComponent(set);
       const keys = p.props ? await defineComponentProps(set, p.props, ctx, "props") : {};
       if (ctx.binds.length) {
@@ -5235,8 +5295,189 @@ ${imageId}` : l;
     return res;
   }
 
+  // src/plugin/mirror.ts
+  var FLIP = { MIN: "MAX", MAX: "MIN" };
+  var DIR_PROP = /^(dir|direction)$/i;
+  var otherSide = (name) => /left|right/.test(name) ? name.replace(/left|right/g, (m) => m === "left" ? "right" : "left") : null;
+  async function iconComponents() {
+    const map = /* @__PURE__ */ new Map();
+    for (const page of figma.root.children) {
+      if (page.getPluginData("role") !== "components" && page.name !== "Components") continue;
+      await page.loadAsync();
+      for (const c of page.findAllWithCriteria({ types: ["COMPONENT"] })) if (c.name.startsWith("icon/")) map.set(c.name, c);
+    }
+    return map;
+  }
+  async function mirrorNodes(nodes, ctx, dir) {
+    let icons;
+    const missingIcons = /* @__PURE__ */ new Set();
+    const counts = { rows: 0, columns: 0, free: 0, texts: 0, icons: 0, instances: 0 };
+    const flipX = (k, width, origin = 0) => {
+      k.x = 2 * origin + width - k.x - k.width;
+      if ("constraints" in k) {
+        const h = k.constraints.horizontal;
+        if (h === "MIN" || h === "MAX") k.constraints = __spreadProps(__spreadValues({}, k.constraints), { horizontal: FLIP[h] });
+      }
+    };
+    async function visit(n) {
+      var _a, _b, _c, _d, _e, _f;
+      if (n.type === "TEXT") {
+        const a = n.textAlignHorizontal;
+        if (a === "LEFT" || a === "RIGHT") {
+          await ctx.loadFontsIn(n);
+          n.textAlignHorizontal = a === "LEFT" ? "RIGHT" : "LEFT";
+          counts.texts++;
+        }
+        return;
+      }
+      if (n.type === "INSTANCE") {
+        const main = await n.getMainComponentAsync();
+        const other = main && otherSide(main.name);
+        if (main == null ? void 0 : main.name.startsWith("icon/")) {
+          if (!other) return;
+          icons != null ? icons : icons = await iconComponents();
+          const swap = icons.get(other);
+          if (swap) {
+            n.swapComponent(swap);
+            counts.icons++;
+          } else missingIcons.add(other);
+          return;
+        }
+        if (!main) return;
+        const key = Object.keys(n.componentProperties).find((k) => DIR_PROP.test(k.replace(/#.*$/, "")) && n.componentProperties[k].type === "VARIANT");
+        const set = ((_a = main == null ? void 0 : main.parent) == null ? void 0 : _a.type) === "COMPONENT_SET" ? main.parent : null;
+        if (key && set) {
+          const options = (_c = (_b = set.variantGroupProperties[key.replace(/#.*$/, "")]) == null ? void 0 : _b.values) != null ? _c : [];
+          const now = String(n.componentProperties[key].value);
+          const next = (_d = options.find((v) => v !== now && /^(rtl|ltr|ar|en|arabic|english)$/i.test(v))) != null ? _d : options.find((v) => v !== now);
+          if (next) {
+            n.setProperties({ [key]: next });
+            counts.instances++;
+            return;
+          }
+        }
+        ctx.warn(`"${n.name}" (${n.id}) is an instance of "${(_f = (_e = set == null ? void 0 : set.name) != null ? _e : main == null ? void 0 : main.name) != null ? _f : "?"}" \u2014 it can't be rearranged here. Mirror its component and add a Dir variant (RTL/LTR), then mirror this again.`);
+        return;
+      }
+      if (!("children" in n)) return;
+      if (n.type === "GROUP" || n.type === "BOOLEAN_OPERATION") {
+        if (n.type === "GROUP") for (const k of n.children) flipX(k, n.width, n.x);
+        for (const k of n.children) await visit(k);
+        return;
+      }
+      const f = n;
+      const mode = "layoutMode" in f ? f.layoutMode : "NONE";
+      if (mode === "HORIZONTAL") {
+        const kids = [...f.children];
+        const slots = kids.map((k, i) => "layoutPositioning" in k && k.layoutPositioning === "ABSOLUTE" ? -1 : i).filter((i) => i >= 0);
+        const flow = slots.map((i) => kids[i]).reverse();
+        const order = [...kids];
+        slots.forEach((slot, j) => order[slot] = flow[j]);
+        order.forEach((k, i) => f.insertChild(i, k));
+        if (f.primaryAxisAlignItems === "MIN" || f.primaryAxisAlignItems === "MAX") f.primaryAxisAlignItems = FLIP[f.primaryAxisAlignItems];
+        counts.rows++;
+      } else if (mode === "VERTICAL") {
+        if (f.counterAxisAlignItems === "MIN" || f.counterAxisAlignItems === "MAX") f.counterAxisAlignItems = FLIP[f.counterAxisAlignItems];
+        counts.columns++;
+      } else if (mode === "GRID") {
+        const cols = f.gridColumnCount;
+        const flow = f.children.filter((k) => !("layoutPositioning" in k && k.layoutPositioning === "ABSOLUTE"));
+        if (f.gridItemsPositioning === "ROW_AUTO_FLOW") {
+          const order = [];
+          for (let r = 0; r < flow.length; r += cols) order.push(...flow.slice(r, r + cols).reverse());
+          order.forEach((k, i) => f.insertChild(i, k));
+        } else {
+          for (const k of flow) {
+            const g2 = k;
+            try {
+              g2.setGridChildPosition(g2.gridRowAnchorIndex, Math.max(0, cols - g2.gridColumnAnchorIndex - (g2.gridColumnSpan || 1)));
+            } catch (e) {
+              ctx.warn(`"${k.name}" (${k.id}) in grid "${f.name}" could not be moved to its mirrored cell.`);
+            }
+          }
+        }
+        counts.rows++;
+      }
+      if (mode === "NONE") {
+        for (const k of f.children) flipX(k, f.width);
+        if (f.children.length) counts.free++;
+      } else {
+        for (const k of f.children) if ("layoutPositioning" in k && k.layoutPositioning === "ABSOLUTE") flipX(k, f.width);
+        const l = f.paddingLeft;
+        f.paddingLeft = f.paddingRight;
+        f.paddingRight = l;
+      }
+      for (const k of f.children) await visit(k);
+    }
+    for (const n of nodes) {
+      const before = dirOf(n);
+      await visit(n);
+      const next = dir != null ? dir : before === void 0 ? void 0 : before ? "ltr" : "rtl";
+      if (next) n.setPluginData("dir", next);
+    }
+    if (missingIcons.size) ctx.warn(`No icon component for ${[...missingIcons].join(", ")} \u2014 add it (build an icon with that name) and mirror again, or swap those icons by hand.`);
+    return counts;
+  }
+  async function addDirVariants(nodes, ctx, dir) {
+    var _a, _b;
+    const out = [];
+    for (const n of nodes) {
+      const main = n.type === "INSTANCE" ? await n.getMainComponentAsync() : n;
+      const target = (main == null ? void 0 : main.type) === "COMPONENT" && ((_a = main.parent) == null ? void 0 : _a.type) === "COMPONENT_SET" ? main.parent : main;
+      if (!target || target.type !== "COMPONENT" && target.type !== "COMPONENT_SET") {
+        ctx.warn(`"${n.name}" (${n.id}) is not a component \u2014 make it one first (create_component, or edit to-component).`);
+        continue;
+      }
+      const set = target.type === "COMPONENT_SET" ? target : null;
+      if (set && Object.keys(set.variantGroupProperties).some((k) => DIR_PROP.test(k))) {
+        ctx.warn(`"${set.name}" already has a Dir variant.`);
+        continue;
+      }
+      const singleName = target.name;
+      const originals = set ? set.children.filter((c) => c.type === "COMPONENT") : [target];
+      const from = (_b = dirOf(originals[0])) != null ? _b : dir === "rtl" ? false : true;
+      const fromName = from ? "RTL" : "LTR";
+      const toName = from ? "LTR" : "RTL";
+      const twins = [];
+      for (const c of originals) {
+        const twin = c.clone();
+        (set != null ? set : c.parent).appendChild(twin);
+        await mirrorNodes([twin], ctx, from ? "ltr" : "rtl");
+        const base = set ? c.name : "";
+        twin.name = base ? `${base}, Dir=${toName}` : `Dir=${toName}`;
+        c.name = base ? `${base}, Dir=${fromName}` : `Dir=${fromName}`;
+        c.setPluginData("dir", from ? "rtl" : "ltr");
+        twins.push(twin);
+      }
+      let result;
+      if (set) result = set;
+      else {
+        const single = originals[0];
+        const { x, y } = single;
+        result = figma.combineAsVariants([single, ...twins], single.parent);
+        result.name = singleName;
+        if (single.description) result.description = single.description;
+        result.x = x;
+        result.y = y;
+      }
+      if (result.layoutMode === "NONE") {
+        const right = Math.max(...originals.map((c) => c.x + c.width));
+        twins.forEach((t, i) => {
+          t.x = right + 48 + (originals[i].x - Math.min(...originals.map((c) => c.x)));
+          t.y = originals[i].y;
+        });
+        const pad = 24;
+        const w = Math.max(...result.children.map((c) => c.x + c.width)) + pad;
+        const h = Math.max(...result.children.map((c) => c.y + c.height)) + pad;
+        result.resizeWithoutConstraints(w, h);
+      }
+      out.push({ set: `${result.name} (${result.id})`, added: twins.map((t) => t.name) });
+    }
+    return out;
+  }
+
   // src/plugin/edit.ts
-  var OPS = ["set", "text", "delete", "restore", "move", "duplicate", "rename", "insert", "wrap", "unwrap", "swap", "detach", "reset", "to-component", "combine-variants", "select", "page", "group", "ungroup", "flatten", "boolean", "place-image"];
+  var OPS = ["set", "text", "delete", "restore", "move", "duplicate", "rename", "insert", "wrap", "unwrap", "swap", "detach", "reset", "to-component", "combine-variants", "select", "page", "group", "ungroup", "flatten", "boolean", "place-image", "mirror"];
   async function idsOf(op, ctx, i) {
     var _a;
     const ids = (_a = op.ids) != null ? _a : op.id ? [op.id] : [];
@@ -5380,6 +5621,12 @@ ${imageId}` : l;
         if (op.ref) ctx.refs.set(op.ref, copies[0]);
         return { ids: copies.map((c) => c.id) };
       }
+      case "mirror": {
+        const nodes = await idsOf(op, ctx, i);
+        touched.push(...nodes);
+        if (op.addVariant) return { variants: await addDirVariants(nodes, ctx, op.dir) };
+        return __spreadValues({ mirrored: nodes.map((n) => n.id) }, await mirrorNodes(nodes, ctx, op.dir));
+      }
       case "insert": {
         if (!op.parent) throw badRequest(`${label}: needs "parent".`);
         const parent = container(await ctx.node(op.parent, `${label}.parent`), label);
@@ -5388,8 +5635,9 @@ ${imageId}` : l;
         issues.errors.push(...applyAssets(spec, assets));
         if (issues.errors.length) throw badRequest(issues.errors.join("; "));
         ctx.warnings.push(...issues.warnings);
-        await preflight(spec, ctx, { font: {} });
-        const node = await buildNode(spec, parent, { font: {} }, ctx, label, { index: op.index, opts: { focus: false } });
+        const inh = { font: {}, rtl: dirOf(parent) };
+        await preflight(spec, ctx, inh);
+        const node = await buildNode(spec, parent, inh, ctx, label, { index: op.index, opts: { focus: false } });
         if (op.ref) ctx.refs.set(op.ref, node);
         touched.push(node);
         return summarize(node);
@@ -5501,12 +5749,9 @@ ${imageId}` : l;
               instance.layoutSizingHorizontal = sizing.h;
               instance.layoutSizingVertical = sizing.v;
             }
-            const spot = freeSpot(home, c);
-            home.appendChild(c);
             if (c.layoutSizingHorizontal === "FILL") c.layoutSizingHorizontal = "FIXED";
             if (c.layoutSizingVertical === "FILL") c.layoutSizingVertical = "FIXED";
-            c.x = spot.x;
-            c.y = spot.y;
+            await fileInStack(c);
           }
           out.push(__spreadValues({ id: c.id, name: c.name, key: c.key, page: (_q = pageOf(c)) == null ? void 0 : _q.name }, instance ? { instance: instance.id } : {}));
         }
@@ -6489,6 +6734,202 @@ ${p.code}
     };
   }
 
+  // src/plugin/marks.ts
+  var CANVAS2 = /^Reference ([A-Z]{1,2})(\d*)$/;
+  var DEFAULT_NAME2 = /^(Rectangle|Ellipse|Polygon|Star|Vector|Frame|Line|Arrow|Group|Section)( \d+)?$/i;
+  var boxOf = (n) => {
+    const b = n.absoluteBoundingBox;
+    return b ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;
+  };
+  function intersect(a, b) {
+    const x = Math.max(a.x, b.x);
+    const y = Math.max(a.y, b.y);
+    const w = Math.min(a.x + a.w, b.x + b.w) - x;
+    const h = Math.min(a.y + a.h, b.y + b.h) - y;
+    return w >= 4 && h >= 4 ? { x, y, w, h } : null;
+  }
+  var inside = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+  function parseLabel(raw) {
+    const label = raw.trim();
+    const m = label.match(/^([^:：]{1,40})[:：]\s*(.+)$/);
+    return m ? { label, section: m[1].trim(), take: m[2].trim() } : { label, take: label || void 0 };
+  }
+  async function referencesPage() {
+    var _a;
+    const page = (_a = figma.root.children.find((p) => p.getPluginData("role") === "references")) != null ? _a : figma.root.children.find((p) => p.name.trim().toLowerCase() === "references");
+    if (page) await page.loadAsync();
+    return page != null ? page : null;
+  }
+  function walk(n, fn) {
+    if ("children" in n) for (const c of n.children) {
+      fn(c);
+      walk(c, fn);
+    }
+  }
+  async function naturalWidth(n) {
+    var _a, _b, _c;
+    const fills = "fills" in n && Array.isArray(n.fills) ? n.fills : [];
+    const img = fills.find((f) => f.type === "IMAGE" && !!f.imageHash);
+    if (!(img == null ? void 0 : img.imageHash)) return 0;
+    try {
+      return (_c = (_b = await ((_a = figma.getImageByHash(img.imageHash)) == null ? void 0 : _a.getSizeAsync())) == null ? void 0 : _b.width) != null ? _c : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+  var MARK_COLOR = { r: 1, g: 0.42, b: 0.1 };
+  function drawRegions(canvases, regions) {
+    var _a;
+    const problems = [];
+    const touched = /* @__PURE__ */ new Set();
+    for (const r of regions) {
+      const c = (_a = canvases.find((k) => k.key === r.ref.trim().toUpperCase())) != null ? _a : canvases.find((k) => k.key.replace(/\d+$/, "") === r.ref.trim().toUpperCase());
+      if (!c) {
+        problems.push(`no reference "${r.ref}" on this board`);
+        continue;
+      }
+      if (!touched.has(c.node.id)) {
+        for (const old of c.node.children.filter((k) => k.getPluginData("autoMark") === "1")) old.remove();
+        touched.add(c.node.id);
+      }
+      const clamp = (v) => Math.min(1, Math.max(0, Number(v) || 0));
+      const x = clamp(r.x), y = clamp(r.y);
+      const w = Math.min(clamp(r.w), 1 - x), h = Math.min(clamp(r.h), 1 - y);
+      if (w * c.node.width < 4 || h * c.node.height < 4) {
+        problems.push(`region on ${r.ref} is too small`);
+        continue;
+      }
+      const mark = figma.createRectangle();
+      c.node.appendChild(mark);
+      mark.name = [r.section, r.take].filter(Boolean).join(": ") || "part";
+      mark.setPluginData("autoMark", "1");
+      mark.x = x * c.node.width;
+      mark.y = y * c.node.height;
+      mark.resize(w * c.node.width, h * c.node.height);
+      mark.fills = [{ type: "SOLID", color: MARK_COLOR, opacity: 0.08 }];
+      mark.strokes = [{ type: "SOLID", color: MARK_COLOR }];
+      mark.strokeWeight = 3;
+      mark.dashPattern = [12, 8];
+    }
+    return problems;
+  }
+  var TILE = /^Image( \d+)?$/;
+  async function referenceMarks(p) {
+    var _a, _b;
+    let root;
+    if (p.within) {
+      const n = await getNodeSafe(p.within);
+      if (!n || !("children" in n)) throw badRequest(`"${p.within}" is not a section or frame on the References page.`);
+      root = n;
+    } else {
+      const page2 = await referencesPage();
+      if (!page2) throw badRequest("There is no References page yet \u2014 put references on the board first (references tool).");
+      root = page2;
+    }
+    const page = (() => {
+      let n = root;
+      while (n && n.type !== "PAGE") n = n.parent;
+      return n;
+    })();
+    const canvases = [];
+    walk(root, (n) => {
+      var _a2, _b2;
+      const m = n.name.match(CANVAS2);
+      if (!m || n.type !== "FRAME" || !n.children.length) return;
+      if (((_a2 = p.letters) == null ? void 0 : _a2.length) && !p.letters.map((l) => l.toUpperCase()).includes(m[1])) return;
+      const box = boxOf(n);
+      const frame = n.parent && n.parent.parent && "name" in n.parent.parent ? n.parent.parent : null;
+      let board = "";
+      for (let q = n.parent; q; q = q.parent) if (q.type === "SECTION") {
+        board = q.name;
+        break;
+      }
+      const tiles = n.children.filter((k) => TILE.test(k.name) && k.getPluginData("autoMark") !== "1");
+      if (box) canvases.push({ node: n, letter: m[1], key: `${m[1]}${m[2]}`, ref: (_b2 = frame == null ? void 0 : frame.name) != null ? _b2 : n.name, board, box, tiles: tiles.length ? tiles : [n.children[0]] });
+    });
+    if (!canvases.length) throw badRequest('No reference images found to mark. The board is made by the references tool (frames "A \u2013 \u2026" with a "Reference A" image area).');
+    const problems = ((_a = p.regions) == null ? void 0 : _a.length) ? drawRegions(canvases, p.regions) : [];
+    const marks = [];
+    const labels = [];
+    const canvasSet = new Set(canvases.map((c) => c.node.id));
+    const images = new Set(canvases.flatMap((c) => c.tiles.map((t) => t.id)));
+    const scope = page != null ? page : root;
+    walk(scope, (n) => {
+      if (images.has(n.id) || canvasSet.has(n.id) || !n.visible) return;
+      if (n.type === "TEXT") return void labels.push(n);
+      if (n.type === "SECTION") return;
+      const box = boxOf(n);
+      if (!box || box.w < 4 || box.h < 4) return;
+      if (n.type === "FRAME" && (/^[A-Z]{1,2} [–-] /.test(n.name) || n.name === "Images")) return;
+      if (canvases.some((c) => intersect(box, c.box) && !(box.w >= c.box.w - 1 && box.h >= c.box.h - 1))) marks.push(n);
+    });
+    const ids = new Set(marks.map((m) => m.id));
+    const top = marks.filter((m) => {
+      for (let q = m.parent; q; q = q.parent) if (ids.has(q.id)) return false;
+      return true;
+    });
+    const labelOf = (m) => {
+      var _a2;
+      const mb = boxOf(m);
+      const text = labels.find((t) => {
+        const tb = boxOf(t);
+        return tb && inside({ x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 }, mb);
+      });
+      return !DEFAULT_NAME2.test(m.name.trim()) ? m.name : (_a2 = text == null ? void 0 : text.characters) != null ? _a2 : "";
+    };
+    if (p.list) {
+      const marked = top.flatMap((m) => canvases.filter((c) => intersect(boxOf(m), c.box)).map((c) => __spreadProps(__spreadValues({ letter: c.letter, board: c.board }, parseLabel(labelOf(m))), { auto: m.getPluginData("autoMark") === "1" || void 0 })));
+      return { marks: marked, problems, references: canvases.map((c) => ({ letter: c.letter, board: c.board, reference: c.ref })) };
+    }
+    const maxPx = (_b = p.maxPx) != null ? _b : 2e3;
+    const crops = [];
+    const unmarked = canvases.filter((c) => !top.some((m) => intersect(boxOf(m), c.box))).map((c) => c.letter);
+    for (const m of top) {
+      const mb = boxOf(m);
+      for (const c of canvases) {
+        const area = intersect(mb, c.box);
+        if (!area) continue;
+        const raw = labelOf(m);
+        const tmp = figma.createFrame();
+        try {
+          tmp.name = "figma-mcp crop (temporary)";
+          tmp.fills = [];
+          tmp.clipsContent = true;
+          tmp.resize(area.w, area.h);
+          tmp.x = area.x;
+          tmp.y = area.y;
+          for (const tile of c.tiles) {
+            const tb = boxOf(tile);
+            if (!tb || !intersect(tb, area)) continue;
+            const copy = tile.clone();
+            tmp.appendChild(copy);
+            copy.x = tb.x - area.x;
+            copy.y = tb.y - area.y;
+          }
+          const natural = await naturalWidth(c.tiles[0]);
+          const sourceScale = natural ? natural / c.box.w : 2;
+          const scale = Math.max(0.1, Math.min(sourceScale, 4, maxPx / Math.max(area.w, area.h)));
+          const bytes = await tmp.exportAsync({ format: "PNG", constraint: { type: "SCALE", value: scale } });
+          crops.push(__spreadProps(__spreadValues({
+            letter: c.letter,
+            reference: c.ref,
+            board: c.board,
+            markId: m.id
+          }, parseLabel(raw)), {
+            auto: m.getPluginData("autoMark") === "1" || void 0,
+            // Where it sits in the reference, as fractions of its width/height.
+            region: { x: +((area.x - c.box.x) / c.box.w).toFixed(3), y: +((area.y - c.box.y) / c.box.h).toFixed(3), w: +(area.w / c.box.w).toFixed(3), h: +(area.h / c.box.h).toFixed(3) },
+            px: { w: Math.round(area.w * scale), h: Math.round(area.h * scale) },
+            data: figma.base64Encode(bytes)
+          }));
+        } finally {
+          tmp.remove();
+        }
+      }
+    }
+    return { crops, unmarked, problems, references: canvases.map((c) => ({ letter: c.letter, reference: c.ref, id: c.node.id })) };
+  }
+
   // src/plugin/main.ts
   var methods = {
     ping: { fn: () => ({ pong: true, at: Date.now() }) },
@@ -6506,6 +6947,7 @@ ${p.code}
     styles_read: { fn: readStyles },
     prototype_read: { fn: readPrototype },
     placeholders: { fn: listPlaceholders },
+    reference_marks: { fn: referenceMarks, write: true },
     place_image: { fn: placeImage, write: true },
     navigate: { fn: navigate },
     brief: { fn: (p) => brief(p), write: (p) => {
@@ -6569,7 +7011,7 @@ ${p.code}
       pushState();
     };
     const isWrite = (m, params) => !!m && (typeof m.write === "function" ? m.write(params != null ? params : {}) : !!m.write);
-    const DEADLINES = { build: 23e4, create_component: 29e4, edit: 17e4, variables: 17e4, lint: 17e4, export: 17e4, extract: 11e4, design_system: 11e4, screenshot: 8e4, placeholders: 11e4 };
+    const DEADLINES = { build: 23e4, create_component: 29e4, edit: 17e4, variables: 17e4, lint: 17e4, export: 17e4, extract: 11e4, design_system: 11e4, screenshot: 8e4, placeholders: 11e4, reference_marks: 11e4 };
     const deadlineFor = (method, params) => {
       var _a, _b;
       return method === "execute" ? Math.min(Number((_a = params == null ? void 0 : params.timeoutMs) != null ? _a : 6e4), 3e5) + 5e3 : (_b = DEADLINES[method]) != null ? _b : 55e3;

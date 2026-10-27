@@ -2,13 +2,14 @@
 // batch and the result says which ops were already applied.
 
 import { applyAssets, newIssues, normalizeSpec, type AssetMap, type Spec } from '../shared/spec.ts';
-import { buildNode, preflight, summarize } from './build.ts';
+import { buildNode, dirOf, preflight, summarize } from './build.ts';
 import { Ctx } from './ctx.ts';
 import { badRequest, explainFigmaError } from './errors.ts';
 import { applyPendingInteractions } from './prototype.ts';
+import { addDirVariants, mirrorNodes } from './mirror.ts';
 import { applyProps, isAutoLayout } from './props.ts';
 import { pageOf } from './inspect.ts';
-import { ensurePage, fitSections, freeSpot, placeImage, restoreNodes, rolePage, trashNodes } from './pages.ts';
+import { ensurePage, fileInStack, fitSections, freeSpot, placeImage, restoreNodes, rolePage, trashNodes } from './pages.ts';
 
 export interface EditOp {
   op: string;
@@ -34,9 +35,11 @@ export interface EditOp {
   keepInPlace?: boolean;
   src?: string;
   fit?: 'fill' | 'fit' | 'crop' | 'tile';
+  dir?: 'rtl' | 'ltr';
+  addVariant?: boolean;
 }
 
-const OPS = ['set', 'text', 'delete', 'restore', 'move', 'duplicate', 'rename', 'insert', 'wrap', 'unwrap', 'swap', 'detach', 'reset', 'to-component', 'combine-variants', 'select', 'page', 'group', 'ungroup', 'flatten', 'boolean', 'place-image'];
+const OPS = ['set', 'text', 'delete', 'restore', 'move', 'duplicate', 'rename', 'insert', 'wrap', 'unwrap', 'swap', 'detach', 'reset', 'to-component', 'combine-variants', 'select', 'page', 'group', 'ungroup', 'flatten', 'boolean', 'place-image', 'mirror'];
 
 async function idsOf(op: EditOp, ctx: Ctx, i: number): Promise<SceneNode[]> {
   const ids = op.ids ?? (op.id ? [op.id] : []);
@@ -183,6 +186,12 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
       if (op.ref) ctx.refs.set(op.ref, copies[0]);
       return { ids: copies.map((c) => c.id) };
     }
+    case 'mirror': {
+      const nodes = await idsOf(op, ctx, i);
+      touched.push(...nodes);
+      if (op.addVariant) return { variants: await addDirVariants(nodes, ctx, op.dir) };
+      return { mirrored: nodes.map((n) => n.id), ...(await mirrorNodes(nodes, ctx, op.dir)) };
+    }
     case 'insert': {
       if (!op.parent) throw badRequest(`${label}: needs "parent".`);
       const parent = container(await ctx.node(op.parent, `${label}.parent`), label);
@@ -191,8 +200,9 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
       issues.errors.push(...applyAssets(spec, assets));
       if (issues.errors.length) throw badRequest(issues.errors.join('; '));
       ctx.warnings.push(...issues.warnings);
-      await preflight(spec, ctx, { font: {} });
-      const node = await buildNode(spec, parent, { font: {} }, ctx, label, { index: op.index, opts: { focus: false } });
+      const inh = { font: {}, rtl: dirOf(parent) };
+      await preflight(spec, ctx, inh);
+      const node = await buildNode(spec, parent, inh, ctx, label, { index: op.index, opts: { focus: false } });
       if (op.ref) ctx.refs.set(op.ref, node);
       touched.push(node);
       return summarize(node);
@@ -302,12 +312,9 @@ async function runOp(op: EditOp, ctx: Ctx, label: string, i: number, touched: Sc
             instance.layoutSizingHorizontal = sizing.h;
             instance.layoutSizingVertical = sizing.v;
           }
-          const spot = freeSpot(home, c);
-          home.appendChild(c);
           if (c.layoutSizingHorizontal === 'FILL') c.layoutSizingHorizontal = 'FIXED';
           if (c.layoutSizingVertical === 'FILL') c.layoutSizingVertical = 'FIXED';
-          c.x = spot.x;
-          c.y = spot.y;
+          await fileInStack(c); // the Components page's stack, under the others
         }
         out.push({ id: c.id, name: c.name, key: c.key, page: pageOf(c)?.name, ...(instance ? { instance: instance.id } : {}) });
       }

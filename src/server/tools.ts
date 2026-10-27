@@ -7,14 +7,15 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { BridgeError, type PluginInfo } from '../shared/protocol.ts';
 import { clip, kebab, normalizeNodeId } from '../shared/util.ts';
-import { figmaImage, GALLERY_IMAGE_REFUSED, loadAssetsFor, loadImage, searchIcons } from './assets.ts';
+import { structureNotes } from './structure.ts';
+import { figmaImage, figmaTiles, GALLERY_IMAGE_REFUSED, loadAssetsFor, loadImage, searchIcons } from './assets.ts';
 import { groupUsages, imageIdOf, matchImageFiles, parsePromptsFile, ratio, renderPromptsFile, type Usage } from './images.ts';
 import { generate, type ComponentMapping, type XNode, type XVar } from './codegen.ts';
 import { figmaPluginBundle, PathError, projectDir, resolveOutput, uniquePath } from './files.ts';
 import { compact, truncateText, yaml } from './format.ts';
 import { NO_PLUGIN_HELP, type Bridge } from './hub.ts';
 import { log } from './log.ts';
-import { boardLetter, fetchPage, FetchRefused, imageSize, isInspirationHost, letterIndex } from './references.ts';
+import { boardLetter, canonicalUrl, componentCoverage, componentCoverageText, componentMatch, coverage, coverageText, plannedComponents, fetchPage, FetchRefused, imageSize, isInspirationHost, letterIndex, plannedSections, rejectedInBrief, rejectionLine, sectionId, type Mark } from './references.ts';
 import { previewBytes, searchStock, stockKeys } from './stock.ts';
 import { exportTokens, summarizeVariables, type TokenFormat, type VariablesDump } from './tokens.ts';
 
@@ -123,6 +124,23 @@ function assetsPrefixFor(dir: string): string {
   const proj = projectDir();
   if (proj && dir.startsWith(proj)) return `./${path.relative(proj, dir).split(path.sep).join('/')}/`;
   return `./${path.basename(dir)}/`;
+}
+
+/** The planned sections and components (brief) against the marks on the References page: which have a reference. */
+async function referenceCoverage(c: Ctx, file?: string, brief?: string | null) {
+  const text = brief !== undefined ? brief : (await call<{ brief: string | null }>(c, 'brief', { action: 'get' }, file)).result.brief;
+  const planned = plannedSections(text);
+  const components = plannedComponents(text);
+  if (!planned.size && !components.length) return null;
+  let marks: Mark[] = [];
+  try {
+    marks = (await call<{ marks?: Mark[] }>(c, 'reference_marks', { list: true }, file, 60_000)).result.marks ?? [];
+  } catch {
+    /* no References page or board yet: nothing is covered */
+  }
+  const sections = coverage(planned, marks);
+  const comps = componentCoverage(components, marks);
+  return { sections, components: comps, text: [coverageText(sections), componentCoverageText(comps)].filter(Boolean).join('\n') };
 }
 
 async function loadAssetsOrThrow(raws: Parameters<typeof loadAssetsFor>[0], opts?: Parameters<typeof loadAssetsFor>[1]) {
@@ -538,6 +556,17 @@ export function registerTools(server: McpServer, c: Ctx) {
       const text = yaml(compact({ built: result.root, page: result.page, layers: result.created, interactions: result.interactions || undefined, ids: result.ids, warnings: result.warnings }));
       const wantShot = a.screenshot ?? !a.parentId;
       const shots = wantShot ? await screenshotOf(c, result.root.id, a.file) : [];
+      // A planned section built without a reference to build on (references.md): say so.
+      const name = typeof a.spec.name === 'string' ? sectionId(a.spec.name) : '';
+      const designPage = !/^(references|components|trash)$/i.test(a.page?.trim() ?? '');
+      const brief = designPage ? await call<{ brief: string | null }>(c, 'brief', { action: 'get' }, a.file).then((r) => r.result.brief).catch(() => null) : null;
+      if (designPage) notes.push(...structureNotes(a.spec, [...plannedSections(brief).values()].flat()));
+      if (name && designPage) {
+        const planned = [...plannedSections(brief).values()].some((list) => list.includes(name));
+        const cov = planned ? await referenceCoverage(c, a.file, brief).catch(() => null) : null;
+        const page = cov?.sections.find((p) => p.missing.includes(name) || p.borrowedOnly.includes(name));
+        if (page) notes.push(`"${a.spec.name}" is a planned section of ${page.page} with no reference to build on (no skeleton mark). Find references for it and crop one (references.md) — unless the user said to design it without.`);
+      }
       return textResult(withNotes(text, notes), shots);
     }),
   );
@@ -547,7 +576,7 @@ export function registerTools(server: McpServer, c: Ctx) {
     {
       title: 'Edit layers',
       description:
-        'Batch changes to existing layers, in order, sharing refs: set {id|ids, props: any build prop}, text {id, text}, rename, delete {ids} (moves them to the Trash page; permanent: true really deletes), restore {ids, parent?} (back from Trash), move {id, parent?, index?, x?, y?}, duplicate {id, count?, ref?}, insert {parent, index?, spec}, wrap {ids, spec: frame props}, unwrap, swap {id, component, variant?}, detach, reset (overrides), to-component, combine-variants {ids, name}, group, ungroup, flatten, boolean {ids, operation}, select {ids}, page {name, create?}, place-image {id, src} (put a real image into a placeholder). Stops at the first failing op and reports what was applied.',
+        'Batch changes to existing layers, in order, sharing refs: set {id|ids, props: any build prop}, text {id, text}, rename, delete {ids} (moves them to the Trash page; permanent: true really deletes), restore {ids, parent?} (back from Trash), move {id, parent?, index?, x?, y?}, duplicate {id, count?, ref?}, insert {parent, index?, spec}, wrap {ids, spec: frame props}, unwrap, swap {id, component, variant?}, detach, reset (overrides), to-component, combine-variants {ids, name}, group, ungroup, flatten, boolean {ids, operation}, select {ids}, page {name, create?}, place-image {id, src} (put a real image into a placeholder). mirror {ids, dir?: "rtl"|"ltr"} flips a layout between Arabic and English (rows reverse, alignment/padding/free positions flip, text alignment swaps, left/right icons swap, instances switch their Dir variant; text is not translated) — duplicate first to keep the original; mirror {ids: [component or component set], addVariant: true} gives the component a Dir variant (RTL + mirrored LTR) so instances switch direction. Stops at the first failing op and reports what was applied.',
       inputSchema: {
         ops: z.array(z.record(z.any())).min(1).describe('[{op: "set", id: "12:3", props: {fill: "$color/bg", pad: 16}}, …]'),
         focus: z.boolean().optional(),
@@ -667,6 +696,18 @@ export function registerTools(server: McpServer, c: Ctx) {
       );
       const id = result.componentSet?.id ?? result.component?.id;
       const shots = a.screenshot !== false && id ? await screenshotOf(c, id, a.file) : [];
+      // Components come from the references' crops (multi-reference.md §4): say when this one has none.
+      const brief = await call<{ brief: string | null }>(c, 'brief', { action: 'get' }, a.file).then((r) => r.result.brief).catch(() => null);
+      const planned = plannedComponents(brief);
+      const hit = componentMatch(a.name, planned);
+      const fromCrop = /From:\s*\S*crops\/\S+\.png/i.test(a.description ?? '');
+      if (hit) {
+        const cov = await referenceCoverage(c, a.file, brief).catch(() => null);
+        if (cov?.components.missing.includes(hit)) notes.push(`"${a.name}" is a planned component with no crop to be made from. Crop it from the reference that shows it best (reference_crops region {section: "component", take: "${hit}"}), look at the crop, then update this component to match it.`);
+        else if (!fromCrop) notes.push(`Add "From: references/crops/<file>.png" (its crop) to the description of "${a.name}".`);
+      } else if ((planned.length || plannedSections(brief).size) && !fromCrop) {
+        notes.push(`"${a.name}" has no reference crop (no "From: …crops/….png" in its description). Components come from the references: crop one first, or build it in the style of the components that did (multi-reference.md §4) and say so in the description.`);
+      }
       return textResult(withNotes(yaml(compact(result)), notes), shots);
     }),
   );
@@ -950,10 +991,11 @@ export function registerTools(server: McpServer, c: Ctx) {
     {
       title: 'References → lettered board',
       description:
-        'Puts design references on the References page as a lettered board (A, B, C…) in a section "References – <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site — the work\'s images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. Returns a screenshot of the board.',
+        'Puts design references on the References page as a lettered board (A, B, C…) in a section "References – <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site — the work\'s images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. reject: [{letter, reason}] records references the user turned down in the brief and moves them to Trash; rejected links (any board, recorded in the brief) and links already on the board are refused. Returns a screenshot of the board.',
       inputSchema: {
         for: z.string().min(1).describe('What the references are for, e.g. "Home – Hero", "Checkout", "Brand". Names the section "References – <for>".'),
-        sources: z.array(z.union([z.string(), z.object({ src: z.string(), note: z.string().optional() })])).min(1).max(12).describe('Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one.'),
+        sources: z.array(z.union([z.string(), z.object({ src: z.string(), note: z.string().optional() })])).max(12).optional().describe('Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one.'),
+        reject: z.array(z.object({ letter: z.string().min(1), reason: z.string().min(3).describe('The user\'s reason in their words ("تقيل ومزدحم").') })).max(12).optional().describe('References on this board the user turned down: recorded as "Rejected:" in the brief (never offered again) and moved to Trash.'),
         perSource: z.number().int().min(1).max(4).optional().describe('Images per page (default 1; 2–4 for a case study with several screens).'),
         saveTo: z.string().optional().describe('Folder for downloaded images (default "references" in the project).'),
         place: z.boolean().optional().describe('Build the board in Figma (default true). false: only download and return the images.'),
@@ -962,7 +1004,54 @@ export function registerTools(server: McpServer, c: Ctx) {
       annotations: { destructiveHint: false, openWorldHint: true },
     },
     wrap(async (a) => {
+      const sources = a.sources ?? [];
+      if (!sources.length && !a.reject?.length) throw new BridgeError('BAD_REQUEST', 'Pass sources to add, reject to turn references down, or both.');
       const slug = kebab(a.for) || 'reference';
+      const sectionName = `References – ${a.for.trim()}`;
+      const notes: string[] = [];
+      const briefNow = (await call<{ brief: string | null }>(c, 'brief', { action: 'get' }, a.file)).result.brief;
+      const rejected = rejectedInBrief(briefNow);
+
+      // The board as it is: its frames and the link in each caption.
+      type Frame = { id: string; name: string; caption: string };
+      let board0: { id: string; frames: Frame[] } | null = null;
+      if (a.place !== false || a.reject?.length) {
+        const found = await call<{ result: { id: string; frames: Frame[] } | null }>(c, 'execute', {
+          code: `const page = await h.page('References');
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+if (!s) return null;
+const caption = (f) => { const t = 'children' in f ? f.children.filter((k) => k.type === 'TEXT') : []; return t.length ? t[t.length - 1].characters : ''; };
+return { id: s.id, frames: s.children.map((k) => ({ id: k.id, name: k.name, caption: caption(k) })) };`,
+          params: { name: sectionName },
+        }, a.file, 60_000);
+        notes.push(...found.notes);
+        board0 = found.result.result;
+      }
+      const urlOf = (f: Frame) => f.caption.split(' — ')[0].trim();
+      const turnedDown: string[] = [];
+      if (a.reject?.length) {
+        if (!board0) throw new BridgeError('BAD_REQUEST', `No board "${sectionName}" to reject from.`);
+        const trash: string[] = [];
+        for (const r of a.reject) {
+          const f = board0.frames.find((k) => letterIndex(k.name) === letterIndex(`${r.letter.trim().toUpperCase()} – `));
+          if (!f) {
+            turnedDown.push(`${r.letter}: not on the board`);
+            continue;
+          }
+          const url = urlOf(f);
+          await call(c, 'brief', { action: 'append', text: rejectionLine(sectionName, r.letter.trim().toUpperCase(), url, r.reason) }, a.file);
+          if (/^https?:/i.test(url)) rejected.set(canonicalUrl(url), r.reason);
+          trash.push(f.id);
+          turnedDown.push(`${r.letter.trim().toUpperCase()} rejected (${url}) — "${r.reason}"`);
+        }
+        if (trash.length) await call(c, 'edit', { ops: [{ op: 'delete', ids: trash }], focus: false }, a.file);
+        board0.frames = board0.frames.filter((f) => !trash.includes(f.id));
+      }
+      const onBoard = new Map((board0?.frames ?? []).filter((f) => /^https?:/i.test(urlOf(f))).map((f) => [canonicalUrl(urlOf(f)), f.name.split(' ')[0]]));
+      const rejectText = turnedDown.length ? `Turned down:\n${turnedDown.map((t) => `- ${t}`).join('\n')}\n` : '';
+      if (!sources.length) return textResult(withNotes(`${rejectText}Recorded in the brief; these links won't be offered again. Find new ones with a different angle (feedback.md), then call references with sources.`, notes));
+
       let outDir: string | null = null;
       const save = (buf: Buffer, ext: string, name: string) => {
         outDir ??= resolveOutput(a.saveTo ?? 'references');
@@ -974,11 +1063,14 @@ export function registerTools(server: McpServer, c: Ctx) {
       type Ref = { src: string; note?: string; title?: string; host?: string; images: Array<{ file: string; w: number; h: number; buf: Buffer }>; skipped?: string[] };
       const refs: Ref[] = [];
       const failed: string[] = [];
-      for (const [i, s] of a.sources.entries()) {
+      for (const [i, s] of sources.entries()) {
         const src = typeof s === 'string' ? s.trim() : s.src.trim();
         const note = typeof s === 'string' ? undefined : s.note;
         try {
           if (/^https?:\/\//i.test(src)) {
+            const key = canonicalUrl(src);
+            if (rejected.has(key)) throw new Error(`rejected earlier (brief): "${rejected.get(key)}" — find a different one`);
+            if (onBoard.has(key)) throw new Error(`already on the board as ${onBoard.get(key)}`);
             const page = await fetchPage(src, a.perSource ?? 1, 25 * 1024 * 1024);
             const host = new URL(src).hostname.replace(/^www\./, '');
             const images = page.images.map((img, k) => {
@@ -1009,7 +1101,7 @@ export function registerTools(server: McpServer, c: Ctx) {
         }
       }
       const failText = failed.length ? `\nNot added:\n${failed.map((f) => `- ${f}`).join('\n')}` : '';
-      if (!refs.length) throw new BridgeError('BAD_REQUEST', `No reference could be added.${failText}`);
+      if (!refs.length) throw new BridgeError('BAD_REQUEST', `${rejectText}No reference could be added.${failText}`);
 
       if (a.place === false) {
         const lines = refs.map((r, i) => `${boardLetter(i)} ${r.title ?? r.src}${r.host ? ` (${r.host})` : ''}: ${r.images.map((m) => `${m.file} ${m.w}×${m.h}`).join(', ')}`);
@@ -1018,43 +1110,113 @@ export function registerTools(server: McpServer, c: Ctx) {
         return textResult(`${lines.join('\n')}${failText}`, imgs);
       }
 
-      const sectionName = `References – ${a.for.trim()}`;
-      const found = await call<{ result: { id: string; names: string[] } | null }>(c, 'execute', {
-        code: `const page = await h.page('References');
-const want = params.name.trim().toLowerCase();
-const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
-return s ? { id: s.id, names: s.children.map((k) => k.name) } : null;`,
-        params: { name: sectionName },
-      }, a.file, 60_000);
-      const notes = [...found.notes];
-      let sectionId = found.result.result?.id;
-      let next = Math.max(-1, ...(found.result.result?.names ?? []).map(letterIndex)) + 1;
-      if (!sectionId) {
+      let boardId = board0?.id;
+      // Letters keep counting past rejected ones (their frames are in Trash), so a letter always means one reference.
+      const earlier = [...(briefNow ?? '').matchAll(/Rejected: (.+?) ← ([A-Z]{1,2}) /g)].filter((m) => m[1].trim().toLowerCase() === sectionName.toLowerCase()).map((m) => `${m[2]} – `);
+      const used = [...(board0?.frames ?? []).map((f) => f.name), ...earlier, ...(a.reject ?? []).map((r) => `${r.letter.trim().toUpperCase()} – `)];
+      let next = Math.max(-1, ...used.map(letterIndex)) + 1;
+      if (!boardId) {
         const built = await call<{ root: { id: string } }>(c, 'build', { spec: { type: 'section', name: sectionName }, page: 'References', focus: false }, a.file, 60_000);
-        sectionId = built.result.root.id;
+        boardId = built.result.root.id;
       }
       const board: Array<{ letter: string; id: string; source: string; files: string[] }> = [];
       for (const r of refs) {
         const letter = boardLetter(next++);
         const widths = r.images.map((m) => Math.min(m.w, r.images.length > 1 ? 1200 : 1440));
+        // Full-page screenshots are taller than Figma allows: stacked tiles inside one image area.
+        const tiles = r.images.map((m, k) => figmaTiles(m.file, m, widths[k]));
         const caption = [r.src, r.note].filter(Boolean).join(' — ');
         const spec = {
           type: 'frame', name: `${letter} – ${clip(r.title || r.host || 'Screenshot', 60)}${r.host ? ` (${r.host})` : ''}`,
           dir: 'column', gap: 16, pad: 32, fill: '#FFFFFF', w: widths.reduce((x, y) => x + y, 0) + 24 * (widths.length - 1) + 64,
           children: [
             { type: 'text', text: letter, size: 48, weight: 700, color: '#111111' },
-            { type: 'frame', name: 'Images', dir: 'row', gap: 24, children: r.images.map((m, k) => ({ type: 'image', name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ''}`, src: m.file, w: widths[k] })) },
+            // Each image sits in a free frame ("Reference A"), so shapes the user draws over it to mark what to take land inside it.
+            { type: 'frame', name: 'Images', dir: 'row', gap: 24, children: r.images.map((m, k) => {
+              const scale = widths[k] / tiles[k][0].w;
+              let y = 0;
+              const parts = tiles[k].map((t, j) => {
+                const part = { type: 'image', name: j ? `Image ${j + 1}` : 'Image', src: t.file, x: 0, y: Math.round(y), w: widths[k], h: Math.round(t.h * scale) };
+                y += t.h * scale;
+                return part;
+              });
+              return { type: 'frame', name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ''}`, dir: 'none', clip: true, w: widths[k], h: Math.round(y), children: parts };
+            }) },
             { type: 'text', text: caption, w: 'fill', size: 14, color: '#666666' },
           ],
         };
         const assets = await loadAssetsOrThrow([{ spec }], { references: true });
-        const built = await call<{ root: { id: string } }>(c, 'build', { spec, assets, parentId: sectionId, focus: false }, a.file, 120_000);
+        const built = await call<{ root: { id: string } }>(c, 'build', { spec, assets, parentId: boardId, focus: false }, a.file, 120_000);
         board.push({ letter, id: built.result.root.id, source: r.src, files: r.images.map((m) => m.file) });
       }
-      await call(c, 'edit', { ops: [{ op: 'select', ids: [sectionId] }], focus: true }, a.file).catch(() => undefined);
-      const shots = await screenshotOf(c, sectionId, a.file, 1600);
-      const text = yaml(compact({ section: { id: sectionId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
-      return textResult(withNotes(`${text}${failText}\n\nShow the user the board and ask which letter to build from (references.md: rebuild the chosen one in the identity, no write-up).`, notes), shots);
+      await call(c, 'edit', { ops: [{ op: 'select', ids: [boardId] }], focus: true }, a.file).catch(() => undefined);
+      const shots = await screenshotOf(c, boardId, a.file, 1600);
+      const text = yaml(compact({ section: { id: boardId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
+      const cov = await referenceCoverage(c, a.file, briefNow).catch(() => null);
+      if (cov?.text) notes.push(cov.text);
+      return textResult(withNotes(`${rejectText}${text}${failText}\n\nNext (references.md): look at the references, choose what to take from each (automatic merge) and call reference_crops with regions — then build from the crops in the identity, no write-up. The user steers by naming letters or moving marks.`, notes), shots);
+    }),
+  );
+
+  server.registerTool(
+    'reference_crops',
+    {
+      title: 'Marked parts of references → crops',
+      description:
+        'Turns the parts to take from the references board into crops of the original images at full resolution (saved in <project>/references/crops), to build from — not from a description; hand the crop files to any agent that designs. Automatic merge: pass regions = the parts you chose ({ref: "A", section: "hero", take: "headline", x, y, w, h} as fractions of that image; a region named with a section only is that section\'s skeleton) — they are drawn on the board as dashed marks (replacing your earlier ones) so the user can see and move them. Marks the user drew (rectangles named "hero: headline", or with a text label inside) are read too. Unmarked references are listed.',
+      inputSchema: {
+        for: z.string().optional().describe('The board, as given to references ("Home – Hero") — or a section/frame id in within.'),
+        within: z.string().optional().describe('Section or frame id on the References page (default: the whole page).'),
+        letters: z.array(z.string()).optional().describe('Only these references, e.g. ["A", "C"].'),
+        regions: z.array(z.object({
+          ref: z.string().describe('Board letter ("A"), or "A2" for the second image of A.'),
+          section: z.string().optional().describe('Section it is for ("hero"). Only a section = its skeleton.'),
+          take: z.string().optional().describe('What to take ("headline", "stats strip", "cards").'),
+          x: z.number().min(0).max(1), y: z.number().min(0).max(1), w: z.number().min(0).max(1), h: z.number().min(0).max(1),
+        })).max(40).optional().describe('Parts you chose to take (automatic merge), as fractions of the reference image.'),
+        maxPx: z.number().int().min(256).max(4096).optional().describe('Longest side of a crop (default 2000).'),
+        saveTo: z.string().optional().describe('Folder for the crops (default "references/crops" in the project).'),
+        file: fileParam,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    wrap(async (a) => {
+      let within = a.within && normalizeNodeId(a.within);
+      if (!within && a.for) {
+        const found = await call<{ result: { id: string } | null }>(c, 'execute', {
+          code: `const page = figma.root.children.find((p) => p.getPluginData('role') === 'references' || p.name.trim().toLowerCase() === 'references');
+if (!page) return null;
+await page.loadAsync();
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+return s ? { id: s.id } : null;`,
+          params: { name: `References – ${a.for.trim()}` },
+        }, a.file, 60_000);
+        within = found.result.result?.id;
+        if (!within) throw new BridgeError('BAD_REQUEST', `No board "References – ${a.for.trim()}" on the References page.`);
+      }
+      type Crop = { letter: string; reference: string; markId: string; label: string; section?: string; take?: string; auto?: boolean; region: Record<string, number>; px: { w: number; h: number }; data: string };
+      const { result, notes } = await call<{ crops: Crop[]; unmarked: string[]; problems?: string[]; references: Array<{ letter: string; reference: string }> }>(c, 'reference_marks', { within, letters: a.letters, maxPx: a.maxPx, regions: a.regions }, a.file, 120_000);
+      if (!result.crops.length) {
+        return textResult(withNotes(`No marks on the board (references: ${result.references.map((r) => r.letter).join(', ')}). Choose the parts to take yourself and pass them as regions (multi-reference.md), or use marks the user drew.${result.problems?.length ? `\nRegions not drawn: ${result.problems.join('; ')}.` : ''}`, notes));
+      }
+      const dir = resolveOutput(a.saveTo ?? 'references/crops');
+      fs.mkdirSync(dir, { recursive: true });
+      const slug = kebab(a.for ?? '') || 'board';
+      const lines: string[] = [];
+      const images: Content[] = [];
+      for (const [i, cr] of result.crops.entries()) {
+        const target = uniquePath(dir, `${slug}-${cr.letter}-${i + 1}${cr.take ? `-${kebab(cr.take).slice(0, 40)}` : ''}`, 'png', false);
+        fs.writeFileSync(target, Buffer.from(cr.data, 'base64'));
+        lines.push(`${i + 1}. ${cr.letter}${cr.section ? ` → ${cr.section}` : ''}${cr.auto ? '' : ' (user mark)'}: ${cr.take ?? '(unnamed mark — ask what it is for, or use it for the section it obviously is)'} — ${target} (${cr.px.w}×${cr.px.h}px, ${Math.round(cr.region.x * 100)}%,${Math.round(cr.region.y * 100)}% of ${cr.reference})`);
+        if (images.length < 10) images.push({ type: 'image', data: cr.data, mimeType: 'image/png' });
+      }
+      if (result.unmarked.length) lines.push(`Not marked: ${result.unmarked.join(', ')}.`);
+      if (result.problems?.length) lines.push(`Regions not drawn: ${result.problems.join('; ')}.`);
+      const cov = await referenceCoverage(c, a.file).catch(() => null);
+      if (cov?.text) lines.push('', cov.text);
+      lines.push('', 'Build from these crops (multi-reference.md): each crop is what to take; the identity is the skin. A designer agent gets these files, not a description.');
+      return textResult(withNotes(lines.join('\n'), notes), images);
     }),
   );
 

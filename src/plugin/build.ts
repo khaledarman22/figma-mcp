@@ -8,7 +8,7 @@ import { Ctx } from './ctx.ts';
 import { badRequest } from './errors.ts';
 import { applyPendingInteractions } from './prototype.ts';
 import { pageOf } from './inspect.ts';
-import { addCaption, captionText, ensurePage, fitSections, freeSpot, isTrashPage, rolePage, setImagePrompt, trashNodes } from './pages.ts';
+import { addCaption, captionText, componentsStack, ensurePage, fileInStack, fitSections, freeSpot, isComponentsStack, isTrashPage, rolePage, setImagePrompt, trashNodes } from './pages.ts';
 import { applyProps, isAutoLayout } from './props.ts';
 import { DEFAULT_FAMILY, inheritFrom, type Inherit } from './text.ts';
 
@@ -73,16 +73,17 @@ export async function preflight(spec: Spec, ctx: Ctx, inherited: Inherit): Promi
 /** Icon components live on the Components page, in one "Icons" board. */
 async function iconHolder(): Promise<FrameNode> {
   await figma.loadAllPagesAsync();
+  const isHolder = (c: SceneNode) => c.type === 'FRAME' && c.getPluginData('role') === ICON_HOLDER_ROLE;
   for (const pg of figma.root.children) {
-    const found = pg.children.find((c) => c.type === 'FRAME' && c.getPluginData('role') === ICON_HOLDER_ROLE) as FrameNode | undefined;
-    if (found && pg.getPluginData('role') !== 'trash') return found;
-  }
-  const { page } = await rolePage('components');
-  let left = Infinity;
-  let top = Infinity;
-  for (const c of page.children) {
-    left = Math.min(left, c.x);
-    top = Math.min(top, c.y);
+    if (pg.getPluginData('role') === 'trash') continue;
+    // On the page, or inside the Components page's stack.
+    for (const c of pg.children) {
+      if (isHolder(c)) return c as FrameNode;
+      if (isComponentsStack(c)) {
+        const inner = (c as FrameNode).children.find(isHolder);
+        if (inner) return inner as FrameNode;
+      }
+    }
   }
   const f = figma.createFrame();
   f.name = 'Icons';
@@ -96,9 +97,7 @@ async function iconHolder(): Promise<FrameNode> {
   f.resize(360, 100);
   f.layoutSizingHorizontal = 'FIXED';
   f.layoutSizingVertical = 'HUG';
-  page.appendChild(f);
-  f.x = Number.isFinite(left) ? Math.round(left - 360 - 200) : 0;
-  f.y = Number.isFinite(top) ? Math.round(top) : 0;
+  await fileInStack(f); // first in the Components page's stack
   return f;
 }
 
@@ -230,6 +229,15 @@ async function createNode(s: Spec, ctx: Ctx, path: string, opts: BuildOptions): 
   }
 }
 
+/** The direction set on a node or its nearest ancestor (rtl on build, or edit mirror); undefined when none. */
+export function dirOf(n: BaseNode | null): boolean | undefined {
+  for (let q: BaseNode | null = n; q && q.type !== 'PAGE' && q.type !== 'DOCUMENT'; q = q.parent) {
+    const d = q.getPluginData('dir');
+    if (d) return d === 'rtl';
+  }
+  return undefined;
+}
+
 export async function buildNode(
   spec: Spec,
   parent: BaseNode & ChildrenMixin,
@@ -245,6 +253,8 @@ export async function buildNode(
   if (parent.type === 'INSTANCE') throw badRequest(`${path}: cannot add layers inside an instance; edit its main component or use overrides.`);
 
   const { node, natural } = await createNode(spec, ctx, path, o.opts);
+  // Remember the direction, so later builds inside this node (parentId, insert) inherit it.
+  if (spec.rtl !== undefined) node.setPluginData('dir', spec.rtl ? 'rtl' : 'ltr');
   if (o.index !== undefined && o.index >= 0 && o.index <= parent.children.length) parent.insertChild(o.index, node);
   else parent.appendChild(node);
   ctx.created.push(node);
@@ -449,11 +459,12 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
     const r = opts.page ? await ensurePage(opts.page) : await rolePage('components');
     if (r.created) createdPage = r.page;
     if (r.page !== figma.currentPage && (opts.switchPage ?? spec.type !== 'component')) await figma.setCurrentPageAsync(r.page);
-    parent = r.page;
+    // A component on the Components page goes into its stack (one auto layout column of all components).
+    parent = spec.type === 'component' && r.page.getPluginData('role') === 'components' ? await componentsStack() : r.page;
   }
   const targetPage = parent.type === 'PAGE' ? (parent as PageNode) : pageOf(parent);
   if (isTrashPage(targetPage)) throw badRequest('That is the Trash page. Build on a content page (page: "App", "Web", "Dashboard", …) or restore layers with edit {op: "restore"}.');
-  if (!replace && (parent.type === 'PAGE' || parent.type === 'SECTION') && spec.name && !opts.allowDuplicate) {
+  if (!replace && (parent.type === 'PAGE' || parent.type === 'SECTION' || isComponentsStack(parent)) && spec.name && !opts.allowDuplicate) {
     const want = spec.name.trim().toLowerCase();
     const twin = parent.children.find((c) => c.name.trim().toLowerCase() === want);
     if (twin) {
@@ -466,8 +477,8 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
     ctx.warn('Built on the Components page: keep only components (and their documentation) there; screens go on their own page (App, Web, Dashboard…).');
   }
 
-  const inh: Inherit = { font: {}, color: undefined, rtl: undefined };
-  // Inherit text color/font/rtl from an existing parent chain is not attempted; specs are explicit.
+  // Direction comes from the existing parent chain (built with rtl); font and color are explicit in specs.
+  const inh: Inherit = { font: {}, color: undefined, rtl: dirOf(parent) };
   try {
     await ctx.loadFont({ family: DEFAULT_FAMILY, style: 'Regular' });
   } catch {
@@ -481,6 +492,7 @@ export async function build(spec: Spec, opts: BuildOptions = {}, existingCtx?: C
   let root: SceneNode | undefined;
   try {
     root = await buildNode(spec, parent, inh, ctx, 'spec', { index, crossFill: false, opts });
+    if (isComponentsStack(parent) && !replace) await fileInStack(root);
     if (replace) {
       if (!isAutoLayout(parent)) {
         root.x = replace.x;

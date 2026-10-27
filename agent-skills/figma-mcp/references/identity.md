@@ -17,9 +17,9 @@ recurring section patterns, the imagery and the voice — written down, and in t
 | Color | primitives → semantic roles, one accent strategy (where the brand color goes, where it never goes) | variables (`Primitives`, `Theme`) |
 | Type | one family (two at most), the scale as text styles, weights in use | text styles |
 | Space & shape | spacing scale, radius set, border widths, elevation levels | variables + effect styles |
-| Iconography | **one** icon set (`lucide`, `ph`, …), sizes, stroke vs fill | brief + Icons board |
+| Iconography | **one** icon set chosen to match the icons in the references' crops (outline/filled, stroke weight, corner style, container shape) — not a default; sizes | brief + Icons board |
 | Imagery | art direction for photos/illustrations: subject, light, palette, style words reused in every image prompt | brief |
-| Components | the catalog: name, variants, when to use / not use | `Components` page |
+| Components | the catalog: name, variants, when to use / not use — each made from a reference crop (multi-reference.md §4) | `Components` page |
 | Section patterns | the recurring layouts (hero, list row, card grid, form, stats row, empty state…) with their spacing and component makeup | `Identity` board + components |
 | Voice | tone, length, case, numbers/dates, language and direction (RTL) | brief |
 | Devices | one size per product (`iphone-16`, `desktop`, …) | brief |
@@ -75,11 +75,14 @@ Pick the path from what exists; several can combine (a file with half a system p
    re-hosted; use the user's own files or placeholders.
 
 ### C. Nothing yet → set a direction
-1. From the brief (or ask once): purpose of the product, who uses it and what they decide or accomplish, the
+1. From the brief's `## Product` ([analysis.md](analysis.md); do the analysis first if it's missing): purpose of the product, who uses it and what they decide or accomplish, the
    existing material (logo, colors, code tokens), the feeling. **Only a logo?** It fixes the brand colors (sample
    them from the logo file, then build primitives → roles around them) and hints the personality; put it in the
    user's project and on `Components` as the logo asset. The layout direction still comes from the references
-   board ([references.md](references.md)) — the picked reference + the logo's colors are the direction.
+   board ([references.md](references.md)) — the merged references + the logo's colors are the direction.
+   From a logo alone you set **colors, type and the space/radius scales** — not the components and not the icon
+   set: those wait for the crops (button, cards, inputs, icons as the references draw them; multi-reference.md §4).
+   Radius, border and shadow values are then checked against the crops too.
 2. Propose 2–3 genuinely different directions, each as a small `Identity` board sample (a key screen section +
    swatches + type ramp), named `Identity – Direction A/B/C` on `Components`. A distinctive detail only when the
    brief supports it — no decoration just to look different.

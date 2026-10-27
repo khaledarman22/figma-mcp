@@ -3,7 +3,7 @@
 This guide does not prescribe colors, fonts, radii or a style. It prescribes **how the work is done**, so
 that whatever direction the product takes, the result is consistent, buildable and easy to hand to code.
 The visual language comes from (in this order): what the user says → the brand/brief → the file's existing
-design → a reference the user gave → a direction you propose and the user approves. Once it is written down as the
+design → a reference the user picked ([references.md](references.md)) → a direction you propose and the user approves. Once it is written down as the
 file's identity, it governs every screen and banner ([identity.md](identity.md)).
 
 ## The method
@@ -12,6 +12,7 @@ file's identity, it governs every screen and banner ([identity.md](identity.md))
 - Read the stored brief (`brief` get). If there is none, or the task enters a new area, establish:
   product & audience · the job of this screen/flow · platform & device size · primary action · content that will really be there · constraints (brand, accessibility, RTL, existing code).
 - How many products? One mobile app → page `App`; two apps (customer + driver) → `App – Customer` and `App – Driver`; plus `Web` / `Dashboard` / `Banners` as needed (main skill, §3).
+- New screen/section/page/banner → references first ([references.md](references.md)): the lettered board, the user picks, then you build. Not for changes, states or fixes of existing screens.
 - Ask only questions whose answers change the design. Otherwise state assumptions and proceed.
 - Save what you learn and decide: `brief` set (once) / append (each decision: device size per product, pages, art direction). The next session starts from it.
 
@@ -43,7 +44,7 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 ### 6. Real content, every state, honest images
 - Real copy and data in the product's language (Arabic → RTL + an Arabic-capable font; check `fonts`). Vary lengths: long names, big numbers, empty values.
 - Design the states, not just the happy path: empty, loading (skeleton), error, success, disabled, offline, permission, first-time — each its own frame named `Screen – State`.
-- No lorem ipsum. Every image you can't supply is a placeholder at its real size with a complete generation `prompt`; when the screen is done run `image_prompts` and tell the user where `IMAGE_PROMPTS.md` is (how to write the prompts: [image-prompts.md](image-prompts.md)). When they send the images, `place_images`.
+- No lorem ipsum. Every image you can't supply is a placeholder at its real size with a complete generation `prompt` — or a free stock photo when the brief says so; when the screen is done run `image_prompts` and tell the user where `IMAGE_PROMPTS.md` is (how: [image-prompts.md](image-prompts.md)). When they send the images, `place_images`.
 
 ### 7. Hierarchy, rhythm, access
 - One primary action per screen; secondary actions visibly secondary.
@@ -68,16 +69,15 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 
 ## References
 
-When the user sends a reference (an image file, a link, a screenshot) or asks you to find one:
-1. **Put it in the file first.** On the `References` page (`build` with `page: "References"`): a frame named `Reference – <what> (<source>)` holding the image (`src` = the path or image URL) at its natural size, with a one-line note of what to take from it. Several references for one task sit side by side. A reference that only exists inside the chat has no file — ask the user to save it and give you the path (or drop it into the project).
-2. **Read it for principles, not pixels:** structure, hierarchy, density, spacing rhythm, patterns, the feeling. Write down what you take and what you leave.
-3. **Design on the real page** (`App`, `Web`, …) with the file's own tokens and components, at the product's device size. If the user asked for "the same as this", recreate it faithfully — still with auto layout, tokens, components and real content — and say where you deviated and why (accessibility, platform conventions).
-4. References never go inside screens, and their images never become product images.
+A reference the user sent, "design it like this", or "find references" → [references.md](references.md): the
+references go on a lettered board on `References`, the user picks one, and you rebuild it closely in the identity
+(no write-up), then make the changes they ask for. References never go inside screens, and their images never
+become product images.
 
 ## Screen recipe
 
 1. `status` → `brief` → `get_design_system` → `get_metadata` (neighbouring screens, same page).
-2. Plan: page, device, sections top→bottom, components per section, tokens, states, images.
+2. New screen → `references` board → the user's letter ([references.md](references.md)). Then plan: page, device, sections top→bottom, components per section, tokens, states, images.
 3. `build` the screen shell on its page (`page: "App"`, `device`): background token, padding, `align: "stretch"`, header/content/footer regions (refs), `fixed` bars.
 4. `build` each region into its ref (`parentId`), instances first, real content, image placeholders with prompts.
 5. `screenshot` after each region → `edit` fixes.

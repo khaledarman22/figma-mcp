@@ -3268,8 +3268,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path7) {
-      let input = path7;
+    function removeDotSegments(path8) {
+      let input = path8;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3343,11 +3343,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path7) {
-      if (path7 === "" || path7[0] === "/") {
-        return removeDotSegments(path7);
+    function removeDotSegmentsRelative(path8) {
+      if (path8 === "" || path8[0] === "/") {
+        return removeDotSegments(path8);
       }
-      const segments = path7.split("/");
+      const segments = path8.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3710,8 +3710,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path7 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
+        const path8 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path8 && path8 !== "/" ? path8 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -4436,19 +4436,19 @@ var require_core = __commonJS({
         this.addKeyword("$async");
       }
       _addDefaultMetaSchema() {
-        const { $data, meta, schemaId } = this.opts;
+        const { $data, meta: meta2, schemaId } = this.opts;
         let _dataRefSchema = $dataRefSchema;
         if (schemaId === "id") {
           _dataRefSchema = { ...$dataRefSchema };
           _dataRefSchema.id = _dataRefSchema.$id;
           delete _dataRefSchema.$id;
         }
-        if (meta && $data)
+        if (meta2 && $data)
           this.addMetaSchema(_dataRefSchema, _dataRefSchema[schemaId], false);
       }
       defaultMeta() {
-        const { meta, schemaId } = this.opts;
-        return this.opts.defaultMeta = typeof meta == "object" ? meta[schemaId] || meta : void 0;
+        const { meta: meta2, schemaId } = this.opts;
+        return this.opts.defaultMeta = typeof meta2 == "object" ? meta2[schemaId] || meta2 : void 0;
       }
       validate(schemaKeyRef, data) {
         let v;
@@ -4468,12 +4468,12 @@ var require_core = __commonJS({
         const sch = this._addSchema(schema, _meta);
         return sch.validate || this._compileSchemaEnv(sch);
       }
-      compileAsync(schema, meta) {
+      compileAsync(schema, meta2) {
         if (typeof this.opts.loadSchema != "function") {
           throw new Error("options.loadSchema should be a function");
         }
         const { loadSchema } = this.opts;
-        return runCompileAsync.call(this, schema, meta);
+        return runCompileAsync.call(this, schema, meta2);
         async function runCompileAsync(_schema, _meta) {
           await loadMetaSchema.call(this, _schema.$schema);
           const sch = this._addSchema(_schema, _meta);
@@ -4505,7 +4505,7 @@ var require_core = __commonJS({
           if (!this.refs[ref])
             await loadMetaSchema.call(this, _schema.$schema);
           if (!this.refs[ref])
-            this.addSchema(_schema, ref, meta);
+            this.addSchema(_schema, ref, meta2);
         }
         async function _loadSchema(ref) {
           const p = this._loading[ref];
@@ -4722,7 +4722,7 @@ var require_core = __commonJS({
           }
         }
       }
-      _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
+      _addSchema(schema, meta2, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
         let id;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
@@ -4738,7 +4738,7 @@ var require_core = __commonJS({
           return sch;
         baseId = (0, resolve_1.normalizeId)(id || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
-        sch = new compile_1.SchemaEnv({ schema, schemaId, meta, baseId, localRefs });
+        sch = new compile_1.SchemaEnv({ schema, schemaId, meta: meta2, baseId, localRefs });
         this._cache.set(sch.schema, sch);
         if (addSchema && !baseId.startsWith("#")) {
           if (baseId)
@@ -7248,12 +7248,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs7, exportName) {
+    function addFormats(ajv, list, fs8, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs7[f]);
+        ajv.addFormat(f, fs8[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11422,8 +11422,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path7, errorMaps, issueData } = params;
-  const fullPath = [...path7, ...issueData.path || []];
+  const { data, path: path8, errorMaps, issueData } = params;
+  const fullPath = [...path8, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -11539,11 +11539,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path7, key) {
+  constructor(parent, value, path8, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path7;
+    this._path = path8;
     this._key = key;
   }
   get path() {
@@ -15180,10 +15180,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path7) {
-  if (!path7)
+function getElementAtPath(obj, path8) {
+  if (!path8)
     return obj;
-  return path7.reduce((acc, key) => acc?.[key], obj);
+  return path8.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -15503,11 +15503,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path7, issues) {
+function prefixIssues(path8, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path7);
+    iss.path.unshift(path8);
     return iss;
   });
 }
@@ -17541,13 +17541,13 @@ var $ZodRegistry = class {
     this._idmap = /* @__PURE__ */ new Map();
   }
   add(schema, ..._meta) {
-    const meta = _meta[0];
-    this._map.set(schema, meta);
-    if (meta && typeof meta === "object" && "id" in meta) {
-      if (this._idmap.has(meta.id)) {
-        throw new Error(`ID ${meta.id} already exists in the registry`);
+    const meta2 = _meta[0];
+    this._map.set(schema, meta2);
+    if (meta2 && typeof meta2 === "object" && "id" in meta2) {
+      if (this._idmap.has(meta2.id)) {
+        throw new Error(`ID ${meta2.id} already exists in the registry`);
       }
-      this._idmap.set(meta.id, schema);
+      this._idmap.set(meta2.id, schema);
     }
     return this;
   }
@@ -17557,9 +17557,9 @@ var $ZodRegistry = class {
     return this;
   }
   remove(schema) {
-    const meta = this._map.get(schema);
-    if (meta && typeof meta === "object" && "id" in meta) {
-      this._idmap.delete(meta.id);
+    const meta2 = this._map.get(schema);
+    if (meta2 && typeof meta2 === "object" && "id" in meta2) {
+      this._idmap.delete(meta2.id);
     }
     this._map.delete(schema);
     return this;
@@ -18488,9 +18488,9 @@ var JSONSchemaGenerator = class {
         }
       }
     }
-    const meta = this.metadataRegistry.get(schema);
-    if (meta)
-      Object.assign(result.schema, meta);
+    const meta2 = this.metadataRegistry.get(schema);
+    if (meta2)
+      Object.assign(result.schema, meta2);
     if (this.io === "input" && isTransforming(schema)) {
       delete result.schema.examples;
       delete result.schema.default;
@@ -18812,8 +18812,8 @@ var ZodMiniType = /* @__PURE__ */ $constructor("ZodMiniType", (inst, def) => {
   };
   inst.clone = (_def, params) => clone(inst, _def, params);
   inst.brand = () => inst;
-  inst.register = ((reg, meta) => {
-    reg.add(inst, meta);
+  inst.register = ((reg, meta2) => {
+    reg.add(inst, meta2);
     return inst;
   });
 });
@@ -18918,11 +18918,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path7) {
-  if (path7.length === 0) {
+function getDotPath(path8) {
+  if (path8.length === 0) {
     return "object root";
   }
-  return path7.reduce((acc, seg, index) => {
+  return path8.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -19094,8 +19094,8 @@ var ZodType2 = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
   };
   inst.clone = (def2, params) => clone(inst, def2, params);
   inst.brand = () => inst;
-  inst.register = ((reg, meta) => {
-    reg.add(inst, meta);
+  inst.register = ((reg, meta2) => {
+    reg.add(inst, meta2);
     return inst;
   });
   inst.parse = (data, params) => parse2(inst, data, params, { callee: inst.parse });
@@ -24221,8 +24221,8 @@ function isCompletable(schema) {
   return !!schema && typeof schema === "object" && COMPLETABLE_SYMBOL in schema;
 }
 function getCompleter(schema) {
-  const meta = schema[COMPLETABLE_SYMBOL];
-  return meta?.complete;
+  const meta2 = schema[COMPLETABLE_SYMBOL];
+  return meta2?.complete;
 }
 var McpZodTypeKind;
 (function(McpZodTypeKind2) {
@@ -25948,8 +25948,8 @@ function syncHome() {
 }
 
 // src/server/tools.ts
-import fs6 from "node:fs";
-import path6 from "node:path";
+import fs7 from "node:fs";
+import path7 from "node:path";
 
 // src/shared/util.ts
 function levenshtein(a, b) {
@@ -26029,6 +26029,7 @@ function normalizeNodeId(input) {
 }
 
 // src/server/assets.ts
+import { execFileSync } from "node:child_process";
 import fs4 from "node:fs";
 import os4 from "node:os";
 import path4 from "node:path";
@@ -26334,45 +26335,45 @@ var FONT_KEYS = {
   italic: "italic"
 };
 var isToken = (v) => typeof v === "string" && v.startsWith("$") && v.length > 1;
-function num(v, path7, issues, opts = {}) {
+function num(v, path8, issues, opts = {}) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "number" && Number.isFinite(v)) {
-    if (opts.min !== void 0 && v < opts.min) issues.warnings.push(`${path7}: ${v} is below ${opts.min}; clamped.`);
+    if (opts.min !== void 0 && v < opts.min) issues.warnings.push(`${path8}: ${v} is below ${opts.min}; clamped.`);
     return opts.min !== void 0 ? Math.max(opts.min, v) : v;
   }
   if (typeof v === "string") {
     if (isToken(v)) {
-      if (opts.token === false) issues.errors.push(`${path7}: variables are not supported here.`);
+      if (opts.token === false) issues.errors.push(`${path8}: variables are not supported here.`);
       return v;
     }
     const m = v.trim().match(/^(-?\d*\.?\d+)\s*(px)?$/);
     if (m) return parseFloat(m[1]);
   }
-  issues.errors.push(`${path7}: expected a number${opts.token === false ? "" : ' or a "$variable"'}, got ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path8}: expected a number${opts.token === false ? "" : ' or a "$variable"'}, got ${JSON.stringify(v)}.`);
   return void 0;
 }
-function size(v, path7, issues) {
+function size(v, path8, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
     if (["fill", "fill-container", "full", "100%", "stretch", "flex", "flex-1", "expand"].includes(s)) return "fill";
     if (["hug", "hug-contents", "auto", "fit", "fit-content", "content", "wrap", "wrap-content"].includes(s)) return "hug";
   }
-  return num(v, path7, issues, { min: 0.01 });
+  return num(v, path8, issues, { min: 0.01 });
 }
-function enumOf(v, map, path7, issues) {
+function enumOf(v, map, path8, issues) {
   if (v === void 0 || v === null) return void 0;
   const key = String(v).trim().toLowerCase();
   if (key in map) return map[key];
-  issues.errors.push(`${path7}: unknown value ${JSON.stringify(v)}.${didYouMean(key, Object.keys(map))}`);
+  issues.errors.push(`${path8}: unknown value ${JSON.stringify(v)}.${didYouMean(key, Object.keys(map))}`);
   return void 0;
 }
-function bool(v, path7, issues) {
+function bool(v, path8, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "boolean") return v;
   if (v === "true" || v === 1) return true;
   if (v === "false" || v === 0) return false;
-  issues.errors.push(`${path7}: expected true/false, got ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path8}: expected true/false, got ${JSON.stringify(v)}.`);
   return void 0;
 }
 var DIR = {
@@ -26525,7 +26526,7 @@ var WEIGHT_NAMES = {
   black: 900,
   heavy: 900
 };
-function paint(v, path7, issues) {
+function paint(v, path8, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "string") {
     const s = v.trim();
@@ -26534,44 +26535,44 @@ function paint(v, path7, issues) {
     if (s.startsWith("url(") || /^(https?:|file:|\/|~\/|\.\.?\/)/.test(s) || /\.(png|jpe?g|gif|webp|svg)$/i.test(s)) {
       return { kind: "image", src: s.replace(/^url\((['"]?)(.*)\1\)$/, "$2"), fit: "fill" };
     }
-    if (/^(linear|radial|conic|angular|diamond)-gradient\(/i.test(s)) return cssGradient(s, path7, issues);
+    if (/^(linear|radial|conic|angular|diamond)-gradient\(/i.test(s)) return cssGradient(s, path8, issues);
     return { kind: "solid", color: s };
   }
   if (isPlainObject3(v)) {
     const o = v;
-    const opacity = o.opacity === void 0 ? void 0 : num(o.opacity, `${path7}.opacity`, issues, { token: false });
+    const opacity = o.opacity === void 0 ? void 0 : num(o.opacity, `${path8}.opacity`, issues, { token: false });
     if (o.style !== void 0) return { kind: "style", name: String(o.style).replace(/^@/, "") };
     if (o.image !== void 0 || o.src !== void 0 || o.imageData !== void 0) {
       return {
         kind: "image",
         src: o.image !== void 0 ? String(o.image) : o.src !== void 0 ? String(o.src) : void 0,
         imageData: o.imageData !== void 0 ? String(o.imageData) : void 0,
-        fit: enumOf(o.fit ?? o.scaleMode ?? "fill", FIT, `${path7}.fit`, issues) ?? "fill",
+        fit: enumOf(o.fit ?? o.scaleMode ?? "fill", FIT, `${path8}.fit`, issues) ?? "fill",
         opacity
       };
     }
     if (o.gradient !== void 0 || o.stops !== void 0) {
       const g = String(o.gradient ?? "linear").toLowerCase().replace(/-gradient$/, "");
       const kind = { linear: "linear", radial: "radial", angular: "angular", conic: "angular", diamond: "diamond" }[g];
-      if (!kind) issues.errors.push(`${path7}.gradient: unknown gradient ${JSON.stringify(o.gradient)} (linear|radial|angular|diamond).`);
+      if (!kind) issues.errors.push(`${path8}.gradient: unknown gradient ${JSON.stringify(o.gradient)} (linear|radial|angular|diamond).`);
       const stops = Array.isArray(o.stops) ? o.stops : [];
-      if (stops.length < 2) issues.errors.push(`${path7}.stops: a gradient needs at least 2 stops.`);
+      if (stops.length < 2) issues.errors.push(`${path8}.stops: a gradient needs at least 2 stops.`);
       return {
         kind: "gradient",
         gradient: kind ?? "linear",
         angle: typeof o.angle === "number" ? o.angle : 180,
-        stops: stops.map((st, i) => gradientStop(st, i, stops.length, `${path7}.stops[${i}]`, issues)),
+        stops: stops.map((st, i) => gradientStop(st, i, stops.length, `${path8}.stops[${i}]`, issues)),
         opacity
       };
     }
     if (o.color !== void 0) return { kind: "solid", color: String(o.color), opacity };
-    issues.errors.push(`${path7}: unrecognised paint ${JSON.stringify(v)}. Use "#hex", "$variable", "@Style", {color, opacity}, {gradient, stops} or {image, fit}.`);
+    issues.errors.push(`${path8}: unrecognised paint ${JSON.stringify(v)}. Use "#hex", "$variable", "@Style", {color, opacity}, {gradient, stops} or {image, fit}.`);
     return void 0;
   }
-  issues.errors.push(`${path7}: unrecognised paint ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path8}: unrecognised paint ${JSON.stringify(v)}.`);
   return void 0;
 }
-function gradientStop(st, i, n, path7, issues) {
+function gradientStop(st, i, n, path8, issues) {
   const fallbackPos = n > 1 ? i / (n - 1) : 0;
   if (typeof st === "string") {
     const m = st.trim().match(/^(.*?)(?:\s+(-?\d*\.?\d+)%)?$/);
@@ -26582,10 +26583,10 @@ function gradientStop(st, i, n, path7, issues) {
     const p = st.position ?? st.pos ?? st.at;
     return { color: String(st.color), position: typeof p === "number" ? p > 1 ? p / 100 : p : fallbackPos };
   }
-  issues.errors.push(`${path7}: unrecognised gradient stop.`);
+  issues.errors.push(`${path8}: unrecognised gradient stop.`);
   return { color: "#000000", position: fallbackPos };
 }
-function cssGradient(s, path7, issues) {
+function cssGradient(s, path8, issues) {
   const m = s.match(/^(\w+)-gradient\((.*)\)$/i);
   if (!m) return void 0;
   const kind = m[1].toLowerCase();
@@ -26607,22 +26608,22 @@ function cssGradient(s, path7, issues) {
     const dirs = { "to top": 0, "to right": 90, "to bottom": 180, "to left": 270, "to top right": 45, "to bottom right": 135, "to bottom left": 225, "to top left": 315 };
     angle = a.endsWith("deg") ? parseFloat(a) : dirs[a] ?? 180;
   } else if (parts.length && /^(circle|ellipse|at )/.test(parts[0])) parts.shift();
-  const stops = parts.map((p, i) => gradientStop(p, i, parts.length, `${path7}.stops[${i}]`, issues));
+  const stops = parts.map((p, i) => gradientStop(p, i, parts.length, `${path8}.stops[${i}]`, issues));
   const gradient = kind === "linear" ? "linear" : kind === "radial" ? "radial" : kind === "diamond" ? "diamond" : "angular";
   return { kind: "gradient", gradient, angle, stops };
 }
-function paints(v, path7, issues) {
+function paints(v, path8, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false || Array.isArray(v) && v.length === 0) return null;
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((p, i) => {
-    const r = paint(p, list.length > 1 || Array.isArray(v) ? `${path7}[${i}]` : path7, issues);
+    const r = paint(p, list.length > 1 || Array.isArray(v) ? `${path8}[${i}]` : path8, issues);
     if (r) out.push(r);
   });
   return out;
 }
-function stroke(v, path7, issues) {
+function stroke(v, path8, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false) return null;
   if (typeof v === "string") {
@@ -26637,33 +26638,33 @@ function stroke(v, path7, issues) {
       else if (t === "solid") continue;
       else rest.push(t);
     }
-    const p = paint(rest.join(" ") || "#000000", path7, issues);
+    const p = paint(rest.join(" ") || "#000000", path8, issues);
     return { paints: p ? [p] : [], weight: weight ?? 1, dash };
   }
-  if (Array.isArray(v)) return { paints: paints(v, path7, issues) ?? [], weight: 1 };
+  if (Array.isArray(v)) return { paints: paints(v, path8, issues) ?? [], weight: 1 };
   if (isPlainObject3(v)) {
     const o = v;
     const colorInput = o.color ?? o.paint ?? o.paints ?? o.fill;
     let weight;
     const w = o.weight ?? o.width ?? o.strokeWeight;
     if (Array.isArray(w)) {
-      const sides = padLike(w, `${path7}.weight`, issues);
+      const sides = padLike(w, `${path8}.weight`, issues);
       weight = sides;
-    } else if (w !== void 0) weight = num(w, `${path7}.weight`, issues, { min: 0 });
+    } else if (w !== void 0) weight = num(w, `${path8}.weight`, issues, { min: 0 });
     const align = o.align ?? o.position ?? o.strokeAlign;
     return {
-      paints: colorInput === void 0 ? [] : paints(colorInput, `${path7}.color`, issues) ?? [],
+      paints: colorInput === void 0 ? [] : paints(colorInput, `${path8}.color`, issues) ?? [],
       weight: weight ?? 1,
-      align: align === void 0 ? void 0 : enumOf(align, { inside: "inside", inner: "inside", center: "center", middle: "center", outside: "outside", outer: "outside" }, `${path7}.align`, issues),
+      align: align === void 0 ? void 0 : enumOf(align, { inside: "inside", inner: "inside", center: "center", middle: "center", outside: "outside", outer: "outside" }, `${path8}.align`, issues),
       dash: Array.isArray(o.dash) ? o.dash : o.dash === true || o.style === "dashed" ? [4, 4] : o.style === "dotted" ? [1, 2] : void 0,
-      cap: o.cap === void 0 ? void 0 : enumOf(o.cap, { none: "none", round: "round", square: "square" }, `${path7}.cap`, issues),
-      join: o.join === void 0 ? void 0 : enumOf(o.join, { miter: "miter", bevel: "bevel", round: "round" }, `${path7}.join`, issues)
+      cap: o.cap === void 0 ? void 0 : enumOf(o.cap, { none: "none", round: "round", square: "square" }, `${path8}.cap`, issues),
+      join: o.join === void 0 ? void 0 : enumOf(o.join, { miter: "miter", bevel: "bevel", round: "round" }, `${path8}.join`, issues)
     };
   }
-  issues.errors.push(`${path7}: unrecognised stroke ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path8}: unrecognised stroke ${JSON.stringify(v)}.`);
   return void 0;
 }
-function cssShadows(s, path7, issues) {
+function cssShadows(s, path8, issues) {
   const parts = [];
   let depth = 0;
   let cur = "";
@@ -26688,7 +26689,7 @@ function cssShadows(s, path7, issues) {
       else if (/^-?\d*\.?\d+(px)?$/.test(t)) nums.push(parseFloat(t));
       else colorParts.push(t);
     }
-    if (nums.length < 2) issues.errors.push(`${path7}[${i}]: shadow needs at least "x y" offsets: ${JSON.stringify(p)}.`);
+    if (nums.length < 2) issues.errors.push(`${path8}[${i}]: shadow needs at least "x y" offsets: ${JSON.stringify(p)}.`);
     return {
       kind: inset ? "inner-shadow" : "drop-shadow",
       x: nums[0] ?? 0,
@@ -26699,17 +26700,17 @@ function cssShadows(s, path7, issues) {
     };
   });
 }
-function effects(v, path7, issues) {
+function effects(v, path8, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false) return null;
   if (typeof v === "string") {
     if (v.trim().startsWith("@")) return [{ kind: "style", name: v.trim().slice(1) }];
-    return cssShadows(v, path7, issues);
+    return cssShadows(v, path8, issues);
   }
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((e, i) => {
-    const p = `${path7}[${i}]`;
+    const p = `${path8}[${i}]`;
     if (typeof e === "string") {
       if (e.trim().startsWith("@")) out.push({ kind: "style", name: e.trim().slice(1) });
       else out.push(...cssShadows(e, p, issues));
@@ -26781,20 +26782,20 @@ function fontShorthand(s) {
   if (family.length) out.family = family.join(" ").replace(/^["']|["']$/g, "");
   return out;
 }
-function fontSpec(v, path7, issues, into = {}) {
+function fontSpec(v, path8, issues, into = {}) {
   if (typeof v === "string") return { ...into, ...fontShorthand(v) };
   if (!isPlainObject3(v)) {
-    issues.errors.push(`${path7}: expected an object or a shorthand like "600 16/24 Inter".`);
+    issues.errors.push(`${path8}: expected an object or a shorthand like "600 16/24 Inter".`);
     return into;
   }
   const out = { ...into };
   for (const [k, val] of Object.entries(v)) {
     const key = FONT_KEYS[k] ?? k;
-    applyFontKey(out, key, val, `${path7}.${k}`, issues);
+    applyFontKey(out, key, val, `${path8}.${k}`, issues);
   }
   return out;
 }
-function applyFontKey(out, key, val, path7, issues) {
+function applyFontKey(out, key, val, path8, issues) {
   switch (key) {
     case "family":
       out.family = String(val);
@@ -26807,33 +26808,33 @@ function applyFontKey(out, key, val, path7, issues) {
       else if (typeof val === "string" && /^\d+$/.test(val)) out.weight = parseInt(val, 10);
       else if (typeof val === "string" && WEIGHT_NAMES[val.toLowerCase().replace(/[-_ ]/g, "")] !== void 0)
         out.weight = WEIGHT_NAMES[val.toLowerCase().replace(/[-_ ]/g, "")];
-      else issues.errors.push(`${path7}: unknown font weight ${JSON.stringify(val)} (100\u2013900 or Regular/Medium/SemiBold/Bold\u2026).`);
+      else issues.errors.push(`${path8}: unknown font weight ${JSON.stringify(val)} (100\u2013900 or Regular/Medium/SemiBold/Bold\u2026).`);
       break;
     }
     case "italic":
       out.italic = !!val;
       break;
     case "size":
-      out.size = num(val, path7, issues, { min: 1 });
+      out.size = num(val, path8, issues, { min: 1 });
       break;
     case "lineHeight":
       if (typeof val === "string" && (/%$/.test(val.trim()) || val.trim().toLowerCase() === "auto")) out.lineHeight = val.trim().toLowerCase();
       else if (typeof val === "number" && val > 0 && val < 4) out.lineHeight = `${Math.round(val * 100)}%`;
-      else out.lineHeight = num(val, path7, issues);
+      else out.lineHeight = num(val, path8, issues);
       break;
     case "letterSpacing":
       if (typeof val === "string" && /%$/.test(val.trim())) out.letterSpacing = val.trim();
       else if (typeof val === "string" && /em$/.test(val.trim())) out.letterSpacing = `${parseFloat(val) * 100}%`;
-      else out.letterSpacing = num(val, path7, issues);
+      else out.letterSpacing = num(val, path8, issues);
       break;
     case "case":
-      out.case = enumOf(val, CASE, path7, issues);
+      out.case = enumOf(val, CASE, path8, issues);
       break;
     case "decoration":
-      out.decoration = enumOf(val, DECORATION, path7, issues);
+      out.decoration = enumOf(val, DECORATION, path8, issues);
       break;
     default:
-      issues.warnings.push(`${path7}: unknown font property ignored.${didYouMean(key, Object.values(FONT_KEYS))}`);
+      issues.warnings.push(`${path8}: unknown font property ignored.${didYouMean(key, Object.values(FONT_KEYS))}`);
   }
 }
 var TRIGGERS = {
@@ -26906,14 +26907,14 @@ function keyCode(k) {
   const n = parseInt(k, 10);
   return Number.isFinite(n) ? n : 13;
 }
-function trigger(v, path7, issues) {
+function trigger(v, path8, issues) {
   if (v === void 0 || v === null) return { kind: "click" };
   if (isPlainObject3(v)) {
     const o = v;
     if (o.after !== void 0 || o.delay !== void 0 || o.timeout !== void 0)
       return { kind: "after", delayMs: parseDuration(o.after ?? o.delay ?? o.timeout, 800) };
     if (o.key !== void 0) return { kind: "key", keyCodes: (Array.isArray(o.key) ? o.key : [o.key]).map((k2) => keyCode(String(k2))) };
-    return trigger(o.type ?? o.kind, path7, issues);
+    return trigger(o.type ?? o.kind, path8, issues);
   }
   const s = String(v).trim();
   const m = s.match(/^(after|delay|timeout)\s+(.+)$/i);
@@ -26922,7 +26923,7 @@ function trigger(v, path7, issues) {
   if (k) return { kind: "key", keyCodes: k[1].split(/[+,\s]+/).filter(Boolean).map(keyCode) };
   const kind = TRIGGERS[s.toLowerCase()];
   if (!kind) {
-    issues.errors.push(`${path7}: unknown trigger ${JSON.stringify(v)}.${didYouMean(s, Object.keys(TRIGGERS))}`);
+    issues.errors.push(`${path8}: unknown trigger ${JSON.stringify(v)}.${didYouMean(s, Object.keys(TRIGGERS))}`);
     return { kind: "click" };
   }
   return { kind };
@@ -26967,7 +26968,7 @@ var TRANSITIONS = {
   "slide-out": "slide-out",
   slideout: "slide-out"
 };
-function easing(v, path7, issues) {
+function easing(v, path8, issues) {
   if (v === void 0 || v === null) return { kind: "ease-out" };
   if (Array.isArray(v) && v.length === 4) return { kind: "bezier", points: v.map(Number) };
   if (isPlainObject3(v)) {
@@ -26986,12 +26987,12 @@ function easing(v, path7, issues) {
   }
   const kind = EASINGS[s];
   if (!kind) {
-    issues.errors.push(`${path7}: unknown easing ${JSON.stringify(v)}.${didYouMean(s, Object.keys(EASINGS))}`);
+    issues.errors.push(`${path8}: unknown easing ${JSON.stringify(v)}.${didYouMean(s, Object.keys(EASINGS))}`);
     return { kind: "ease-out" };
   }
   return { kind };
 }
-function transition(v, path7, issues) {
+function transition(v, path8, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === false) return null;
   let type;
@@ -27014,12 +27015,12 @@ function transition(v, path7, issues) {
     ease = o.easing ?? o.ease ?? o.curve;
     matchLayers = o.matchLayers === void 0 ? void 0 : !!o.matchLayers;
   } else {
-    issues.errors.push(`${path7}: expected a transition string like "smart-animate 300ms ease-out" or an object.`);
+    issues.errors.push(`${path8}: expected a transition string like "smart-animate 300ms ease-out" or an object.`);
     return void 0;
   }
   const t = TRANSITIONS[type ?? "dissolve"];
   if (!t) {
-    issues.errors.push(`${path7}: unknown transition ${JSON.stringify(type)}.${didYouMean(type ?? "", Object.keys(TRANSITIONS))}`);
+    issues.errors.push(`${path8}: unknown transition ${JSON.stringify(type)}.${didYouMean(type ?? "", Object.keys(TRANSITIONS))}`);
     return void 0;
   }
   if (t === "instant") return null;
@@ -27029,7 +27030,7 @@ function transition(v, path7, issues) {
     type: t,
     direction: directional ? dirMap[direction ?? "left"] ?? "left" : void 0,
     durationMs: parseDuration(duration3, 300),
-    easing: easing(ease, `${path7}.easing`, issues),
+    easing: easing(ease, `${path8}.easing`, issues),
     matchLayers
   };
 }
@@ -27057,14 +27058,14 @@ var ACTION_KEYS = {
   setVariable: "set-variable",
   "set-variable": "set-variable"
 };
-function action(o, path7, issues, sharedTransition) {
+function action(o, path8, issues, sharedTransition) {
   let kind;
   let to;
   if (o.action !== void 0 || o.type !== void 0 || o.kind !== void 0) {
     const a2 = String(o.action ?? o.type ?? o.kind).replace(/[_\s]/g, "-");
     kind = ACTION_KEYS[a2] ?? ACTION_KEYS[a2.toLowerCase()] ?? (Object.values(ACTION_KEYS).includes(a2.toLowerCase()) ? a2.toLowerCase() : void 0);
     if (!kind) {
-      issues.errors.push(`${path7}.action: unknown action ${JSON.stringify(a2)}.${didYouMean(a2, Object.keys(ACTION_KEYS))}`);
+      issues.errors.push(`${path8}.action: unknown action ${JSON.stringify(a2)}.${didYouMean(a2, Object.keys(ACTION_KEYS))}`);
       return void 0;
     }
     to = o.to !== void 0 ? String(o.to) : o.destination !== void 0 ? String(o.destination) : void 0;
@@ -27078,14 +27079,14 @@ function action(o, path7, issues, sharedTransition) {
     }
   }
   if (!kind) {
-    issues.errors.push(`${path7}: no action. Use {action: "navigate", to: "<node id or ref>"} or shorthands like {navigate: "\u2026"}, {overlay: "\u2026"}, {back: true}, {url: "\u2026"}.`);
+    issues.errors.push(`${path8}: no action. Use {action: "navigate", to: "<node id or ref>"} or shorthands like {navigate: "\u2026"}, {overlay: "\u2026"}, {back: true}, {url: "\u2026"}.`);
     return void 0;
   }
   const a = { kind };
   if (["navigate", "overlay", "swap", "scroll-to", "change-to"].includes(kind)) {
-    if (!to) issues.errors.push(`${path7}: "${kind}" needs a destination ("to").`);
+    if (!to) issues.errors.push(`${path8}: "${kind}" needs a destination ("to").`);
     a.to = to;
-    const tr = transition(o.transition ?? o.animation ?? sharedTransition, `${path7}.transition`, issues);
+    const tr = transition(o.transition ?? o.animation ?? sharedTransition, `${path8}.transition`, issues);
     a.transition = tr === void 0 ? kind === "change-to" ? { type: "smart-animate", durationMs: 200, easing: { kind: "ease-out" } } : null : tr;
     if (o.resetScroll !== void 0) a.resetScroll = !!o.resetScroll;
     if (o.preserveScroll !== void 0) a.resetScroll = !o.preserveScroll;
@@ -27093,29 +27094,29 @@ function action(o, path7, issues, sharedTransition) {
   }
   if (kind === "url") {
     a.url = String(o.url ?? o.to ?? o.openUrl ?? o.link ?? "");
-    if (!a.url) issues.errors.push(`${path7}: "url" action needs a url.`);
+    if (!a.url) issues.errors.push(`${path8}: "url" action needs a url.`);
     a.newTab = o.newTab === void 0 ? true : !!o.newTab;
   }
   if (kind === "set-mode") {
     const src = isPlainObject3(o.setMode) ? o.setMode : o;
     a.collection = src.collection !== void 0 ? String(src.collection) : void 0;
     a.mode = src.mode !== void 0 ? String(src.mode) : void 0;
-    if (!a.collection || !a.mode) issues.errors.push(`${path7}: "set-mode" needs {collection, mode}.`);
+    if (!a.collection || !a.mode) issues.errors.push(`${path8}: "set-mode" needs {collection, mode}.`);
   }
   if (kind === "set-variable") {
     const src = isPlainObject3(o.setVariable) ? o.setVariable : o;
     a.variable = src.variable !== void 0 ? String(src.variable).replace(/^\$/, "") : void 0;
     a.value = src.value;
-    if (!a.variable) issues.errors.push(`${path7}: "set-variable" needs {variable, value}.`);
+    if (!a.variable) issues.errors.push(`${path8}: "set-variable" needs {variable, value}.`);
   }
   return a;
 }
-function interactions(v, path7, issues) {
+function interactions(v, path8, issues) {
   if (v === void 0 || v === null) return [];
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((item, i) => {
-    const p = Array.isArray(v) ? `${path7}[${i}]` : path7;
+    const p = Array.isArray(v) ? `${path8}[${i}]` : path8;
     if (typeof item === "string") {
       out.push({ trigger: { kind: "click" }, actions: [{ kind: "navigate", to: item, transition: null }] });
       return;
@@ -27142,14 +27143,14 @@ function interactions(v, path7, issues) {
   });
   return out;
 }
-function padLike(v, path7, issues) {
+function padLike(v, path8, issues) {
   if (Array.isArray(v)) {
-    const a = v.map((x, i) => num(x, `${path7}[${i}]`, issues) ?? 0);
+    const a = v.map((x, i) => num(x, `${path8}[${i}]`, issues) ?? 0);
     if (a.length === 1) return [a[0], a[0], a[0], a[0]];
     if (a.length === 2) return [a[0], a[1], a[0], a[1]];
     if (a.length === 3) return [a[0], a[1], a[2], a[1]];
     if (a.length === 4) return [a[0], a[1], a[2], a[3]];
-    issues.errors.push(`${path7}: expected 1\u20134 values (CSS order: top right bottom left).`);
+    issues.errors.push(`${path8}: expected 1\u20134 values (CSS order: top right bottom left).`);
     return [0, 0, 0, 0];
   }
   if (isPlainObject3(v)) {
@@ -27157,19 +27158,19 @@ function padLike(v, path7, issues) {
     const x = o.x ?? o.horizontal ?? o.h;
     const y = o.y ?? o.vertical ?? o.v;
     const g = (k, fb) => {
-      for (const kk of k) if (o[kk] !== void 0) return num(o[kk], `${path7}.${kk}`, issues) ?? 0;
-      return fb === void 0 ? 0 : num(fb, path7, issues) ?? 0;
+      for (const kk of k) if (o[kk] !== void 0) return num(o[kk], `${path8}.${kk}`, issues) ?? 0;
+      return fb === void 0 ? 0 : num(fb, path8, issues) ?? 0;
     };
     return [g(["top", "t"], y), g(["right", "r", "end"], x), g(["bottom", "b"], y), g(["left", "l", "start"], x)];
   }
-  if (typeof v === "string" && !isToken(v) && /\s/.test(v.trim())) return padLike(v.trim().split(/\s+/), path7, issues);
-  const n = num(v, path7, issues) ?? 0;
+  if (typeof v === "string" && !isToken(v) && /\s/.test(v.trim())) return padLike(v.trim().split(/\s+/), path8, issues);
+  const n = num(v, path8, issues) ?? 0;
   return [n, n, n, n];
 }
-function normalizeSpec(input, path7, issues, opts = {}) {
+function normalizeSpec(input, path8, issues, opts = {}) {
   const out = {};
   if (!isPlainObject3(input)) {
-    issues.errors.push(`${path7}: expected an object, got ${JSON.stringify(input)?.slice(0, 80)}.`);
+    issues.errors.push(`${path8}: expected an object, got ${JSON.stringify(input)?.slice(0, 80)}.`);
     return { type: "frame" };
   }
   const raw = input;
@@ -27186,7 +27187,7 @@ function normalizeSpec(input, path7, issues, opts = {}) {
     const t = String(typeInput).toLowerCase();
     const alias = TYPE_ALIASES[t];
     if (!alias) {
-      issues.errors.push(`${path7}.type: unknown node type ${JSON.stringify(typeInput)}.${didYouMean(t, Object.keys(TYPE_ALIASES))}`);
+      issues.errors.push(`${path8}.type: unknown node type ${JSON.stringify(typeInput)}.${didYouMean(t, Object.keys(TYPE_ALIASES))}`);
       out.type = "frame";
     } else {
       out.type = alias[0];
@@ -27201,7 +27202,7 @@ function normalizeSpec(input, path7, issues, opts = {}) {
   let srcForFill;
   for (const [rawKey, val] of Object.entries(raw)) {
     if (["type", "kind", "node", "nodeType"].includes(rawKey)) continue;
-    const p = `${path7}.${rawKey}`;
+    const p = `${path8}.${rawKey}`;
     if (FONT_KEYS[rawKey] !== void 0) {
       applyFontKey(font, FONT_KEYS[rawKey], val, p, issues);
       fontTouched = true;
@@ -27501,25 +27502,25 @@ function normalizeSpec(input, path7, issues, opts = {}) {
   if (out.prompt !== void 0 && !out.prompt.trim()) delete out.prompt;
   if (!opts.partial) {
     if (out.children && type && !CONTAINER_TYPES.has(type)) {
-      issues.errors.push(`${path7}: a "${type}" cannot have children (only frame, component, group, section). Wrap it in a frame.`);
+      issues.errors.push(`${path8}: a "${type}" cannot have children (only frame, component, group, section). Wrap it in a frame.`);
     }
-    if (type === "instance" && !out.component) issues.errors.push(`${path7}: an instance needs "component" (name, key or id).`);
-    if (type === "icon" && !out.icon) issues.errors.push(`${path7}: an icon needs "icon", e.g. "lucide:search".`);
-    if (type === "icon" && out.icon && !out.icon.includes(":")) issues.errors.push(`${path7}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
-    if (type === "svg" && !out.svg) issues.errors.push(`${path7}: an svg node needs "svg" markup.`);
-    if (type === "text" && out.text === void 0 && !out.segments) issues.errors.push(`${path7}: a text node needs "text".`);
+    if (type === "instance" && !out.component) issues.errors.push(`${path8}: an instance needs "component" (name, key or id).`);
+    if (type === "icon" && !out.icon) issues.errors.push(`${path8}: an icon needs "icon", e.g. "lucide:search".`);
+    if (type === "icon" && out.icon && !out.icon.includes(":")) issues.errors.push(`${path8}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
+    if (type === "svg" && !out.svg) issues.errors.push(`${path8}: an svg node needs "svg" markup.`);
+    if (type === "text" && out.text === void 0 && !out.segments) issues.errors.push(`${path8}: a text node needs "text".`);
     if (type === "image" && !out.src && !out.imageData && !out.prompt) {
-      issues.warnings.push(`${path7}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate.`);
+      issues.warnings.push(`${path8}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate.`);
     }
-    if (type === "group" && !(out.children && out.children.length)) issues.errors.push(`${path7}: a group needs children.`);
-    if (out.dir === "grid" && !out.cols) issues.errors.push(`${path7}: a grid needs "cols".`);
+    if (type === "group" && !(out.children && out.children.length)) issues.errors.push(`${path8}: a group needs children.`);
+    if (out.dir === "grid" && !out.cols) issues.errors.push(`${path8}: a grid needs "cols".`);
   }
   return out;
 }
-function walkSpec(spec, visit, path7 = "spec") {
-  visit(spec, path7);
-  spec.children?.forEach((c, i) => walkSpec(c, visit, `${path7}.children[${i}]`));
-  if (spec.overrides) for (const [k, o] of Object.entries(spec.overrides)) walkSpec(o, visit, `${path7}.overrides.${k}`);
+function walkSpec(spec, visit, path8 = "spec") {
+  visit(spec, path8);
+  spec.children?.forEach((c, i) => walkSpec(c, visit, `${path8}.children[${i}]`));
+  if (spec.overrides) for (const [k, o] of Object.entries(spec.overrides)) walkSpec(o, visit, `${path8}.overrides.${k}`);
 }
 var matches = (props, cond) => Object.entries(cond).every(([k, v]) => Array.isArray(v) ? v.map(String).includes(props[k]) : String(v) === props[k]);
 function patchByRef(node, ref, patch) {
@@ -27575,6 +27576,247 @@ function collectAssetRefs(spec, into = { icons: /* @__PURE__ */ new Set(), image
     for (const p of [...s.fill ?? [], ...s.color ?? []]) if (p.kind === "image" && p.src && !p.imageData) into.images.add(p.src);
   });
   return into;
+}
+
+// src/server/references.ts
+var USER_AGENT = "figma-mcp (design reference fetcher; local)";
+var MAX_HTML = 4 * 1024 * 1024;
+var INSPIRATION_HOSTS = [
+  "dribbble.com",
+  "behance.net",
+  "awwwards.com",
+  "siteinspire.com",
+  "land-book.com",
+  "onepagelove.com",
+  "pinterest.com",
+  "pinterest.co.uk",
+  "pin.it",
+  "pinimg.com",
+  "mobbin.com",
+  "lapa.ninja",
+  "godly.website",
+  "muz.li",
+  "pageflows.com",
+  "saaslandingpage.com",
+  "uplabs.com"
+];
+var LOGIN_ONLY = ["mobbin.com", "pageflows.com"];
+var FREE_PHOTO_HOSTS = ["unsplash.com", "pexels.com", "pixabay.com"];
+var hostOf = (url) => {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+};
+var onHost = (url, list) => {
+  const h = hostOf(url);
+  return !!h && list.some((d) => h === d || h.endsWith(`.${d}`));
+};
+var isInspirationHost = (url) => /^https?:/i.test(url) && onHost(url, INSPIRATION_HOSTS);
+var isLoginOnlyHost = (url) => onHost(url, LOGIN_ONLY);
+var isFreePhotoPage = (url) => onHost(url, FREE_PHOTO_HOSTS) && !/^(images|cdn)\./.test(new URL(url).hostname);
+function decode(s) {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
+}
+function meta(html, key) {
+  const re = new RegExp(`<meta[^>]+(?:property|name)=["']${key.replace(/[:.]/g, "\\$&")}["'][^>]*>`, "i");
+  const tag = html.match(re)?.[0];
+  const content = tag?.match(/content=["']([^"']*)["']/i)?.[1];
+  return content ? decode(content.trim()) : void 0;
+}
+function pageTitle(html) {
+  const t = meta(html, "og:title") ?? decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? "");
+  return t.replace(/\s+/g, " ").slice(0, 120);
+}
+function fullSize(u) {
+  try {
+    const url = new URL(u);
+    const h = url.hostname;
+    if (h === "cdn.dribbble.com") {
+      url.searchParams.delete("resize");
+      url.searchParams.delete("vertical");
+      url.searchParams.delete("crop");
+      url.searchParams.delete("format");
+    } else if (h.endsWith("behance.net")) {
+      url.pathname = url.pathname.replace(/\/project_modules\/(?:max_\d+|disp|fs|1400|1400_opt_1|2800_opt_1|max_\d+_webp)\//, "/project_modules/max_3840/");
+    } else if (h === "assets.awwwards.com") {
+      url.pathname = url.pathname.replace(/\/media\/cache\/[^/]+\//, "/");
+    } else if (h === "images.unsplash.com") {
+      for (const k of ["w", "h", "crop", "fit", "q", "fm", "auto", "ixlib", "ixid"]) url.searchParams.delete(k);
+      url.searchParams.set("w", "2400");
+      url.searchParams.set("fm", "jpg");
+      url.searchParams.set("q", "85");
+    } else if (h === "images.pexels.com") {
+      url.search = "?auto=compress&cs=tinysrgb&w=2400";
+    }
+    return url.toString();
+  } catch {
+    return u;
+  }
+}
+function pageImages(html, baseUrl, max = 4) {
+  const host = hostOf(baseUrl);
+  const found = [];
+  const add = (raw) => {
+    if (!raw) return;
+    try {
+      const u = fullSize(new URL(decode(raw), baseUrl).toString());
+      if (/^https?:/.test(u) && !found.includes(u)) found.push(u);
+    } catch {
+    }
+  };
+  const all = (re) => [...html.matchAll(re)].map((m) => m[0]);
+  add(meta(html, "og:image") ?? meta(html, "og:image:url") ?? meta(html, "twitter:image") ?? meta(html, "twitter:image:src"));
+  if (host.endsWith("dribbble.com")) all(/https:\/\/cdn\.dribbble\.com\/userupload\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)(?:\?[^"'\s)]*)?/gi).forEach(add);
+  else if (host.endsWith("behance.net")) all(/https:\/\/mir-s3-cdn-cf\.behance\.net\/project_modules\/[^"'\s)]+?\.(?:png|jpe?g|gif|webp)/gi).forEach(add);
+  else if (host.endsWith("awwwards.com")) all(/https:\/\/assets\.awwwards\.com\/awards\/(?:media\/cache\/[^/]+\/)?submissions\/[^"'\s)]+?\.(?:png|jpe?g|webp)/gi).forEach(add);
+  return found.slice(0, Math.max(1, max));
+}
+function blockedReason(status, html, finalUrl) {
+  if (status === 401 || status === 403) return `HTTP ${status} \u2014 the site refuses automated access`;
+  if (status === 429) return "HTTP 429 \u2014 rate limited";
+  if (status === 202 && html.length < 2e4) return "bot check (HTTP 202 challenge page)";
+  if (status < 200 || status >= 300) return `HTTP ${status}`;
+  const head = html.slice(0, 3e4).toLowerCase();
+  let path8 = "";
+  try {
+    path8 = new URL(finalUrl).pathname;
+  } catch {
+  }
+  if (/\/(login|signin|sign-in|signup|join)(\/|$)/i.test(path8)) return "redirected to a login page";
+  if (/are you a robot|captcha|cf-challenge|challenge-platform|just a moment\.\.\./.test(head)) return "bot check (captcha)";
+  if (/(log ?in|sign ?in) to (continue|view|see)|subscribe to (view|continue)/.test(head) && /type=["']?password/.test(head)) return "login wall";
+  return null;
+}
+function robotsRules(text, agent = "figma-mcp") {
+  const groups = [];
+  let cur = null;
+  let lastWasAgent = false;
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.replace(/#.*$/, "").trim().match(/^([a-z-]+)\s*:\s*(.*)$/i);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const val = m[2].trim();
+    if (key === "user-agent") {
+      if (!cur || !lastWasAgent) groups.push(cur = { agents: [], rules: [] });
+      cur.agents.push(val.toLowerCase());
+      lastWasAgent = true;
+    } else {
+      lastWasAgent = false;
+      if (cur && (key === "allow" || key === "disallow") && val) cur.rules.push({ allow: key === "allow", path: val });
+    }
+  }
+  const mine = groups.filter((g) => g.agents.some((a) => a !== "*" && agent.toLowerCase().includes(a)));
+  return (mine.length ? mine : groups.filter((g) => g.agents.includes("*"))).flatMap((g) => g.rules);
+}
+function robotsAllows(rules, pathAndQuery) {
+  let best = null;
+  for (const r of rules) {
+    const re = new RegExp(`^${r.path.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\\\$$/, "$")}`);
+    if (!re.test(pathAndQuery)) continue;
+    if (!best || r.path.length > best.path.length || r.path.length === best.path.length && r.allow) best = r;
+  }
+  return !best || best.allow;
+}
+var robotsCache = /* @__PURE__ */ new Map();
+async function get(url, accept, ms = 2e4) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal, redirect: "follow", headers: { "user-agent": USER_AGENT, accept } });
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function allowedByRobots(url) {
+  const u = new URL(url);
+  let rules = robotsCache.get(u.origin);
+  if (!rules) {
+    let text = "";
+    try {
+      const res = await get(`${u.origin}/robots.txt`, "text/plain", 8e3);
+      if (res.ok) text = await res.text();
+      else if (res.status >= 500) text = "User-agent: *\nDisallow: /";
+    } catch {
+    }
+    rules = robotsRules(text);
+    robotsCache.set(u.origin, rules);
+  }
+  return robotsAllows(rules, `${u.pathname}${u.search}`);
+}
+async function readCapped(res, max) {
+  if (Number(res.headers.get("content-length") ?? 0) > max) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  return buf.length > max ? null : buf;
+}
+var FetchRefused = class extends Error {
+};
+async function fetchPage(url, max, maxBytes) {
+  if (!/^https?:\/\//i.test(url)) throw new FetchRefused("only http(s) URLs can be fetched");
+  if (isLoginOnlyHost(url)) throw new FetchRefused(`${hostOf(url)} needs an account \u2014 it is never fetched. Ask the user for screenshots from their own session (or open it in your browser if they are signed in there) and pass the files.`);
+  if (!await allowedByRobots(url)) throw new FetchRefused(`robots.txt of ${hostOf(url)} does not allow fetching this page \u2014 take a screenshot in a browser instead.`);
+  let res;
+  try {
+    res = await get(url, "text/html,application/xhtml+xml,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5");
+  } catch (e) {
+    throw new FetchRefused(`could not reach ${hostOf(url)} (${e instanceof Error ? e.message : e})`);
+  }
+  const type = res.headers.get("content-type") ?? "";
+  if (res.ok && /^image\//i.test(type)) {
+    const buf = await readCapped(res, maxBytes);
+    if (!buf) throw new FetchRefused("the image is too large");
+    return { images: [{ url, buf }], skipped: [] };
+  }
+  const html = (await readCapped(res, MAX_HTML))?.toString("utf8") ?? "";
+  const blocked = blockedReason(res.status, html, res.url || url);
+  if (blocked) throw new FetchRefused(`${hostOf(url)}: ${blocked}. Open it in your browser and save a screenshot (or ask the user for one), then pass the file path.`);
+  if (!/html|xml/i.test(type)) throw new FetchRefused(`not a page or image (${type || "unknown type"})`);
+  const candidates = pageImages(html, res.url || url, max + 2);
+  if (!candidates.length) throw new FetchRefused("the page exposes no image (no share image) \u2014 take a screenshot of it instead");
+  const images = [];
+  const skipped = [];
+  for (const img of candidates) {
+    if (images.length >= max) break;
+    try {
+      if (!await allowedByRobots(img)) {
+        skipped.push(`${img}: robots.txt`);
+        continue;
+      }
+      const r = await get(img, "image/png,image/jpeg,image/gif,image/webp,image/*;q=0.8");
+      const buf = r.ok ? await readCapped(r, maxBytes) : null;
+      if (!r.ok || !buf) skipped.push(`${img}: ${r.ok ? "too large" : `HTTP ${r.status}`}`);
+      else images.push({ url: img, buf });
+    } catch (e) {
+      skipped.push(`${img}: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  if (!images.length) throw new FetchRefused(`none of the page's images could be downloaded (${skipped.join("; ")})`);
+  return { title: pageTitle(html) || void 0, images, skipped };
+}
+function imageSize(buf) {
+  if (buf.length > 24 && buf[0] === 137 && buf[1] === 80) return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  if (buf.length >= 10 && buf.slice(0, 3).toString() === "GIF") return { w: buf.readUInt16LE(6), h: buf.readUInt16LE(8) };
+  if (buf[0] === 255 && buf[1] === 216) {
+    let i = 2;
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 255) {
+        i++;
+        continue;
+      }
+      const marker = buf[i + 1];
+      const len = buf.readUInt16BE(i + 2);
+      if (marker >= 192 && marker <= 207 && marker !== 196 && marker !== 200 && marker !== 204) return { w: buf.readUInt16BE(i + 7), h: buf.readUInt16BE(i + 5) };
+      i += 2 + len;
+    }
+  }
+  return null;
+}
+var boardLetter = (i) => i < 26 ? String.fromCharCode(65 + i) : `${boardLetter(Math.floor(i / 26) - 1)}${String.fromCharCode(65 + i % 26)}`;
+function letterIndex(name) {
+  const m = name.match(/^([A-Z]{1,2}) [–-] /);
+  if (!m) return -1;
+  return [...m[1]].reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0) - 1;
 }
 
 // src/server/assets.ts
@@ -27634,6 +27876,32 @@ function sniff(buf) {
   if (head.startsWith("<svg") || head.startsWith("<?xml") && head.includes("<svg")) return "svg";
   return "unknown";
 }
+function convertToPng(buf, kind, src) {
+  if (process.platform !== "darwin") throw new Error(`image ${src} is ${kind.toUpperCase()}; Figma accepts PNG, JPEG or GIF \u2014 convert it first.`);
+  const dir = fs4.mkdtempSync(path4.join(os4.tmpdir(), "figma-mcp-img-"));
+  try {
+    const input = path4.join(dir, `in.${kind}`);
+    const output = path4.join(dir, "out.png");
+    fs4.writeFileSync(input, buf);
+    execFileSync("sips", ["-s", "format", "png", input, "--out", output], { stdio: "ignore", timeout: 3e4 });
+    return fs4.readFileSync(output);
+  } catch {
+    throw new Error(`image ${src} is ${kind.toUpperCase()} and could not be converted; save it as PNG or JPEG first.`);
+  } finally {
+    fs4.rmSync(dir, { recursive: true, force: true });
+  }
+}
+function figmaImage(buf, src) {
+  const kind = sniff(buf);
+  if (kind === "svg") return { svg: buf.toString("utf8") };
+  if (kind === "png" || kind === "jpg" || kind === "gif") return { data: buf.toString("base64"), bytes: buf };
+  if (kind === "webp" || kind === "avif") {
+    const png = convertToPng(buf, kind, src);
+    return { data: png.toString("base64"), bytes: png };
+  }
+  throw new Error(`image ${src} is not an image Figma can use (PNG, JPEG, GIF, WebP or AVIF).`);
+}
+var GALLERY_IMAGE_REFUSED = (src) => `${src} is from a design gallery \u2014 other people's work is a reference, never a product image. Put it on the References page (the references tool, or build with page: "References"); in the design use the user's assets, a placeholder with a prompt, or a free stock photo.`;
 async function loadImage(src) {
   let buf;
   if (src.startsWith("data:")) {
@@ -27641,15 +27909,24 @@ async function loadImage(src) {
     if (!m) throw new Error("bad data: URI");
     buf = m[1] ? Buffer.from(m[2], "base64") : Buffer.from(decodeURIComponent(m[2]));
   } else if (/^https?:\/\//i.test(src)) {
-    let res;
-    try {
-      res = await fetchWithTimeout(src, 25e3);
-    } catch (e) {
-      throw new Error(`could not download ${src} (${e instanceof Error ? e.message : e}).`);
+    if (isFreePhotoPage(src)) {
+      try {
+        buf = (await fetchPage(src, 1, MAX_IMAGE_BYTES)).images[0].buf;
+      } catch (e) {
+        throw new Error(`could not get the photo from ${src} (${e instanceof Error ? e.message : e}). Use the direct image link (images.unsplash.com / images.pexels.com / cdn.pixabay.com).`);
+      }
+    } else {
+      let res;
+      try {
+        res = await fetchWithTimeout(src, 25e3);
+      } catch (e) {
+        throw new Error(`could not download ${src} (${e instanceof Error ? e.message : e}).`);
+      }
+      if (!res.ok) throw new Error(`download failed for ${src} (HTTP ${res.status}).`);
+      if (/html/i.test(res.headers.get("content-type") ?? "")) throw new Error(`${src} is a web page, not an image. Use the image's own URL (or the references tool for a page you want as a reference).`);
+      const ab = await res.arrayBuffer();
+      buf = Buffer.from(ab);
     }
-    if (!res.ok) throw new Error(`download failed for ${src} (HTTP ${res.status}).`);
-    const ab = await res.arrayBuffer();
-    buf = Buffer.from(ab);
   } else {
     let file = src.startsWith("file://") ? new URL(src).pathname : src;
     if (file.startsWith("~/")) file = path4.join(os4.homedir(), file.slice(2));
@@ -27664,10 +27941,8 @@ async function loadImage(src) {
     buf = fs4.readFileSync(file);
   }
   if (buf.length > MAX_IMAGE_BYTES) throw new Error(`image ${src} is larger than 25 MB.`);
-  const kind = sniff(buf);
-  if (kind === "svg") return { svg: buf.toString("utf8") };
-  if (kind === "png" || kind === "jpg" || kind === "gif") return { data: buf.toString("base64") };
-  throw new Error(`image ${src} is ${kind.toUpperCase()}; Figma accepts PNG, JPEG or GIF (convert it first, e.g. "sips -s format png in.webp --out out.png" on macOS).`);
+  const { data, svg } = figmaImage(buf, src);
+  return svg ? { svg } : { data };
 }
 async function pool(items, n, fn) {
   const queue = [...items];
@@ -27675,7 +27950,7 @@ async function pool(items, n, fn) {
     while (queue.length) await fn(queue.shift());
   }));
 }
-async function loadAssetsFor(raws) {
+async function loadAssetsFor(raws, opts = {}) {
   const refs = { icons: /* @__PURE__ */ new Set(), images: /* @__PURE__ */ new Set() };
   for (const r of raws) {
     if (r.spec === void 0 || r.spec === null) continue;
@@ -27698,6 +27973,10 @@ async function loadAssetsFor(raws) {
     }
   });
   await pool([...refs.images], 4, async (src) => {
+    if (!opts.references && isInspirationHost(src)) {
+      errors.push(GALLERY_IMAGE_REFUSED(src));
+      return;
+    }
     try {
       assets.images[src] = await loadImage(src);
     } catch (e) {
@@ -27765,7 +28044,7 @@ function groupUsages(usages) {
   return [...byId.values()].sort((a, b) => a.imageId.localeCompare(b.imageId, "en", { numeric: true }));
 }
 function parsePromptsFile(md) {
-  const meta = {
+  const meta2 = {
     title: md.match(/^# Image prompts — (.+)$/m)?.[1]?.trim(),
     style: md.match(/^\*\*Style for all images:\*\* (.+)$/m)?.[1]?.trim(),
     scale: Number(md.match(/<!-- scale: (\d) -->/)?.[1]) || void 0,
@@ -27778,7 +28057,7 @@ function parsePromptsFile(md) {
     const status = part.match(/^- \*\*Status:\*\* (.+)$/m)?.[1]?.trim() ?? "needed";
     entries.set(id, { status, block: `## ${part.replace(/\n---\s*$/, "").trimEnd()}` });
   }
-  return { meta, entries };
+  return { meta: meta2, entries };
 }
 function renderPromptsFile(o) {
   const L = [];
@@ -28618,6 +28897,98 @@ function truncateText(s, max) {
 \u2026 (truncated ${s.length - max} chars)`, truncated: true };
 }
 
+// src/server/stock.ts
+import fs6 from "node:fs";
+import path6 from "node:path";
+function stockKeys() {
+  let file = {};
+  try {
+    file = JSON.parse(fs6.readFileSync(path6.join(homeDir(), "keys.json"), "utf8"));
+  } catch {
+  }
+  return {
+    unsplash: process.env.UNSPLASH_ACCESS_KEY || file.unsplash || file.UNSPLASH_ACCESS_KEY || void 0,
+    pexels: process.env.PEXELS_API_KEY || file.pexels || file.PEXELS_API_KEY || void 0
+  };
+}
+async function getJson(url, headers) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15e3);
+  try {
+    const res = await fetch(url, { headers, signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function unsplash(key, query, count, orientation) {
+  const o = orientation === "square" ? "squarish" : orientation;
+  const body = await getJson(
+    `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=${count}&content_filter=high${o ? `&orientation=${o}` : ""}`,
+    { authorization: `Client-ID ${key}`, "accept-version": "v1" }
+  );
+  return (body.results ?? []).map((r) => ({
+    provider: "unsplash",
+    id: r.id,
+    description: r.alt_description ?? r.description ?? "",
+    src: `${r.urls.raw}&w=2400&fm=jpg&q=85`,
+    preview: r.urls.small,
+    page: r.links.html,
+    author: r.user.name,
+    w: r.width,
+    h: r.height
+  }));
+}
+async function pexels(key, query, count, orientation) {
+  const body = await getJson(
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=${count}${orientation ? `&orientation=${orientation}` : ""}`,
+    { authorization: key }
+  );
+  return (body.photos ?? []).map((r) => ({
+    provider: "pexels",
+    id: String(r.id),
+    description: r.alt ?? "",
+    src: r.src.large2x,
+    preview: r.src.medium,
+    page: r.url,
+    author: r.photographer,
+    w: r.width,
+    h: r.height
+  }));
+}
+async function searchStock(query, opts = {}) {
+  const keys = stockKeys();
+  const count = Math.min(Math.max(opts.count ?? 6, 1), 20);
+  const jobs = [];
+  if (keys.unsplash) jobs.push(["unsplash", () => unsplash(keys.unsplash, query, count, opts.orientation)]);
+  if (keys.pexels) jobs.push(["pexels", () => pexels(keys.pexels, query, count, opts.orientation)]);
+  const errors = [];
+  const lists = await Promise.all(jobs.map(async ([name, run]) => {
+    try {
+      return await run();
+    } catch (e) {
+      errors.push(`${name}: ${e instanceof Error ? e.message : e}`);
+      return [];
+    }
+  }));
+  const photos = [];
+  for (let i = 0; photos.length < count && lists.some((l) => i < l.length); i++) for (const l of lists) if (l[i] && photos.length < count) photos.push(l[i]);
+  return { photos, providers: jobs.map(([n]) => n), errors };
+}
+async function previewBytes(url) {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12e3);
+    const res = await fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.length < 15e5 ? buf : null;
+  } catch {
+    return null;
+  }
+}
+
 // src/shared/color.ts
 var clamp01 = (n) => Math.min(1, Math.max(0, n));
 var to255 = (n) => Math.round(clamp01(n) * 255);
@@ -28783,12 +29154,12 @@ function dtcgType(v) {
 function dtcg(dump) {
   const byId = new Map(dump.variables.map((v) => [v.id, v]));
   const root = {};
-  const path7 = (v, coll) => [coll.name, ...v.name.split("/")].map((p) => p.trim()).filter(Boolean);
+  const path8 = (v, coll) => [coll.name, ...v.name.split("/")].map((p) => p.trim()).filter(Boolean);
   const ref = (alias) => {
     const t = byId.get(alias.alias);
     if (!t) return `{${(alias.collection ? alias.collection + "." : "") + (alias.name ?? "").split("/").join(".")}}`;
     const c = dump.collections.find((x) => x.id === t.collectionId);
-    return `{${path7(t, c).join(".")}}`;
+    return `{${path8(t, c).join(".")}}`;
   };
   const value = (v, raw) => {
     if (isAlias(raw)) return ref(raw);
@@ -28798,7 +29169,7 @@ function dtcg(dump) {
   };
   for (const coll of dump.collections) {
     for (const v of dump.variables.filter((x) => x.collectionId === coll.id)) {
-      const parts = path7(v, coll);
+      const parts = path8(v, coll);
       let node = root;
       for (const p of parts.slice(0, -1)) node = node[p] ??= {};
       const token = { $type: dtcgType(v), $value: value(v, v.values[coll.defaultModeId]) };
@@ -28869,9 +29240,9 @@ function summarizeVariables(dump, limitPerCollection = 60) {
 var MAX_TEXT = 9e4;
 var fileParam = external_exports.string().optional().describe("Which connected Figma file to use (file name, part of it, file key or session id). Omit to use the current one.");
 var nodeIdParam = external_exports.string().optional().describe('Node id ("12:34"), "12-34", or a Figma URL with ?node-id=. Omit to use the selection.');
-function textResult(text, extra = [], meta) {
+function textResult(text, extra = [], meta2) {
   const t = truncateText(text, MAX_TEXT);
-  return { content: [{ type: "text", text: t.text }, ...extra], ...meta ? { _meta: meta } : {} };
+  return { content: [{ type: "text", text: t.text }, ...extra], ...meta2 ? { _meta: meta2 } : {} };
 }
 function errorResult(e) {
   if (e instanceof BridgeError) {
@@ -28942,15 +29313,15 @@ function wrap(fn) {
   };
 }
 function assetsPrefixFor(dir) {
-  const norm2 = dir.split(path6.sep).join("/");
+  const norm2 = dir.split(path7.sep).join("/");
   const pub = norm2.match(/\/public(\/.*)?$/);
   if (pub) return `${pub[1] ?? ""}/`;
   const proj = projectDir();
-  if (proj && dir.startsWith(proj)) return `./${path6.relative(proj, dir).split(path6.sep).join("/")}/`;
-  return `./${path6.basename(dir)}/`;
+  if (proj && dir.startsWith(proj)) return `./${path7.relative(proj, dir).split(path7.sep).join("/")}/`;
+  return `./${path7.basename(dir)}/`;
 }
-async function loadAssetsOrThrow(raws) {
-  const { assets, errors } = await loadAssetsFor(raws);
+async function loadAssetsOrThrow(raws, opts) {
+  const { assets, errors } = await loadAssetsFor(raws, opts);
   if (errors.length) throw new BridgeError("BAD_REQUEST", `Nothing was created \u2014 could not load assets:
 - ${errors.join("\n- ")}`);
   return assets;
@@ -29047,14 +29418,14 @@ ${result.xml}${tail}`, notes));
       const content = [];
       const captions = [];
       const dir = saveTo ? resolveOutput(saveTo) : null;
-      if (dir) fs6.mkdirSync(dir, { recursive: true });
+      if (dir) fs7.mkdirSync(dir, { recursive: true });
       for (const img of result.images) {
         if (img.error) captions.push(`\u2715 ${img.name} (${img.nodeId}): ${img.error}`);
         else {
           let saved = "";
           if (dir && img.data) {
             const f = uniquePath(dir, kebab(img.name) || "screenshot", img.format === "JPG" ? "jpg" : "png", true);
-            fs6.writeFileSync(f, Buffer.from(img.data, "base64"));
+            fs7.writeFileSync(f, Buffer.from(img.data, "base64"));
             saved = ` \u2192 ${f}`;
           }
           captions.push(`${img.name} (${img.nodeId}) ${img.type?.toLowerCase() ?? ""} ${img.w}\xD7${img.h} @${img.scale}x${saved}`);
@@ -29103,7 +29474,7 @@ ${result.xml}${tail}`, notes));
       const ready = result.assets.filter((as) => !as.pending);
       if (a.assetsDir && result.assets.length) {
         const dir = resolveOutput(a.assetsDir);
-        fs6.mkdirSync(dir, { recursive: true });
+        fs7.mkdirSync(dir, { recursive: true });
         const prefix = a.assetsPrefix ?? assetsPrefixFor(dir);
         for (const as of pending) assetPaths[as.id] = `${prefix}${as.id}.png`;
         const items = ready.map((as) => as.kind === "svg" ? { nodeId: as.nodeId, format: "SVG" } : { nodeId: as.nodeId, original: true, format: "PNG", scale: 2 });
@@ -29116,9 +29487,9 @@ ${result.xml}${tail}`, notes));
             return;
           }
           const file = uniquePath(dir, as.id, f.ext === "svg" ? "svg" : f.ext ?? "png", true);
-          fs6.writeFileSync(file, Buffer.from(f.data, "base64"));
-          assetPaths[as.id] = `${prefix}${path6.basename(file)}`;
-          written.push(path6.basename(file));
+          fs7.writeFileSync(file, Buffer.from(f.data, "base64"));
+          assetPaths[as.id] = `${prefix}${path7.basename(file)}`;
+          written.push(path7.basename(file));
         });
         assetNote = written.length ? ` \u2192 exported to ${dir}: ${written.join(", ")}` : "";
       } else {
@@ -29254,8 +29625,8 @@ ${result.xml}${tail}`, notes));
       let where = "";
       if (outFile) {
         const out = resolveOutput(outFile);
-        fs6.mkdirSync(path6.dirname(out), { recursive: true });
-        fs6.writeFileSync(out, text);
+        fs7.mkdirSync(path7.dirname(out), { recursive: true });
+        fs7.writeFileSync(out, text);
         where = `Wrote ${out}
 
 `;
@@ -29315,7 +29686,7 @@ ${lines.join("\n")}`, notes));
       annotations: { destructiveHint: false }
     },
     wrap(async (a) => {
-      const assets = await loadAssetsOrThrow([{ spec: a.spec }]);
+      const assets = await loadAssetsOrThrow([{ spec: a.spec }], { references: /^references$/i.test(a.page?.trim() ?? "") });
       const { result, notes } = await call(
         c,
         "build",
@@ -29533,7 +29904,7 @@ ${lines.join("\n")}`, notes));
         file,
         18e4
       );
-      fs6.mkdirSync(out, { recursive: true });
+      fs7.mkdirSync(out, { recursive: true });
       const lines = [];
       for (const f of result.files) {
         if (!f.data || f.error) {
@@ -29541,7 +29912,7 @@ ${lines.join("\n")}`, notes));
           continue;
         }
         const target = uniquePath(out, kebab(f.name) || "export", f.ext ?? "png", !!overwrite);
-        fs6.writeFileSync(target, Buffer.from(f.data, "base64"));
+        fs7.writeFileSync(target, Buffer.from(f.data, "base64"));
         lines.push(`\u2713 ${target} (${Math.round(f.data.length * 3 / 4 / 1024)} KB)`);
       }
       return textResult(withNotes(lines.join("\n"), notes));
@@ -29618,21 +29989,21 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       const { result, notes, plugin } = await call(c, "placeholders", { within: a.within && normalizeNodeId(a.within), allPages: true }, a.file, 12e4);
       const figmaName = plugin?.file.name ?? "Figma";
       let md = resolveOutput(a.outFile ?? "IMAGE_PROMPTS.md");
-      let prev = fs6.existsSync(md) ? parsePromptsFile(fs6.readFileSync(md, "utf8")) : void 0;
+      let prev = fs7.existsSync(md) ? parsePromptsFile(fs7.readFileSync(md, "utf8")) : void 0;
       if (!a.outFile && prev?.meta.title && prev.meta.title !== figmaName) {
         md = resolveOutput(`IMAGE_PROMPTS-${kebab(figmaName) || "figma"}.md`);
-        prev = fs6.existsSync(md) ? parsePromptsFile(fs6.readFileSync(md, "utf8")) : void 0;
+        prev = fs7.existsSync(md) ? parsePromptsFile(fs7.readFileSync(md, "utf8")) : void 0;
       }
       const scale = a.scale ?? prev?.meta.scale ?? 2;
       const imagesDir = a.imagesDir ?? prev?.meta.imagesDir ?? "images";
       const entries = groupUsages(result.placeholders);
       if (!entries.length && !prev) return textResult(withNotes('No image is waiting for generation \u2014 nothing written. Images that do not exist yet are built as {type: "image", name, prompt}.', notes));
-      fs6.mkdirSync(path6.dirname(md), { recursive: true });
-      fs6.writeFileSync(md, renderPromptsFile({ title: figmaName, entries, scale, imagesDir, style: a.style ?? prev?.meta.style, previous: prev?.entries }));
-      if (entries.length) fs6.mkdirSync(path6.join(path6.dirname(md), imagesDir), { recursive: true });
+      fs7.mkdirSync(path7.dirname(md), { recursive: true });
+      fs7.writeFileSync(md, renderPromptsFile({ title: figmaName, entries, scale, imagesDir, style: a.style ?? prev?.meta.style, previous: prev?.entries }));
+      if (entries.length) fs7.mkdirSync(path7.join(path7.dirname(md), imagesDir), { recursive: true });
       const lines = [`Wrote ${md} \u2014 ${entries.length} image(s) to generate (${result.placeholders.length} layer(s)).`];
       for (const e of entries) lines.push(`- ${e.imageId} ${e.title}: ${Math.round(e.w * scale)}\xD7${Math.round(e.h * scale)}px, ratio ${ratio(e.w, e.h)}, used ${e.usages.length}\xD7${e.prompt ? "" : " \u2014 NO PROMPT: set one with edit set {prompt}"}`);
-      if (entries.length) lines.push("", `Tell the user: generate them into ${path6.join(path6.dirname(md), imagesDir)} with names starting with the id (IMG-001.png\u2026), then say so; you run place_images.`);
+      if (entries.length) lines.push("", `Tell the user: generate them into ${path7.join(path7.dirname(md), imagesDir)} with names starting with the id (IMG-001.png\u2026), then say so; you run place_images.`);
       return textResult(withNotes(lines.join("\n"), notes));
     })
   );
@@ -29642,7 +30013,7 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       title: "Place generated images",
       description: "Puts the images the user generated into the layers waiting for them: files in the images folder whose names start with an IMG id (IMG-001.png, img-2-hero.jpg\u2026), or an explicit files map. Every layer with that id gets the image (cover), placeholder captions go away, overlays on existing frames are kept, and IMAGE_PROMPTS.md marks them placed. Reports what is still missing.",
       inputSchema: {
-        files: external_exports.record(external_exports.string()).optional().describe('Explicit {"IMG-001": "/path/photo.jpg"} when the user sent files with other names.'),
+        files: external_exports.record(external_exports.string()).optional().describe('Explicit {"IMG-001": "/path/photo.jpg"} when the user sent files with other names, or a free stock photo link {"IMG-002": "https://images.unsplash.com/\u2026"} (stock_photos).'),
         dir: external_exports.string().optional().describe("Folder with the images (default: the images folder recorded in the prompts file)."),
         promptsFile: external_exports.string().optional().describe("The prompts Markdown (default IMAGE_PROMPTS.md in the project)."),
         fit: external_exports.enum(["fill", "fit", "crop"]).optional().describe("How the image fills its box (default fill = cover)."),
@@ -29655,14 +30026,14 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       let md = resolveOutput(a.promptsFile ?? "IMAGE_PROMPTS.md");
       if (!a.promptsFile && plugin) {
         const alt = resolveOutput(`IMAGE_PROMPTS-${kebab(plugin.file.name) || "figma"}.md`);
-        if (fs6.existsSync(alt)) md = alt;
+        if (fs7.existsSync(alt)) md = alt;
       }
-      const prev = fs6.existsSync(md) ? parsePromptsFile(fs6.readFileSync(md, "utf8")) : void 0;
-      const dir = a.dir ? resolveOutput(a.dir) : path6.join(path6.dirname(md), prev?.meta.imagesDir ?? "images");
+      const prev = fs7.existsSync(md) ? parsePromptsFile(fs7.readFileSync(md, "utf8")) : void 0;
+      const dir = a.dir ? resolveOutput(a.dir) : path7.join(path7.dirname(md), prev?.meta.imagesDir ?? "images");
       const { byId, unmatched } = matchImageFiles(dir);
       for (const [k, v] of Object.entries(a.files ?? {})) {
         const id = imageIdOf(k) ?? k;
-        byId.set(id, v.startsWith("/") || v.startsWith("~") ? v : resolveOutput(v));
+        byId.set(id, /^https?:\/\//i.test(v) || v.startsWith("/") || v.startsWith("~") ? v : resolveOutput(v));
       }
       const entries = groupUsages(result.placeholders);
       const placed = [];
@@ -29671,12 +30042,13 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
         const f = byId.get(e.imageId);
         if (!f) continue;
         try {
+          if (isInspirationHost(f)) throw new Error(GALLERY_IMAGE_REFUSED(f));
           const img = await loadImage(f);
           if (!img.data) throw new Error("SVG cannot fill an image box \u2014 export it as PNG.");
           await call(c, "place_image", { ids: e.usages.map((u) => u.nodeId), imageData: img.data, fit: a.fit }, a.file, 9e4);
-          placed.push({ id: e.imageId, file: path6.basename(f), layers: e.usages.length });
+          placed.push({ id: e.imageId, file: path7.basename(f), layers: e.usages.length });
         } catch (err) {
-          problems.push(`${e.imageId} (${path6.basename(f)}): ${err instanceof Error ? err.message : err}`);
+          problems.push(`${e.imageId} (${path7.basename(f)}): ${err instanceof Error ? err.message : err}`);
         }
       }
       const placedIds = new Set(placed.map((p) => p.id));
@@ -29685,20 +30057,20 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       const left = waiting.filter((e) => !listed || listed.has(e.imageId));
       const unlisted = waiting.filter((e) => listed && !listed.has(e.imageId));
       if (prev) {
-        const rel = path6.relative(path6.dirname(md), dir) || ".";
+        const rel = path7.relative(path7.dirname(md), dir) || ".";
         const history = new Map(prev.entries);
         for (const p of placed) {
           const status = `placed \u2713 (${rel}/${p.file})`;
           const old = history.get(p.id);
           history.set(p.id, { status, block: (old?.block ?? `## ${p.id}`).replace(/^- \*\*Status:\*\* .+$/m, `- **Status:** ${status}`) });
         }
-        fs6.writeFileSync(md, renderPromptsFile({ title: prev.meta.title ?? plugin?.file.name ?? "Figma", entries: left, scale: prev.meta.scale ?? 2, imagesDir: prev.meta.imagesDir ?? "images", style: prev.meta.style, previous: history }));
+        fs7.writeFileSync(md, renderPromptsFile({ title: prev.meta.title ?? plugin?.file.name ?? "Figma", entries: left, scale: prev.meta.scale ?? 2, imagesDir: prev.meta.imagesDir ?? "images", style: prev.meta.style, previous: history }));
       }
       const lines = [
         placed.length ? `Placed ${placed.length} image(s): ${placed.map((p) => `${p.id} \u2190 ${p.file}${p.layers > 1 ? ` (${p.layers} layers)` : ""}`).join(", ")}.` : `No images placed (looked in ${dir}).`,
         left.length ? `Still waiting: ${left.map((e) => e.imageId).join(", ")}.` : unlisted.length ? "Everything in the prompts file is placed." : "Nothing is waiting for an image any more."
       ];
-      if (unlisted.length) lines.push(`Also waiting but not in ${path6.basename(md)} yet: ${unlisted.map((e) => e.imageId).join(", ")} \u2014 run image_prompts to add them.`);
+      if (unlisted.length) lines.push(`Also waiting but not in ${path7.basename(md)} yet: ${unlisted.map((e) => e.imageId).join(", ")} \u2014 run image_prompts to add them.`);
       const known = new Set(entries.map((e) => e.imageId));
       const stray = [...byId.keys()].filter((id) => !known.has(id) && !prev?.entries.get(id)?.status.startsWith("placed"));
       if (stray.length) lines.push(`No layer is waiting for: ${stray.join(", ")} (already placed, or the layer was removed).`);
@@ -29706,6 +30078,163 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       if (problems.length) lines.push("Problems:", ...problems.map((p) => `- ${p}`));
       if (placed.length) lines.push("Screenshot the affected screens to check the crops.");
       return textResult(withNotes(lines.join("\n"), notes));
+    })
+  );
+  server.registerTool(
+    "references",
+    {
+      title: "References \u2192 lettered board",
+      description: `Puts design references on the References page as a lettered board (A, B, C\u2026) in a section "References \u2013 <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site \u2014 the work's images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. Returns a screenshot of the board.`,
+      inputSchema: {
+        for: external_exports.string().min(1).describe('What the references are for, e.g. "Home \u2013 Hero", "Checkout", "Brand". Names the section "References \u2013 <for>".'),
+        sources: external_exports.array(external_exports.union([external_exports.string(), external_exports.object({ src: external_exports.string(), note: external_exports.string().optional() })])).min(1).max(12).describe("Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one."),
+        perSource: external_exports.number().int().min(1).max(4).optional().describe("Images per page (default 1; 2\u20134 for a case study with several screens)."),
+        saveTo: external_exports.string().optional().describe('Folder for downloaded images (default "references" in the project).'),
+        place: external_exports.boolean().optional().describe("Build the board in Figma (default true). false: only download and return the images."),
+        file: fileParam
+      },
+      annotations: { destructiveHint: false, openWorldHint: true }
+    },
+    wrap(async (a) => {
+      const slug = kebab(a.for) || "reference";
+      let outDir = null;
+      const save = (buf, ext, name) => {
+        outDir ??= resolveOutput(a.saveTo ?? "references");
+        fs7.mkdirSync(outDir, { recursive: true });
+        const target = uniquePath(outDir, name, ext, false);
+        fs7.writeFileSync(target, buf);
+        return target;
+      };
+      const refs = [];
+      const failed = [];
+      for (const [i, s] of a.sources.entries()) {
+        const src = typeof s === "string" ? s.trim() : s.src.trim();
+        const note = typeof s === "string" ? void 0 : s.note;
+        try {
+          if (/^https?:\/\//i.test(src)) {
+            const page = await fetchPage(src, a.perSource ?? 1, 25 * 1024 * 1024);
+            const host = new URL(src).hostname.replace(/^www\./, "");
+            const images = page.images.map((img, k) => {
+              const { bytes } = figmaImage(img.buf, img.url);
+              if (!bytes) throw new FetchRefused(`${img.url} is an SVG \u2014 not a reference image`);
+              const ext = bytes[0] === 137 ? "png" : bytes[0] === 255 ? "jpg" : "gif";
+              const size2 = imageSize(bytes) ?? { w: 1440, h: 900 };
+              return { file: save(bytes, ext, `${slug}-${i + 1}${page.images.length > 1 ? `-${k + 1}` : ""}`), ...size2, buf: bytes };
+            });
+            refs.push({ src, note, title: page.title, host, images, skipped: page.skipped.length ? page.skipped : void 0 });
+          } else {
+            let f = src.startsWith("file://") ? new URL(src).pathname : src;
+            if (f.startsWith("~/")) f = path7.join(process.env.HOME ?? "", f.slice(2));
+            if (!path7.isAbsolute(f)) {
+              const base = projectDir();
+              if (!base) throw new Error("relative path and the project directory is unknown \u2014 pass an absolute path");
+              f = path7.join(base, f);
+            }
+            if (!fs7.existsSync(f)) throw new Error(`file not found: ${f}`);
+            const raw = fs7.readFileSync(f);
+            const { bytes } = figmaImage(raw, f);
+            if (!bytes) throw new Error("an SVG is not a reference image");
+            const file = bytes === raw ? f : save(bytes, "png", `${slug}-${i + 1}`);
+            refs.push({ src, note, title: path7.basename(f).replace(/\.[^.]+$/, ""), images: [{ file, ...imageSize(bytes) ?? { w: 1440, h: 900 }, buf: bytes }] });
+          }
+        } catch (e) {
+          failed.push(`${src}: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+      const failText = failed.length ? `
+Not added:
+${failed.map((f) => `- ${f}`).join("\n")}` : "";
+      if (!refs.length) throw new BridgeError("BAD_REQUEST", `No reference could be added.${failText}`);
+      if (a.place === false) {
+        const lines = refs.map((r, i) => `${boardLetter(i)} ${r.title ?? r.src}${r.host ? ` (${r.host})` : ""}: ${r.images.map((m) => `${m.file} ${m.w}\xD7${m.h}`).join(", ")}`);
+        const imgs = refs.flatMap((r) => r.images).filter((m) => m.buf.length < 15e5).slice(0, 8).map((m) => ({ type: "image", data: m.buf.toString("base64"), mimeType: m.buf[0] === 137 ? "image/png" : m.buf[0] === 255 ? "image/jpeg" : "image/gif" }));
+        return textResult(`${lines.join("\n")}${failText}`, imgs);
+      }
+      const sectionName = `References \u2013 ${a.for.trim()}`;
+      const found = await call(c, "execute", {
+        code: `const page = await h.page('References');
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+return s ? { id: s.id, names: s.children.map((k) => k.name) } : null;`,
+        params: { name: sectionName }
+      }, a.file, 6e4);
+      const notes = [...found.notes];
+      let sectionId = found.result.result?.id;
+      let next = Math.max(-1, ...(found.result.result?.names ?? []).map(letterIndex)) + 1;
+      if (!sectionId) {
+        const built = await call(c, "build", { spec: { type: "section", name: sectionName }, page: "References", focus: false }, a.file, 6e4);
+        sectionId = built.result.root.id;
+      }
+      const board = [];
+      for (const r of refs) {
+        const letter = boardLetter(next++);
+        const widths = r.images.map((m) => Math.min(m.w, r.images.length > 1 ? 1200 : 1440));
+        const caption = [r.src, r.note].filter(Boolean).join(" \u2014 ");
+        const spec = {
+          type: "frame",
+          name: `${letter} \u2013 ${clip(r.title || r.host || "Screenshot", 60)}${r.host ? ` (${r.host})` : ""}`,
+          dir: "column",
+          gap: 16,
+          pad: 32,
+          fill: "#FFFFFF",
+          w: widths.reduce((x, y) => x + y, 0) + 24 * (widths.length - 1) + 64,
+          children: [
+            { type: "text", text: letter, size: 48, weight: 700, color: "#111111" },
+            { type: "frame", name: "Images", dir: "row", gap: 24, children: r.images.map((m, k) => ({ type: "image", name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ""}`, src: m.file, w: widths[k] })) },
+            { type: "text", text: caption, w: "fill", size: 14, color: "#666666" }
+          ]
+        };
+        const assets = await loadAssetsOrThrow([{ spec }], { references: true });
+        const built = await call(c, "build", { spec, assets, parentId: sectionId, focus: false }, a.file, 12e4);
+        board.push({ letter, id: built.result.root.id, source: r.src, files: r.images.map((m) => m.file) });
+      }
+      await call(c, "edit", { ops: [{ op: "select", ids: [sectionId] }], focus: true }, a.file).catch(() => void 0);
+      const shots = await screenshotOf(c, sectionId, a.file, 1600);
+      const text = yaml(compact({ section: { id: sectionId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
+      return textResult(withNotes(`${text}${failText}
+
+Show the user the board and ask which letter to build from (references.md: rebuild the chosen one in the identity, no write-up).`, notes), shots);
+    })
+  );
+  server.registerTool(
+    "stock_photos",
+    {
+      title: "Free stock photos",
+      description: 'Search free-license photos (Unsplash and Pexels official APIs) for a product image: returns numbered candidates with previews, the direct link to use as image src (build, edit place-image, place_images files), the photo page and the photographer. Needs UNSPLASH_ACCESS_KEY / PEXELS_API_KEY (env, or ~/.figma-mcp/keys.json {"unsplash": "\u2026", "pexels": "\u2026"}); without a key it explains the web-search route. Never use gallery images (Dribbble, Behance, Pinterest\u2026) as product images.',
+      inputSchema: {
+        query: external_exports.string().min(1).describe('2\u20134 concrete words: "egyptian family breakfast", "modern clinic reception".'),
+        orientation: external_exports.enum(["landscape", "portrait", "square"]).optional(),
+        count: external_exports.number().int().min(1).max(20).optional().describe("Default 6."),
+        previews: external_exports.boolean().optional().describe("Attach preview images (default true).")
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true }
+    },
+    wrap(async (a) => {
+      const keys = stockKeys();
+      if (!keys.unsplash && !keys.pexels) {
+        return textResult(
+          [
+            "No stock-photo API key is set.",
+            "- Search with your own web search: `site:unsplash.com/photos <words>` or `site:pexels.com/photo <words>` (also pixabay.com). Use only links you actually saw.",
+            "- Use the photo page itself as src (https://unsplash.com/photos/\u2026, resolved to the photo), or the direct link on the site's CDN (images.unsplash.com, images.pexels.com, cdn.pixabay.com).",
+            `- For search with previews here: free keys from unsplash.com/developers and pexels.com/api, then UNSPLASH_ACCESS_KEY / PEXELS_API_KEY in the environment or ${path7.join("~/.figma-mcp", "keys.json")} as {"unsplash": "\u2026", "pexels": "\u2026"} (no restart needed for the file).`
+          ].join("\n")
+        );
+      }
+      const r = await searchStock(a.query, { count: a.count, orientation: a.orientation });
+      if (!r.photos.length) return textResult(`No photos for "${a.query}" (${r.providers.join(", ")}).${r.errors.length ? `
+Errors: ${r.errors.join("; ")}` : ""} Try other words.`);
+      const lines = r.photos.map((p, i) => `${i + 1}. ${p.description || "(no description)"} \u2014 ${p.author} on ${p.provider}, ${p.w}\xD7${p.h}
+   src: ${p.src}
+   page: ${p.page}`);
+      if (r.errors.length) lines.push(`Errors: ${r.errors.join("; ")}`);
+      lines.push(`Pick by subject, composition (room for text where the layout needs it), light and palette against the identity's imagery words. Then edit place-image {id, src} or place_images {files: {"IMG-00x": src}}.`);
+      const previews = [];
+      if (a.previews !== false) {
+        const bufs = await Promise.all(r.photos.slice(0, 8).map((p) => previewBytes(p.preview)));
+        for (const b of bufs) if (b) previews.push({ type: "image", data: b.toString("base64"), mimeType: b[0] === 137 ? "image/png" : "image/jpeg" });
+      }
+      return textResult(lines.join("\n"), previews);
     })
   );
   server.registerTool(
@@ -29724,7 +30253,7 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
 }
 
 // src/server/index.ts
-var VERSION = true ? "1.0.0+850e521" : "dev";
+var VERSION = true ? "1.0.0+27fe23a" : "dev";
 var INSTRUCTIONS = [
   'figma-mcp \u2014 local bridge to Figma Desktop through the "Figma MCP" development plugin (read + write: layout, auto layout, variables, styles, components & variants, prototype, design\u2192code).',
   'Before the first call load the figma-mcp skill ("figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere) \u2014 the single entry point: its router tells you which guide to read for design, design systems/components, prototypes, design\u2192code and images, and it covers the tool workflow and build-spec vocabulary. Pick the guides yourself for every request; the user should not have to name them.',

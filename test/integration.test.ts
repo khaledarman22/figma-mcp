@@ -5,6 +5,8 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import fs from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +27,7 @@ async function connect(name: string) {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [server],
-    env: { ...process.env, FIGMA_MCP_PORT: String(PORT), FIGMA_MCP_DATA: dataDir, FIGMA_MCP_HOME: dataDir, CLAUDE_PROJECT_DIR: project } as Record<string, string>,
+    env: { ...process.env, FIGMA_MCP_PORT: String(PORT), FIGMA_MCP_DATA: dataDir, FIGMA_MCP_HOME: dataDir, CLAUDE_PROJECT_DIR: project, UNSPLASH_ACCESS_KEY: '', PEXELS_API_KEY: '' } as Record<string, string>,
     stderr: 'pipe',
   });
   const client = new Client({ name, version: '0.0.0' });
@@ -84,6 +86,7 @@ const handlers = {
     placeCalls.push(p.ids);
     return { placed: p.ids.map((id) => ({ id, name: 'Image' })) };
   },
+  execute: () => ({ result: null, logs: [], warnings: [] }),
   variables_read: () => ({
     collections: [{ id: 'c', name: 'Theme', modes: [{ id: 'l', name: 'Light' }, { id: 'd', name: 'Dark' }], defaultModeId: 'l' }],
     variables: [{ id: 'v', name: 'color/surface', collectionId: 'c', type: 'COLOR', scopes: ['FRAME_FILL'], codeSyntax: {}, values: { l: { r: 1, g: 1, b: 1, a: 1 }, d: { r: 0, g: 0, b: 0, a: 1 } } }],
@@ -109,7 +112,7 @@ after(async () => {
 test('lists all tools', async () => {
   const { tools } = await A.client.listTools();
   const names = tools.map((t) => t.name).sort();
-  for (const n of ['status', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
+  for (const n of ['status', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'references', 'stock_photos', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
   for (const t of tools) assert.ok((t.description ?? '').length < 4000, `${t.name} description too long`);
 });
 
@@ -190,6 +193,48 @@ test('image prompts go to a Markdown file in the project; generated images come 
   assert.match(text(r3), /IMG-002 ← hero\.png/);
   assert.match(text(r3), /Nothing is waiting/);
   assert.match(fs.readFileSync(md, 'utf8'), /_No images waiting._/);
+});
+
+test('references: pages and screenshots become a lettered board; robots.txt and blocks are reported', async () => {
+  const site = http.createServer((req, res) => {
+    if (req.url === '/robots.txt') return res.writeHead(200, { 'content-type': 'text/plain' }).end('User-agent: *\nDisallow: /private');
+    if (req.url === '/shot.png') return res.writeHead(200, { 'content-type': 'image/png' }).end(Buffer.from(PNG, 'base64'));
+    if (req.url === '/page' || req.url === '/private') return res.writeHead(200, { 'content-type': 'text/html' }).end('<html><head><title>Clinic landing</title><meta property="og:image" content="/shot.png"></head><body></body></html>');
+    if (req.url === '/wall') return res.writeHead(403, { 'content-type': 'text/html' }).end('denied');
+    res.writeHead(404).end();
+  });
+  await new Promise<void>((r) => site.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${(site.address() as AddressInfo).port}`;
+  try {
+    const before = plugin.requests.length;
+    const r = (await A.client.callTool({ name: 'references', arguments: { for: 'Home – Hero', sources: [`${base}/page`, { src: path.join(project, 'hero.png'), note: 'from the user' }, `${base}/private`, `${base}/wall`] } })) as { content: Array<{ type: string }> };
+    const t = text(r);
+    assert.match(t, /letter: A[\s\S]*letter: B/);
+    assert.match(t, /private: robots\.txt/);
+    assert.match(t, /wall: 127\.0\.0\.1: HTTP 403/);
+    assert.ok(r.content.some((c) => c.type === 'image'), 'board screenshot attached');
+    const builds = plugin.requests.slice(before).filter((q) => q.method === 'build').map((q) => q.params as { spec: { type: string; name: string }; page?: string; parentId?: string });
+    assert.deepEqual([builds[0].spec.type, builds[0].spec.name, builds[0].page], ['section', 'References – Home – Hero', 'References']);
+    assert.match(builds[1].spec.name, /^A – Clinic landing \(127\.0\.0\.1\)$/);
+    assert.match(builds[2].spec.name, /^B – hero$/);
+    assert.equal(builds[1].parentId, '5:1');
+    assert.ok(fs.readdirSync(path.join(project, 'references')).some((f) => f.startsWith('home-hero-1')));
+  } finally {
+    site.close();
+  }
+});
+
+test('gallery images are refused as product images', async () => {
+  const before = plugin.requests.filter((q) => q.method === 'build').length;
+  const r = (await A.client.callTool({ name: 'build', arguments: { page: 'App', spec: { type: 'image', src: 'https://cdn.dribbble.com/userupload/1/shot.png', w: 100, h: 100 } } })) as { isError?: boolean };
+  assert.equal(r.isError, true);
+  assert.match(text(r), /design gallery/);
+  assert.equal(plugin.requests.filter((q) => q.method === 'build').length, before);
+});
+
+test('stock_photos without a key explains the web-search route', async () => {
+  const r = await A.client.callTool({ name: 'stock_photos', arguments: { query: 'cairo cafe' } });
+  assert.match(text(r), /No stock-photo API key/);
 });
 
 test('plugin errors come back as tool errors', async () => {

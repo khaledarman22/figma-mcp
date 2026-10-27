@@ -148,7 +148,7 @@ Defining components in a build: `{ "type": "component", "name": "Tag", "props": 
 
 - `{ "type": "icon", "icon": "lucide:arrow-right", "size": 20, "color": "$color/icon/default", "strokeWidth": 1.5 }` — default size 24; color defaults to the inherited text color. Keep one icon set per product (`icons` tool searches names). `build` option `icons: "inline"` makes plain vectors instead of reusable components.
 - `{ "type": "svg", "svg": "<svg width='24' height='24' viewBox='0 0 24 24'>…</svg>", "color": "#111" }`
-- `{ "type": "image", "src": "/Users/me/project/assets/hero.jpg", "w": "fill", "h": 240, "fit": "fill", "radius": 16 }` — local absolute path, URL or data URI; PNG/JPG/GIF (convert WebP first). With only `w` the height keeps the image's aspect ratio. `.svg` sources become vector nodes.
+- `{ "type": "image", "src": "/Users/me/project/assets/hero.jpg", "w": "fill", "h": 240, "fit": "fill", "radius": 16 }` — local absolute path, URL or data URI; PNG/JPG/GIF (WebP/AVIF are converted on macOS; elsewhere convert first). An Unsplash/Pexels/Pixabay photo page URL resolves to its photo. Gallery images (Dribbble, Behance, Pinterest…) are refused outside the `References` page. With only `w` the height keeps the image's aspect ratio. `.svg` sources become vector nodes.
 - `{ "type": "image", "name": "Hero photo", "w": "fill", "h": 240, "prompt": "Warm editorial photograph of …, no text, no logos" }` — an image that doesn't exist yet: a gray placeholder captioned with its name and id (IMG-001). The same prompt shares one id. `image_prompts` writes all of them into `IMAGE_PROMPTS.md` in the project; `place_images` puts the generated files in. `placeholder: "<caption>"` changes the caption only. On any existing frame/rectangle, `edit` `set` `{ "prompt": "…" }` marks it for a new image. How to write prompts: [image-prompts.md](image-prompts.md).
 
 ## 7. Interactions (inline)
@@ -166,7 +166,9 @@ Details and the full action list: the `prototype` tool / [prototype.md](prototyp
 
 **create_component**: `name`, `spec`, `props`, `variants: { axes, patches: [{when, set: {root|<ref>: props}}], exclude }`, `interactions: [{from, trigger, to, transition}]`, `description`, `page` (default `Components`), `parentId`, `x`, `y`, `gap`, `allowDuplicate`.
 
-**image_prompts**: `outFile` (default `IMAGE_PROMPTS.md` in the project), `imagesDir` (default `images`), `scale` (default 2), `style` (shared art direction), `within`. **place_images**: `files` (`{"IMG-001": "/path"}`), `dir`, `promptsFile`, `fit`.
+**image_prompts**: `outFile` (default `IMAGE_PROMPTS.md` in the project), `imagesDir` (default `images`), `scale` (default 2), `style` (shared art direction), `within`. **place_images**: `files` (`{"IMG-001": "/path"}` or a stock photo link), `dir`, `promptsFile`, `fit`.
+
+**references**: `for` (what they are for — names the section `References – <for>`), `sources` (page URLs, image URLs, file paths, or `{src, note}`), `perSource` (1–4 images per page), `saveTo` (default `references` in the project), `place` (default true). **stock_photos**: `query`, `orientation`, `count`, `previews`.
 
 **variables**: `collections: [{ name, modes?, hidden?, renameModes?, variables: [{ name, value | values: {Mode: v}, type?, scopes?, codeSyntax?, description?, hidden? }] }]`, `delete`, `deleteCollections`. Aliases: `"$name"` / `"$Collection:name"`.
 

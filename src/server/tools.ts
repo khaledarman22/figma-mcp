@@ -7,13 +7,15 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { BridgeError, type PluginInfo } from '../shared/protocol.ts';
 import { clip, kebab, normalizeNodeId } from '../shared/util.ts';
-import { loadAssetsFor, loadImage, searchIcons } from './assets.ts';
+import { figmaImage, GALLERY_IMAGE_REFUSED, loadAssetsFor, loadImage, searchIcons } from './assets.ts';
 import { groupUsages, imageIdOf, matchImageFiles, parsePromptsFile, ratio, renderPromptsFile, type Usage } from './images.ts';
 import { generate, type ComponentMapping, type XNode, type XVar } from './codegen.ts';
 import { figmaPluginBundle, PathError, projectDir, resolveOutput, uniquePath } from './files.ts';
 import { compact, truncateText, yaml } from './format.ts';
 import { NO_PLUGIN_HELP, type Bridge } from './hub.ts';
 import { log } from './log.ts';
+import { boardLetter, fetchPage, FetchRefused, imageSize, isInspirationHost, letterIndex } from './references.ts';
+import { previewBytes, searchStock, stockKeys } from './stock.ts';
 import { exportTokens, summarizeVariables, type TokenFormat, type VariablesDump } from './tokens.ts';
 
 type Content = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string };
@@ -123,8 +125,8 @@ function assetsPrefixFor(dir: string): string {
   return `./${path.basename(dir)}/`;
 }
 
-async function loadAssetsOrThrow(raws: Parameters<typeof loadAssetsFor>[0]) {
-  const { assets, errors } = await loadAssetsFor(raws);
+async function loadAssetsOrThrow(raws: Parameters<typeof loadAssetsFor>[0], opts?: Parameters<typeof loadAssetsFor>[1]) {
+  const { assets, errors } = await loadAssetsFor(raws, opts);
   if (errors.length) throw new BridgeError('BAD_REQUEST', `Nothing was created — could not load assets:\n- ${errors.join('\n- ')}`);
   return assets;
 }
@@ -525,7 +527,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       annotations: { destructiveHint: false },
     },
     wrap(async (a) => {
-      const assets = await loadAssetsOrThrow([{ spec: a.spec }]);
+      const assets = await loadAssetsOrThrow([{ spec: a.spec }], { references: /^references$/i.test(a.page?.trim() ?? '') });
       const { result, notes } = await call<{ root: { id: string; name: string; type: string; w: number; h: number; x: number; y: number }; page?: string; ids: Record<string, string>; created: number; interactions: number; warnings: string[] }>(
         c,
         'build',
@@ -874,7 +876,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       description:
         'Puts the images the user generated into the layers waiting for them: files in the images folder whose names start with an IMG id (IMG-001.png, img-2-hero.jpg…), or an explicit files map. Every layer with that id gets the image (cover), placeholder captions go away, overlays on existing frames are kept, and IMAGE_PROMPTS.md marks them placed. Reports what is still missing.',
       inputSchema: {
-        files: z.record(z.string()).optional().describe('Explicit {"IMG-001": "/path/photo.jpg"} when the user sent files with other names.'),
+        files: z.record(z.string()).optional().describe('Explicit {"IMG-001": "/path/photo.jpg"} when the user sent files with other names, or a free stock photo link {"IMG-002": "https://images.unsplash.com/…"} (stock_photos).'),
         dir: z.string().optional().describe('Folder with the images (default: the images folder recorded in the prompts file).'),
         promptsFile: z.string().optional().describe('The prompts Markdown (default IMAGE_PROMPTS.md in the project).'),
         fit: z.enum(['fill', 'fit', 'crop']).optional().describe('How the image fills its box (default fill = cover).'),
@@ -894,7 +896,7 @@ export function registerTools(server: McpServer, c: Ctx) {
       const { byId, unmatched } = matchImageFiles(dir);
       for (const [k, v] of Object.entries(a.files ?? {})) {
         const id = imageIdOf(k) ?? k;
-        byId.set(id, v.startsWith('/') || v.startsWith('~') ? v : resolveOutput(v));
+        byId.set(id, /^https?:\/\//i.test(v) || v.startsWith('/') || v.startsWith('~') ? v : resolveOutput(v));
       }
       const entries = groupUsages(result.placeholders);
       const placed: Array<{ id: string; file: string; layers: number }> = [];
@@ -903,6 +905,7 @@ export function registerTools(server: McpServer, c: Ctx) {
         const f = byId.get(e.imageId);
         if (!f) continue;
         try {
+          if (isInspirationHost(f)) throw new Error(GALLERY_IMAGE_REFUSED(f));
           const img = await loadImage(f);
           if (!img.data) throw new Error('SVG cannot fill an image box — export it as PNG.');
           await call(c, 'place_image', { ids: e.usages.map((u) => u.nodeId), imageData: img.data, fit: a.fit }, a.file, 90_000);
@@ -939,6 +942,159 @@ export function registerTools(server: McpServer, c: Ctx) {
       if (problems.length) lines.push('Problems:', ...problems.map((p) => `- ${p}`));
       if (placed.length) lines.push('Screenshot the affected screens to check the crops.');
       return textResult(withNotes(lines.join('\n'), notes));
+    }),
+  );
+
+  server.registerTool(
+    'references',
+    {
+      title: 'References → lettered board',
+      description:
+        'Puts design references on the References page as a lettered board (A, B, C…) in a section "References – <for>", so the user picks by letter. Sources: design pages (Dribbble shot, Behance project, Awwwards site, One Page Love, a live product site — the work\'s images are fetched), direct image URLs, or screenshots on disk. Downloads are saved in <project>/references. Sites that refuse automated access (often Dribbble, Behance, Land-book) and login-only ones (Mobbin) are reported, never worked around: screenshot them in a browser or ask the user, then pass the file. Calling again with the same "for" adds the next letters. Returns a screenshot of the board.',
+      inputSchema: {
+        for: z.string().min(1).describe('What the references are for, e.g. "Home – Hero", "Checkout", "Brand". Names the section "References – <for>".'),
+        sources: z.array(z.union([z.string(), z.object({ src: z.string(), note: z.string().optional() })])).min(1).max(12).describe('Page URLs, image URLs or file paths (absolute or relative to the project); {src, note} to caption one.'),
+        perSource: z.number().int().min(1).max(4).optional().describe('Images per page (default 1; 2–4 for a case study with several screens).'),
+        saveTo: z.string().optional().describe('Folder for downloaded images (default "references" in the project).'),
+        place: z.boolean().optional().describe('Build the board in Figma (default true). false: only download and return the images.'),
+        file: fileParam,
+      },
+      annotations: { destructiveHint: false, openWorldHint: true },
+    },
+    wrap(async (a) => {
+      const slug = kebab(a.for) || 'reference';
+      let outDir: string | null = null;
+      const save = (buf: Buffer, ext: string, name: string) => {
+        outDir ??= resolveOutput(a.saveTo ?? 'references');
+        fs.mkdirSync(outDir, { recursive: true });
+        const target = uniquePath(outDir, name, ext, false);
+        fs.writeFileSync(target, buf);
+        return target;
+      };
+      type Ref = { src: string; note?: string; title?: string; host?: string; images: Array<{ file: string; w: number; h: number; buf: Buffer }>; skipped?: string[] };
+      const refs: Ref[] = [];
+      const failed: string[] = [];
+      for (const [i, s] of a.sources.entries()) {
+        const src = typeof s === 'string' ? s.trim() : s.src.trim();
+        const note = typeof s === 'string' ? undefined : s.note;
+        try {
+          if (/^https?:\/\//i.test(src)) {
+            const page = await fetchPage(src, a.perSource ?? 1, 25 * 1024 * 1024);
+            const host = new URL(src).hostname.replace(/^www\./, '');
+            const images = page.images.map((img, k) => {
+              const { bytes } = figmaImage(img.buf, img.url);
+              if (!bytes) throw new FetchRefused(`${img.url} is an SVG — not a reference image`);
+              const ext = bytes[0] === 0x89 ? 'png' : bytes[0] === 0xff ? 'jpg' : 'gif';
+              const size = imageSize(bytes) ?? { w: 1440, h: 900 };
+              return { file: save(bytes, ext, `${slug}-${i + 1}${page.images.length > 1 ? `-${k + 1}` : ''}`), ...size, buf: bytes };
+            });
+            refs.push({ src, note, title: page.title, host, images, skipped: page.skipped.length ? page.skipped : undefined });
+          } else {
+            let f = src.startsWith('file://') ? new URL(src).pathname : src;
+            if (f.startsWith('~/')) f = path.join(process.env.HOME ?? '', f.slice(2));
+            if (!path.isAbsolute(f)) {
+              const base = projectDir();
+              if (!base) throw new Error('relative path and the project directory is unknown — pass an absolute path');
+              f = path.join(base, f);
+            }
+            if (!fs.existsSync(f)) throw new Error(`file not found: ${f}`);
+            const raw = fs.readFileSync(f);
+            const { bytes } = figmaImage(raw, f);
+            if (!bytes) throw new Error('an SVG is not a reference image');
+            const file = bytes === raw ? f : save(bytes, 'png', `${slug}-${i + 1}`);
+            refs.push({ src, note, title: path.basename(f).replace(/\.[^.]+$/, ''), images: [{ file, ...(imageSize(bytes) ?? { w: 1440, h: 900 }), buf: bytes }] });
+          }
+        } catch (e) {
+          failed.push(`${src}: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+      const failText = failed.length ? `\nNot added:\n${failed.map((f) => `- ${f}`).join('\n')}` : '';
+      if (!refs.length) throw new BridgeError('BAD_REQUEST', `No reference could be added.${failText}`);
+
+      if (a.place === false) {
+        const lines = refs.map((r, i) => `${boardLetter(i)} ${r.title ?? r.src}${r.host ? ` (${r.host})` : ''}: ${r.images.map((m) => `${m.file} ${m.w}×${m.h}`).join(', ')}`);
+        const imgs: Content[] = refs.flatMap((r) => r.images).filter((m) => m.buf.length < 1_500_000).slice(0, 8)
+          .map((m) => ({ type: 'image', data: m.buf.toString('base64'), mimeType: m.buf[0] === 0x89 ? 'image/png' : m.buf[0] === 0xff ? 'image/jpeg' : 'image/gif' }));
+        return textResult(`${lines.join('\n')}${failText}`, imgs);
+      }
+
+      const sectionName = `References – ${a.for.trim()}`;
+      const found = await call<{ result: { id: string; names: string[] } | null }>(c, 'execute', {
+        code: `const page = await h.page('References');
+const want = params.name.trim().toLowerCase();
+const s = page.children.find((n) => n.type === 'SECTION' && n.name.trim().toLowerCase() === want);
+return s ? { id: s.id, names: s.children.map((k) => k.name) } : null;`,
+        params: { name: sectionName },
+      }, a.file, 60_000);
+      const notes = [...found.notes];
+      let sectionId = found.result.result?.id;
+      let next = Math.max(-1, ...(found.result.result?.names ?? []).map(letterIndex)) + 1;
+      if (!sectionId) {
+        const built = await call<{ root: { id: string } }>(c, 'build', { spec: { type: 'section', name: sectionName }, page: 'References', focus: false }, a.file, 60_000);
+        sectionId = built.result.root.id;
+      }
+      const board: Array<{ letter: string; id: string; source: string; files: string[] }> = [];
+      for (const r of refs) {
+        const letter = boardLetter(next++);
+        const widths = r.images.map((m) => Math.min(m.w, r.images.length > 1 ? 1200 : 1440));
+        const caption = [r.src, r.note].filter(Boolean).join(' — ');
+        const spec = {
+          type: 'frame', name: `${letter} – ${clip(r.title || r.host || 'Screenshot', 60)}${r.host ? ` (${r.host})` : ''}`,
+          dir: 'column', gap: 16, pad: 32, fill: '#FFFFFF', w: widths.reduce((x, y) => x + y, 0) + 24 * (widths.length - 1) + 64,
+          children: [
+            { type: 'text', text: letter, size: 48, weight: 700, color: '#111111' },
+            { type: 'frame', name: 'Images', dir: 'row', gap: 24, children: r.images.map((m, k) => ({ type: 'image', name: `Reference ${letter}${r.images.length > 1 ? k + 1 : ''}`, src: m.file, w: widths[k] })) },
+            { type: 'text', text: caption, w: 'fill', size: 14, color: '#666666' },
+          ],
+        };
+        const assets = await loadAssetsOrThrow([{ spec }], { references: true });
+        const built = await call<{ root: { id: string } }>(c, 'build', { spec, assets, parentId: sectionId, focus: false }, a.file, 120_000);
+        board.push({ letter, id: built.result.root.id, source: r.src, files: r.images.map((m) => m.file) });
+      }
+      await call(c, 'edit', { ops: [{ op: 'select', ids: [sectionId] }], focus: true }, a.file).catch(() => undefined);
+      const shots = await screenshotOf(c, sectionId, a.file, 1600);
+      const text = yaml(compact({ section: { id: sectionId, name: sectionName }, board, skipped: refs.flatMap((r) => r.skipped ?? []) }));
+      return textResult(withNotes(`${text}${failText}\n\nShow the user the board and ask which letter to build from (references.md: rebuild the chosen one in the identity, no write-up).`, notes), shots);
+    }),
+  );
+
+  server.registerTool(
+    'stock_photos',
+    {
+      title: 'Free stock photos',
+      description:
+        'Search free-license photos (Unsplash and Pexels official APIs) for a product image: returns numbered candidates with previews, the direct link to use as image src (build, edit place-image, place_images files), the photo page and the photographer. Needs UNSPLASH_ACCESS_KEY / PEXELS_API_KEY (env, or ~/.figma-mcp/keys.json {"unsplash": "…", "pexels": "…"}); without a key it explains the web-search route. Never use gallery images (Dribbble, Behance, Pinterest…) as product images.',
+      inputSchema: {
+        query: z.string().min(1).describe('2–4 concrete words: "egyptian family breakfast", "modern clinic reception".'),
+        orientation: z.enum(['landscape', 'portrait', 'square']).optional(),
+        count: z.number().int().min(1).max(20).optional().describe('Default 6.'),
+        previews: z.boolean().optional().describe('Attach preview images (default true).'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    wrap(async (a) => {
+      const keys = stockKeys();
+      if (!keys.unsplash && !keys.pexels) {
+        return textResult(
+          [
+            'No stock-photo API key is set.',
+            '- Search with your own web search: `site:unsplash.com/photos <words>` or `site:pexels.com/photo <words>` (also pixabay.com). Use only links you actually saw.',
+            '- Use the photo page itself as src (https://unsplash.com/photos/…, resolved to the photo), or the direct link on the site\'s CDN (images.unsplash.com, images.pexels.com, cdn.pixabay.com).',
+            `- For search with previews here: free keys from unsplash.com/developers and pexels.com/api, then UNSPLASH_ACCESS_KEY / PEXELS_API_KEY in the environment or ${path.join('~/.figma-mcp', 'keys.json')} as {"unsplash": "…", "pexels": "…"} (no restart needed for the file).`,
+          ].join('\n'),
+        );
+      }
+      const r = await searchStock(a.query, { count: a.count, orientation: a.orientation });
+      if (!r.photos.length) return textResult(`No photos for "${a.query}" (${r.providers.join(', ')}).${r.errors.length ? `\nErrors: ${r.errors.join('; ')}` : ''} Try other words.`);
+      const lines = r.photos.map((p, i) => `${i + 1}. ${p.description || '(no description)'} — ${p.author} on ${p.provider}, ${p.w}×${p.h}\n   src: ${p.src}\n   page: ${p.page}`);
+      if (r.errors.length) lines.push(`Errors: ${r.errors.join('; ')}`);
+      lines.push('Pick by subject, composition (room for text where the layout needs it), light and palette against the identity\'s imagery words. Then edit place-image {id, src} or place_images {files: {"IMG-00x": src}}.');
+      const previews: Content[] = [];
+      if (a.previews !== false) {
+        const bufs = await Promise.all(r.photos.slice(0, 8).map((p) => previewBytes(p.preview)));
+        for (const b of bufs) if (b) previews.push({ type: 'image', data: b.toString('base64'), mimeType: b[0] === 0x89 ? 'image/png' : 'image/jpeg' });
+      }
+      return textResult(lines.join('\n'), previews);
     }),
   );
 

@@ -19,17 +19,26 @@ figma-mcp again.
 
 | The request is about… | Read first |
 |---|---|
-| Screens, flows, landing pages, dashboards, banners, redesigns, polish — or designing from a reference | [references/design.md](references/design.md) |
+| Screens, flows, landing pages, dashboards, banners, redesigns, polish | [references/design.md](references/design.md) |
+| References: finding them, the lettered board, building from the one the user picked (adapt it to the identity — no write-up) | [references/references.md](references/references.md) |
 | One identity for everything: define or lock the brand, extract it from a site/screenshots, unify or audit consistency, carry it to code (`DESIGN.md`) | [references/identity.md](references/identity.md) |
 | Variables/tokens, styles, components and variants, themes, a UI kit | [references/design-system.md](references/design-system.md) |
 | A clickable prototype: links, transitions, overlays, scrolling, flows | [references/prototype.md](references/prototype.md) |
 | Building it in code: implement or pull a screen, export tokens/assets | [references/to-code.md](references/to-code.md) |
-| Images the design needs that don't exist yet, or images the user sent back | [references/image-prompts.md](references/image-prompts.md) |
+| Images the design needs: prompts for the user to generate, free stock photos, images the user sent back | [references/image-prompts.md](references/image-prompts.md) |
 | `build` / `edit` / `create_component` beyond the basics in §4 | [references/build-spec.md](references/build-spec.md) |
 | Something only the Plugin API can do (`execute`) | [references/execute.md](references/execute.md) |
 | An error or odd behavior | [references/troubleshooting.md](references/troubleshooting.md) |
 
-Usual combinations: "design the app / a screen" → design (+ design-system when it needs components or tokens;
+**Anything new to design starts from references.** A new screen, section, page, landing page or banner —
+"اعمل هيرو", "صمم الهوم", a logo with "design the site" — goes references → design: find references, show the
+lettered board, the user picks a letter, then you build it in the identity. Skip the board only when the user
+gave or picked a reference already, says to design directly ("من غير ريفرنس", "صمم على طول"), or the work is a
+change, a state or a fix of an existing screen, or a region an identity pattern already covers.
+
+Usual combinations: a new screen/section → references + design (+ identity when the file has none yet — a logo
+alone seeds it); "design it like this" / a link or screenshot → references + design; "design the app" → references
+per key section + design (+ design-system when it needs components or tokens;
 + identity when the file has no `## Identity` in its brief yet, or the work is for a new product);
 "make it look like <brand/site>" → identity + design-system;
 "make it clickable" → prototype; "build it in the project" → to-code (+ design-system for the tokens).
@@ -57,7 +66,9 @@ If your client does not show images returned by tools, call `screenshot` with `s
 | Components & variant sets | `create_component` |
 | Prototype links, flows, scrolling | `prototype` |
 | Audit against principles (+ safe auto-fix) | `lint` |
+| References → lettered board on `References` (pages, image links, screenshots) | `references` |
 | Images the design waits for → prompts file; generated images → into place | `image_prompts`, `place_images` |
+| Free stock photos (Unsplash/Pexels) for product images | `stock_photos` |
 | Design → code | `get_design_context`, `export_tokens`, `export` |
 | Anything else in the Plugin API | `execute` |
 | Fonts / icon names | `fonts`, `icons` |
@@ -77,14 +88,15 @@ If your client does not show images returned by tools, call `screenshot` with `s
 
 ## 2. The loop
 
-**Orient → Plan → Build in sections → Look → Fix → Report.**
+**Orient → References (new work) → Plan → Build in sections → Look → Fix → Report.**
 
 1. **Orient.** `status` (pages!) → `brief` (get) → `get_design_system` (tokens, styles, components to reuse) → `get_metadata` on the area you will touch. A `## Identity` block in the brief is binding: its tokens, components, patterns, icon set and imagery words are the only ones you use ([references/identity.md](references/identity.md)). Never design blind and never assume a file is empty — check other pages. Something with the same name already there? Update it, don't make a second one.
-2. **Plan in words** (3–8 lines; show the user when non-trivial): purpose, which page, device size, structure top→bottom, components to reuse vs. create, tokens to use, states to cover, images needed. Ask only questions whose answers change the result.
-3. **Build in sections.** One meaningful region per `build` call (a header, a form, a card list) — big enough to be efficient, small enough to retry. Use `ref` names so later calls can target layers.
-4. **Look.** `build` returns a screenshot for top-level work; otherwise call `screenshot`. Check: clipped or overflowing text, collapsed widths, overlaps, alignment, spacing rhythm, hierarchy, contrast. Fix with `edit` before moving on.
-5. **Audit.** `lint` on the finished frame; fix errors and warnings (use `fix: true` for exact token matches).
-6. **Report.** What you made and where (page, names + ids), decisions taken, images waiting (the prompts file), open questions. Record lasting decisions with `brief` (append).
+2. **References for new work**: new screen/section/page/banner → the board and the user's pick first ([references/references.md](references/references.md)); you build only after they choose.
+3. **Plan in words** (3–8 lines; show the user when non-trivial): purpose, which page, device size, structure top→bottom, components to reuse vs. create, tokens to use, states to cover, images needed. Ask only questions whose answers change the result.
+4. **Build in sections.** One meaningful region per `build` call (a header, a form, a card list) — big enough to be efficient, small enough to retry. Use `ref` names so later calls can target layers.
+5. **Look.** `build` returns a screenshot for top-level work; otherwise call `screenshot`. Check: clipped or overflowing text, collapsed widths, overlaps, alignment, spacing rhythm, hierarchy, contrast. Fix with `edit` before moving on.
+6. **Audit.** `lint` on the finished frame; fix errors and warnings (use `fix: true` for exact token matches).
+7. **Report.** What you made and where (page, names + ids), decisions taken, images waiting (the prompts file), open questions. Record lasting decisions with `brief` (append).
 
 ## 3. Where things go — one structure in every file
 
@@ -110,8 +122,8 @@ Components, References, Trash.
 - **One frame per screen** (and per state: `Home`, `Home – Empty`). Changing a screen changes that frame — `edit`, or `build` with `replaceId` (the old version goes to Trash). Never a second copy ("Home 2", "Home – new", a separate mobile redraw); `build` refuses a same-name twin on the page.
 - **Screens are plain top-level frames at exact device sizes** (`device`, §4), in flow order left → right. Several flows on one page → one Section per flow (`build` `{type: "section", name: "Checkout"}` on the page, then the screens with `parentId` = the section; it grows to fit).
 - **Deleting moves to Trash** (`edit` `delete`; `restore` puts it back where it was). Real deletion (`permanent: true`) or emptying the Trash only when the user asks. Nothing is built on the Trash page.
-- **References** go on `References` before you design from them ([references/design.md](references/design.md), § References).
-- **Images that don't exist yet** carry a generation prompt and are listed in `IMAGE_PROMPTS.md` in the user's project for them to generate ([references/image-prompts.md](references/image-prompts.md)).
+- **References** go on `References` as a lettered board (`references`) before you design from them ([references/references.md](references/references.md)).
+- **Images that don't exist yet** carry a generation prompt and are listed in `IMAGE_PROMPTS.md` in the user's project for them to generate, or get a free stock photo ([references/image-prompts.md](references/image-prompts.md)). Gallery images (Dribbble, Behance, Pinterest…) are never product images — the tools refuse them outside `References`.
 
 ## 4. Building — the spec in one screen
 
@@ -143,7 +155,7 @@ Components, References, Trash.
 - `"$name"` binds a variable, `"@Name"` uses a style; both must exist (build checks every name first and suggests corrections).
 - `font`, `color` and `rtl` set on a container are inherited by the text and icons inside it.
 - Icons: `"icon": "set:name"` from Iconify (`icons` tool to search). They become reusable components `icon/<set>/<name>` on the Icons board of the Components page; the instance takes `color` and `size`.
-- Images: `src` = absolute file path or URL (PNG/JPG/GIF). An image that doesn't exist yet: `{ "type": "image", "name": "<what it is>", "prompt": "<full generation prompt>" }` → a gray placeholder with an id (IMG-001); then `image_prompts`.
+- Images: `src` = absolute file path or URL (PNG/JPG/GIF; WebP/AVIF converted on macOS; an Unsplash/Pexels/Pixabay photo page resolves to its photo). An image that doesn't exist yet: `{ "type": "image", "name": "<what it is>", "prompt": "<full generation prompt>" }` → a gray placeholder with an id (IMG-001); then `image_prompts`.
 - Nothing is created if validation fails; if Figma fails mid-way the partial result is removed. Read `warnings` in every result.
 
 ## 5. Editing

@@ -1,12 +1,14 @@
 // Loads what the Figma sandbox cannot: icon SVGs (Iconify, cached on disk outside the tool
 // folder) and image bytes from local files / URLs / data URIs.
 
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { collectAssetRefs, expandVariants, newIssues, normalizeSpec, type AssetMap, type Spec, type VariantsInput } from '../shared/spec.ts';
 import { projectDir } from './files.ts';
 import { dataDir } from './log.ts';
+import { fetchPage, isFreePhotoPage, isInspirationHost } from './references.ts';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const ICON_API = 'https://api.iconify.design';
@@ -61,7 +63,7 @@ export async function searchIcons(query: string, set?: string, limit = 30): Prom
   return { icons: data.icons ?? [], total: data.total ?? 0 };
 }
 
-function sniff(buf: Buffer): 'png' | 'jpg' | 'gif' | 'webp' | 'svg' | 'avif' | 'unknown' {
+export function sniff(buf: Buffer): 'png' | 'jpg' | 'gif' | 'webp' | 'svg' | 'avif' | 'unknown' {
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e) return 'png';
   if (buf[0] === 0xff && buf[1] === 0xd8) return 'jpg';
   if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'gif';
@@ -72,6 +74,38 @@ function sniff(buf: Buffer): 'png' | 'jpg' | 'gif' | 'webp' | 'svg' | 'avif' | '
   return 'unknown';
 }
 
+/** WebP/AVIF → PNG with macOS's built-in sips (Figma takes PNG, JPEG or GIF only). */
+function convertToPng(buf: Buffer, kind: string, src: string): Buffer {
+  if (process.platform !== 'darwin') throw new Error(`image ${src} is ${kind.toUpperCase()}; Figma accepts PNG, JPEG or GIF — convert it first.`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'figma-mcp-img-'));
+  try {
+    const input = path.join(dir, `in.${kind}`);
+    const output = path.join(dir, 'out.png');
+    fs.writeFileSync(input, buf);
+    execFileSync('sips', ['-s', 'format', 'png', input, '--out', output], { stdio: 'ignore', timeout: 30_000 });
+    return fs.readFileSync(output);
+  } catch {
+    throw new Error(`image ${src} is ${kind.toUpperCase()} and could not be converted; save it as PNG or JPEG first.`);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** Image bytes Figma can take: PNG/JPEG/GIF as they are, WebP/AVIF converted, SVG as markup. */
+export function figmaImage(buf: Buffer, src: string): { data?: string; svg?: string; bytes?: Buffer } {
+  const kind = sniff(buf);
+  if (kind === 'svg') return { svg: buf.toString('utf8') };
+  if (kind === 'png' || kind === 'jpg' || kind === 'gif') return { data: buf.toString('base64'), bytes: buf };
+  if (kind === 'webp' || kind === 'avif') {
+    const png = convertToPng(buf, kind, src);
+    return { data: png.toString('base64'), bytes: png };
+  }
+  throw new Error(`image ${src} is not an image Figma can use (PNG, JPEG, GIF, WebP or AVIF).`);
+}
+
+export const GALLERY_IMAGE_REFUSED = (src: string) =>
+  `${src} is from a design gallery — other people's work is a reference, never a product image. Put it on the References page (the references tool, or build with page: "References"); in the design use the user's assets, a placeholder with a prompt, or a free stock photo.`;
+
 export async function loadImage(src: string): Promise<{ data?: string; svg?: string }> {
   let buf: Buffer;
   if (src.startsWith('data:')) {
@@ -79,15 +113,25 @@ export async function loadImage(src: string): Promise<{ data?: string; svg?: str
     if (!m) throw new Error('bad data: URI');
     buf = m[1] ? Buffer.from(m[2], 'base64') : Buffer.from(decodeURIComponent(m[2]));
   } else if (/^https?:\/\//i.test(src)) {
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(src, 25_000);
-    } catch (e) {
-      throw new Error(`could not download ${src} (${e instanceof Error ? e.message : e}).`);
+    if (isFreePhotoPage(src)) {
+      // An Unsplash/Pexels/Pixabay photo page stands for its photo.
+      try {
+        buf = (await fetchPage(src, 1, MAX_IMAGE_BYTES)).images[0].buf;
+      } catch (e) {
+        throw new Error(`could not get the photo from ${src} (${e instanceof Error ? e.message : e}). Use the direct image link (images.unsplash.com / images.pexels.com / cdn.pixabay.com).`);
+      }
+    } else {
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(src, 25_000);
+      } catch (e) {
+        throw new Error(`could not download ${src} (${e instanceof Error ? e.message : e}).`);
+      }
+      if (!res.ok) throw new Error(`download failed for ${src} (HTTP ${res.status}).`);
+      if (/html/i.test(res.headers.get('content-type') ?? '')) throw new Error(`${src} is a web page, not an image. Use the image's own URL (or the references tool for a page you want as a reference).`);
+      const ab = await res.arrayBuffer();
+      buf = Buffer.from(ab);
     }
-    if (!res.ok) throw new Error(`download failed for ${src} (HTTP ${res.status}).`);
-    const ab = await res.arrayBuffer();
-    buf = Buffer.from(ab);
   } else {
     let file = src.startsWith('file://') ? new URL(src).pathname : src;
     if (file.startsWith('~/')) file = path.join(os.homedir(), file.slice(2));
@@ -102,10 +146,8 @@ export async function loadImage(src: string): Promise<{ data?: string; svg?: str
     buf = fs.readFileSync(file);
   }
   if (buf.length > MAX_IMAGE_BYTES) throw new Error(`image ${src} is larger than 25 MB.`);
-  const kind = sniff(buf);
-  if (kind === 'svg') return { svg: buf.toString('utf8') };
-  if (kind === 'png' || kind === 'jpg' || kind === 'gif') return { data: buf.toString('base64') };
-  throw new Error(`image ${src} is ${kind.toUpperCase()}; Figma accepts PNG, JPEG or GIF (convert it first, e.g. "sips -s format png in.webp --out out.png" on macOS).`);
+  const { data, svg } = figmaImage(buf, src);
+  return svg ? { svg } : { data };
 }
 
 async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
@@ -116,7 +158,7 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
 }
 
 /** Finds icons/images in raw specs (any shape the tools accept) and loads them. */
-export async function loadAssetsFor(raws: Array<{ spec: unknown; partial?: boolean; variants?: VariantsInput }>): Promise<{ assets: AssetMap; errors: string[] }> {
+export async function loadAssetsFor(raws: Array<{ spec: unknown; partial?: boolean; variants?: VariantsInput }>, opts: { references?: boolean } = {}): Promise<{ assets: AssetMap; errors: string[] }> {
   const refs = { icons: new Set<string>(), images: new Set<string>() };
   for (const r of raws) {
     if (r.spec === undefined || r.spec === null) continue;
@@ -139,6 +181,10 @@ export async function loadAssetsFor(raws: Array<{ spec: unknown; partial?: boole
     }
   });
   await pool([...refs.images], 4, async (src) => {
+    if (!opts.references && isInspirationHost(src)) {
+      errors.push(GALLERY_IMAGE_REFUSED(src));
+      return;
+    }
     try {
       assets.images![src] = await loadImage(src);
     } catch (e) {

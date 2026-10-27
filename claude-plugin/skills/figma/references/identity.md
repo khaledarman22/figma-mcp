@@ -53,9 +53,10 @@ Pick the path from what exists; several can combine (a file with half a system p
 1. **Pick the sources** with the user before collecting: the home/landing page always; pages that expose
    components (pricing for cards and toggles, sign-up/contact for inputs, a list or table page, a blog page for
    long text). 3–5 sources are enough.
-2. **Put them in the file**: each as `Reference – <what> (<source>)` on `References` (design.md, § References).
-   If your client can open web pages or a browser, capture full-page screenshots yourself (save them in the
-   user's project or a temp folder, then `src` = that path); otherwise ask the user for screenshots or files.
+2. **Put them in the file**: `references` with `for: "Brand"` and the pages/screenshots — a lettered board on
+   `References` ([references.md](references.md)). A page's share image rarely shows enough: if your client can
+   drive a browser, capture full-page screenshots yourself (save them in the user's project or a temp folder) and
+   pass the files; otherwise ask the user for screenshots.
 3. **Tokens**: when you can read the site's CSS, take the custom properties (`--…`) and computed styles of real
    elements — they beat guessing from pixels. From screenshots, sample sparingly and round to a coherent scale.
    Then structure them the design-system way: primitives → semantic roles ([design-system.md](design-system.md) §2).
@@ -75,7 +76,10 @@ Pick the path from what exists; several can combine (a file with half a system p
 
 ### C. Nothing yet → set a direction
 1. From the brief (or ask once): purpose of the product, who uses it and what they decide or accomplish, the
-   existing material (logo, colors, code tokens), the feeling.
+   existing material (logo, colors, code tokens), the feeling. **Only a logo?** It fixes the brand colors (sample
+   them from the logo file, then build primitives → roles around them) and hints the personality; put it in the
+   user's project and on `Components` as the logo asset. The layout direction still comes from the references
+   board ([references.md](references.md)) — the picked reference + the logo's colors are the direction.
 2. Propose 2–3 genuinely different directions, each as a small `Identity` board sample (a key screen section +
    swatches + type ramp), named `Identity – Direction A/B/C` on `Components`. A distinctive detail only when the
    brief supports it — no decoration just to look different.
@@ -142,6 +146,6 @@ The same identity governs the user's code project, so design and code can't drif
 - [ ] Section patterns named and shown; one icon set; imagery words written down.
 - [ ] Every screen uses the identity's tokens, components and patterns; nothing local or look-alike.
 - [ ] Additions went into the identity first (token, variant, pattern) and are recorded in the brief.
-- [ ] References kept on `References`; nothing from them inside screens.
+- [ ] References kept on `References` (lettered board); nothing from them inside screens.
 - [ ] Audit clean: `lint` without errors, one device size per product, no mixed icon sets.
 - [ ] If code is involved: tokens exported with the same names; `DESIGN.md` up to date when it exists.

@@ -15,6 +15,7 @@ import { compact, truncateText, yaml } from './format.ts';
 import { NO_PLUGIN_HELP, type Bridge } from './hub.ts';
 import { log } from './log.ts';
 import { exportTokens, summarizeVariables, type TokenFormat, type VariablesDump } from './tokens.ts';
+import { normUrl, readHistory, recordDirections, recordReferences, recordSearches, renderHistory, sha1Of, specImageSources, writeHistory } from './history.ts';
 import { addToLibrary, describeItem, readLibrary, searchLibrary, writeLibrary, type LibraryItem } from './library.ts';
 import { ensureWorkspace, findWorkspace, lookalikes, markSynced, readCatalog, usesInstances, writeCatalog, writeDesignMd, writeSkill, type CatalogItem, type Workspace } from './workspace.ts';
 
@@ -161,6 +162,41 @@ function clicheWarnings(specs: unknown[]): string[] {
   return found.size
     ? [`Section numbers as decoration (${[...found].slice(0, 5).map((t) => `"${t}"`).join(', ')}): remove the number and any marker square/dot/line beside it — only when the user or the references asked for it.`]
     : [];
+}
+
+/** URLs written in a spec's texts (the source line of a reference note). */
+function specTextUrls(spec: unknown): string[] {
+  const out: string[] = [];
+  const walk = (v: unknown) => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) (k === 'text' || k === 'characters') && typeof x === 'string' ? out.push(...(x.match(/https?:\/\/[^\s)>\]"']+/g) ?? [])) : walk(x);
+  };
+  walk(spec);
+  return out;
+}
+
+/** A reference placed with build goes into the shared history; one already used for another file gets a warning. */
+function recordReferenceBuild(spec: Record<string, unknown>, page: string | undefined, assets: Awaited<ReturnType<typeof loadAssetsOrThrow>>, file: string): string[] {
+  const name = String(spec.name ?? '');
+  if (/^brand\b/i.test(name) || !(/^references$/i.test(page ?? '') || /^reference\b/i.test(name))) return [];
+  const images = specImageSources(spec);
+  if (!images.length) return [];
+  try {
+    const h = readHistory();
+    const pageUrl = specTextUrls(spec).find((u) => !images.some((i) => normUrl(i) === normUrl(u)));
+    const refs = images.map((src) => {
+      const data = assets.images?.[src]?.data;
+      return { url: images.length === 1 && pageUrl ? pageUrl : src, image: src, ...(data ? { sha1: sha1Of(Buffer.from(data, 'base64')) } : {}), title: name };
+    });
+    const out = recordReferences(h, refs, file)
+      .filter((r) => r.before.length)
+      .map((r) => `Reference already used for ${[...new Set(r.before.map((b) => `"${b.file}" (${b.date})`))].join(', ')}: ${r.ref.url} — a new design needs other references; find different ones (other sites, other words) and move this one to Trash, unless the user asked to reuse it.`);
+    writeHistory(h);
+    return out;
+  } catch (e) {
+    log('history:', e instanceof Error ? e.message : e);
+    return [];
+  }
 }
 
 const COMPONENT_OPS = new Set(['to-component', 'combine-variants', 'swap', 'detach', 'delete', 'restore']);
@@ -617,7 +653,8 @@ export function registerTools(server: McpServer, c: Ctx) {
       );
       const ws = openWorkspace(plugin, notes);
       if (ws && !pre) await refreshCatalog(c, ws, a.file);
-      const warnings = [...(result.warnings ?? []), ...componentWarnings([a.spec], catalog, !a.parentId), ...clicheWarnings([a.spec])];
+      const repeats = plugin ? recordReferenceBuild(a.spec, result.page ?? a.page, assets, plugin.file.name) : [];
+      const warnings = [...(result.warnings ?? []), ...componentWarnings([a.spec], catalog, !a.parentId), ...clicheWarnings([a.spec]), ...repeats];
       const text = yaml(compact({ built: result.root, page: result.page, layers: result.created, interactions: result.interactions || undefined, ids: result.ids, warnings }));
       const wantShot = a.screenshot ?? !a.parentId;
       const shots = wantShot ? await screenshotOf(c, result.root.id, a.file) : [];
@@ -1272,6 +1309,70 @@ export function registerTools(server: McpServer, c: Ctx) {
       }
       lines.push(`Library: ${items.length} image(s) — ${path.join(ws.dir, 'LIBRARY.md')}`);
       return textResult(withNotes(lines.join('\n'), notes));
+    }),
+  );
+
+  server.registerTool(
+    'history',
+    {
+      title: 'Design history (all files)',
+      description:
+        'What was already designed across every Figma file and project: the references used, the directions built (concept, layout, hero, nav, palette, fonts, style, imagery) and the searches made — so a new design with the same prompt finds other references and builds a different direction instead of repeating the last one. ' +
+        'action list (default): read it before searching references and before proposing directions; check: candidate reference URLs → which were used before and where. add: references [{url (shot/project page), image?, title?}], directions [{name, concept, layout, …}] once the user picks one, searches ["site:dribbble.com …"] you ran. References placed with build on the References page are recorded by themselves.',
+      inputSchema: {
+        action: z.enum(['list', 'add']).optional(),
+        check: z.array(z.string()).max(40).optional().describe('list: candidate reference URLs to test against the history.'),
+        limit: z.number().int().min(1).max(200).optional().describe('list: entries per section (default 20, newest first).'),
+        references: z.array(z.object({ url: z.string(), image: z.string().optional(), title: z.string().optional() })).max(40).optional(),
+        directions: z
+          .array(
+            z.object({
+              name: z.string().describe('e.g. "Floriva – Direction B: editorial catalog"'),
+              concept: z.string().describe('the idea in one line'),
+              layout: z.string().describe('structure top→bottom, grid, density'),
+              hero: z.string().optional(),
+              nav: z.string().optional(),
+              palette: z.array(z.string()).optional(),
+              fonts: z.array(z.string()).optional(),
+              style: z.string().optional().describe('shape language, surfaces, shadows, radius'),
+              imagery: z.string().optional(),
+            }),
+          )
+          .max(10)
+          .optional(),
+        searches: z.array(z.string()).max(40).optional(),
+        file: fileParam,
+      },
+      annotations: { destructiveHint: false },
+    },
+    wrap(async (a) => {
+      if (!c.bridge.plugins_().length) await c.bridge.waitForPlugin(5_000);
+      let fileName = 'unknown file';
+      try {
+        if (c.bridge.plugins_().length) fileName = c.bridge.pick(a.file ?? c.bridge.stickyTarget ?? undefined).file.name;
+      } catch {}
+      const h = readHistory();
+      if ((a.action ?? 'list') === 'add') {
+        const before = recordReferences(h, a.references ?? [], fileName).filter((r) => r.before.length);
+        recordDirections(h, a.directions ?? [], fileName);
+        recordSearches(h, a.searches ?? [], fileName);
+        writeHistory(h);
+        const lines = [`Recorded for "${fileName}": ${a.references?.length ?? 0} reference(s), ${a.directions?.length ?? 0} direction(s), ${a.searches?.length ?? 0} search(es).`];
+        for (const r of before) lines.push(`⚠ ${r.ref.url} was already used for ${[...new Set(r.before.map((b) => `"${b.file}" (${b.date})`))].join(', ')} — pick another unless the user asked to reuse it.`);
+        return textResult(lines.join('\n'));
+      }
+      const lines: string[] = [];
+      if (a.check?.length) {
+        lines.push('## Check');
+        for (const u of a.check) {
+          const used = h.references.filter((x) => [x.url, x.image].some((y) => y && normUrl(y) === normUrl(u)));
+          lines.push(used.length ? `- USED ${u} — ${[...new Set(used.map((b) => `"${b.file}" (${b.date})`))].join(', ')}` : `- new ${u}`);
+        }
+        lines.push('');
+      }
+      lines.push(renderHistory(h, { limit: a.limit }));
+      lines.push('', `Current file: "${fileName}". Entries from this same file are its own work (continue it); entries from other files are what a new design must not repeat.`);
+      return textResult(lines.join('\n'));
     }),
   );
 

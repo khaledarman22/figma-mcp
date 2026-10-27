@@ -3140,7 +3140,7 @@
   }
 
   // src/plugin/inspect.ts
-  var PLUGIN_VERSION = true ? "1.0.0+1300ce9" : "dev";
+  var PLUGIN_VERSION = true ? "1.0.0+c1fd6eb" : "dev";
   function selectionSummary() {
     return figma.currentPage.selection.slice(0, 50).map((n) => ({ id: n.id, name: n.name, type: n.type, w: Math.round(n.width), h: Math.round(n.height) }));
   }

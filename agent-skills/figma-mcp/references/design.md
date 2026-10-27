@@ -72,7 +72,27 @@ Then every screen value is a token (`$…`) or a style (`@…`). Raw hex and off
 
 ### 10. Communicate
 - Report: what was made (page, names + ids), which existing assets were reused, what was added to the system, images waiting (path of `IMAGE_PROMPTS.md` and how many), open questions.
-- When the direction is open, offer 2–3 genuinely different directions (layout/concept), each built properly — not three color swaps. Directions are alternatives the user chooses between, named `Home – Direction A/B`; the ones not chosen go to Trash.
+- When the direction is open, offer 2–3 genuinely different directions (layout/concept), each built properly — not three color swaps, and none a repeat of a direction in `history` (§ Never the same design twice). Directions are alternatives the user chooses between, named `Home – Direction A/B`; the ones not chosen go to Trash.
+
+## Never the same design twice
+
+Each Figma file is a new design, even when the prompt is word for word the one used before. Without a record the
+agent finds the same top search results and falls back to the same layout it always makes — so:
+- **Before references and before directions: `history`** (list). It shows the directions already designed in
+  other files (concept, layout, hero, nav, palette, fonts, style, imagery), the references already used and the
+  searches already made. Entries of the current file are its own work — continue them; entries of other files are
+  what this design must not repeat.
+- **References:** none that the history marks as used for another file (`history` `check` with the candidate URLs).
+  `build` records each reference placed on `References` and warns when one was used before — replace it. Reuse only
+  when the user asks for the same look.
+- **Directions:** each one differs from every earlier direction on **at least 3 of** concept, layout, hero, nav,
+  palette, fonts, style, imagery — and from your own habits: not the centered hero + three feature cards + CTA
+  band, not the same font pair, not the same gradient. Say in the plan which earlier direction it's closest to and
+  what is different.
+- **The design comes from the references, not from memory.** Every section has a reference part it was built
+  from (§ References, steps 2–4); a section you can't trace to one is a default — rebuild it from a reference.
+- **Record the choice:** when the user picks a direction, `history` add `directions` (name, concept, layout, hero,
+  nav, palette, fonts, style, imagery) — and `brief` append it as usual.
 
 ## Design knowledge (optional): ui-ux-pro-max
 
@@ -130,9 +150,15 @@ color, one component), or the `References` page already holds `Reference – …
 shape the structure, so finding them after building is too late. Your plan names them (`References: … (found)` or
 `References: … (from the user)`); a plan without that line is not ready.
 
+0. **Read the history first** — `history` (list). It holds every reference and direction already used in other
+   Figma files and the searches already made (§ Never the same design twice). The same prompt must not bring back
+   the same references: queries change, sites change, and a candidate the history marks as used is skipped.
 1. **Search** (your client's web search / fetch; in Claude Code: WebSearch + WebFetch, or a browser tool when
    one is connected). Queries from the brief: product type + screen + platform + mood, in English —
-   `"food delivery app checkout screen ui"`, `"saas analytics dashboard dark"`. Where to look:
+   `"food delivery app checkout screen ui"`, `"saas analytics dashboard dark"` — plus what is specific to *this*
+   product (its audience, market, material, era, a style word), never only the generic words of the prompt.
+   Not the first page of the same query every time: other words, another site, results further down. Record the
+   queries you ran (`history` add `searches`). Where to look:
    | Kind | Sites |
    |---|---|
    | App / dashboard UI | `dribbble.com`, `behance.net`, `pinterest.com`, `uplabs.com` |
@@ -204,7 +230,7 @@ No web access in this client → say so and ask the user for 1–3 references (f
 ## Screen recipe
 
 1. `status` → `brief` → `get_design_system` → `get_metadata` (neighbouring screens, same page).
-2. No UI reference from the user → find 2–4, put them on `References`, show them to the user and wait for a yes (§ No reference given). Plan: page, device, sections top→bottom, components per section, tokens, states, images.
+2. `history` (list) → no UI reference from the user → find 2–4 not used before, put them on `References`, show them to the user and wait for a yes (§ No reference given, § Never the same design twice). Plan: page, device, sections top→bottom, components per section, tokens, states, images.
 3. Find or `build` the page's auto-layout board and the relevant auto-layout flow/group within it. `build` the screen shell with `parentId` = that group's id and `device`: background token, padding, `align: "stretch"`, header/content/footer regions (refs), `fixed` bars.
 4. For each region in turn — **reference first, components last**: zoom into the region's reference part (crop at full resolution; crop again around nav, buttons and cards until their details are legible) → write its spec in px → `build` the region with frames to match it (identity colors and fonts; parts that already exist as components go in as instances) → step 5 until it matches → `edit` `to-component` the parts that repeat or will be reused (button, nav link, card, list row) and `swap` their copies. Never `create_component` a part before a region has shown it. Real content, image placeholders with prompts.
 5. `screenshot` after each region together with its reference part (`nodeIds: [<reference part>, <region>]`) → tick the region's signature moves → `edit` fixes.
@@ -215,7 +241,8 @@ No web access in this client → say so and ask the user for 1–3 references (f
 ## Checklist before you report
 - [ ] Icons: one set whose style, weight, size and container match the references.
 - [ ] Every section's signature moves from its reference are visible (side-by-side screenshot checked); the screen couldn't pass for a generic template.
-- [ ] References: the user's UI references, or 2–4 you found and placed on `References` before designing (brand material alone doesn't count).
+- [ ] References: the user's UI references, or 2–4 you found and placed on `References` before designing (brand material alone doesn't count), none used before for another file (`history`).
+- [ ] The direction differs from every earlier one in `history` on 3+ axes, and was recorded there once chosen.
 - [ ] On the right page (English name, created only for this); components on `Components`; nothing left on an empty page.
 - [ ] Every screen at the product's exact device size; one frame per screen/state; no duplicates or copies.
 - [ ] One auto-layout board per design page; its flow/group frames use auto layout and contain the screens.

@@ -3268,8 +3268,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path9) {
-      let input = path9;
+    function removeDotSegments(path10) {
+      let input = path10;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3343,11 +3343,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path9) {
-      if (path9 === "" || path9[0] === "/") {
-        return removeDotSegments(path9);
+    function removeDotSegmentsRelative(path10) {
+      if (path10 === "" || path10[0] === "/") {
+        return removeDotSegments(path10);
       }
-      const segments = path9.split("/");
+      const segments = path10.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3710,8 +3710,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path9 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path9 && path9 !== "/" ? path9 : void 0;
+        const path10 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path10 && path10 !== "/" ? path10 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -7248,12 +7248,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs9, exportName) {
+    function addFormats(ajv, list, fs10, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs9[f]);
+        ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -11422,8 +11422,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path9, errorMaps, issueData } = params;
-  const fullPath = [...path9, ...issueData.path || []];
+  const { data, path: path10, errorMaps, issueData } = params;
+  const fullPath = [...path10, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -11539,11 +11539,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path9, key) {
+  constructor(parent, value, path10, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path9;
+    this._path = path10;
     this._key = key;
   }
   get path() {
@@ -15180,10 +15180,10 @@ function assignProp(target, prop, value) {
     configurable: true
   });
 }
-function getElementAtPath(obj, path9) {
-  if (!path9)
+function getElementAtPath(obj, path10) {
+  if (!path10)
     return obj;
-  return path9.reduce((acc, key) => acc?.[key], obj);
+  return path10.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -15503,11 +15503,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path9, issues) {
+function prefixIssues(path10, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path9);
+    iss.path.unshift(path10);
     return iss;
   });
 }
@@ -18918,11 +18918,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path9) {
-  if (path9.length === 0) {
+function getDotPath(path10) {
+  if (path10.length === 0) {
     return "object root";
   }
-  return path9.reduce((acc, seg, index) => {
+  return path10.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -25948,8 +25948,8 @@ function syncHome() {
 }
 
 // src/server/tools.ts
-import fs8 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path9 from "node:path";
 
 // src/shared/util.ts
 function levenshtein(a, b) {
@@ -26347,45 +26347,45 @@ var FONT_KEYS = {
   italic: "italic"
 };
 var isToken = (v) => typeof v === "string" && v.startsWith("$") && v.length > 1;
-function num(v, path9, issues, opts = {}) {
+function num(v, path10, issues, opts = {}) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "number" && Number.isFinite(v)) {
-    if (opts.min !== void 0 && v < opts.min) issues.warnings.push(`${path9}: ${v} is below ${opts.min}; clamped.`);
+    if (opts.min !== void 0 && v < opts.min) issues.warnings.push(`${path10}: ${v} is below ${opts.min}; clamped.`);
     return opts.min !== void 0 ? Math.max(opts.min, v) : v;
   }
   if (typeof v === "string") {
     if (isToken(v)) {
-      if (opts.token === false) issues.errors.push(`${path9}: variables are not supported here.`);
+      if (opts.token === false) issues.errors.push(`${path10}: variables are not supported here.`);
       return v;
     }
     const m = v.trim().match(/^(-?\d*\.?\d+)\s*(px)?$/);
     if (m) return parseFloat(m[1]);
   }
-  issues.errors.push(`${path9}: expected a number${opts.token === false ? "" : ' or a "$variable"'}, got ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path10}: expected a number${opts.token === false ? "" : ' or a "$variable"'}, got ${JSON.stringify(v)}.`);
   return void 0;
 }
-function size(v, path9, issues) {
+function size(v, path10, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
     if (["fill", "fill-container", "full", "100%", "stretch", "flex", "flex-1", "expand"].includes(s)) return "fill";
     if (["hug", "hug-contents", "auto", "fit", "fit-content", "content", "wrap", "wrap-content"].includes(s)) return "hug";
   }
-  return num(v, path9, issues, { min: 0.01 });
+  return num(v, path10, issues, { min: 0.01 });
 }
-function enumOf(v, map, path9, issues) {
+function enumOf(v, map, path10, issues) {
   if (v === void 0 || v === null) return void 0;
   const key = String(v).trim().toLowerCase();
   if (key in map) return map[key];
-  issues.errors.push(`${path9}: unknown value ${JSON.stringify(v)}.${didYouMean(key, Object.keys(map))}`);
+  issues.errors.push(`${path10}: unknown value ${JSON.stringify(v)}.${didYouMean(key, Object.keys(map))}`);
   return void 0;
 }
-function bool(v, path9, issues) {
+function bool(v, path10, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "boolean") return v;
   if (v === "true" || v === 1) return true;
   if (v === "false" || v === 0) return false;
-  issues.errors.push(`${path9}: expected true/false, got ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path10}: expected true/false, got ${JSON.stringify(v)}.`);
   return void 0;
 }
 var DIR = {
@@ -26538,7 +26538,7 @@ var WEIGHT_NAMES = {
   black: 900,
   heavy: 900
 };
-function paint(v, path9, issues) {
+function paint(v, path10, issues) {
   if (v === void 0 || v === null) return void 0;
   if (typeof v === "string") {
     const s = v.trim();
@@ -26547,44 +26547,44 @@ function paint(v, path9, issues) {
     if (s.startsWith("url(") || /^(https?:|file:|\/|~\/|\.\.?\/)/.test(s) || /\.(png|jpe?g|gif|webp|svg)$/i.test(s)) {
       return { kind: "image", src: s.replace(/^url\((['"]?)(.*)\1\)$/, "$2"), fit: "fill" };
     }
-    if (/^(linear|radial|conic|angular|diamond)-gradient\(/i.test(s)) return cssGradient(s, path9, issues);
+    if (/^(linear|radial|conic|angular|diamond)-gradient\(/i.test(s)) return cssGradient(s, path10, issues);
     return { kind: "solid", color: s };
   }
   if (isPlainObject3(v)) {
     const o = v;
-    const opacity = o.opacity === void 0 ? void 0 : num(o.opacity, `${path9}.opacity`, issues, { token: false });
+    const opacity = o.opacity === void 0 ? void 0 : num(o.opacity, `${path10}.opacity`, issues, { token: false });
     if (o.style !== void 0) return { kind: "style", name: String(o.style).replace(/^@/, "") };
     if (o.image !== void 0 || o.src !== void 0 || o.imageData !== void 0) {
       return {
         kind: "image",
         src: o.image !== void 0 ? String(o.image) : o.src !== void 0 ? String(o.src) : void 0,
         imageData: o.imageData !== void 0 ? String(o.imageData) : void 0,
-        fit: enumOf(o.fit ?? o.scaleMode ?? "fill", FIT, `${path9}.fit`, issues) ?? "fill",
+        fit: enumOf(o.fit ?? o.scaleMode ?? "fill", FIT, `${path10}.fit`, issues) ?? "fill",
         opacity
       };
     }
     if (o.gradient !== void 0 || o.stops !== void 0) {
       const g = String(o.gradient ?? "linear").toLowerCase().replace(/-gradient$/, "");
       const kind = { linear: "linear", radial: "radial", angular: "angular", conic: "angular", diamond: "diamond" }[g];
-      if (!kind) issues.errors.push(`${path9}.gradient: unknown gradient ${JSON.stringify(o.gradient)} (linear|radial|angular|diamond).`);
+      if (!kind) issues.errors.push(`${path10}.gradient: unknown gradient ${JSON.stringify(o.gradient)} (linear|radial|angular|diamond).`);
       const stops = Array.isArray(o.stops) ? o.stops : [];
-      if (stops.length < 2) issues.errors.push(`${path9}.stops: a gradient needs at least 2 stops.`);
+      if (stops.length < 2) issues.errors.push(`${path10}.stops: a gradient needs at least 2 stops.`);
       return {
         kind: "gradient",
         gradient: kind ?? "linear",
         angle: typeof o.angle === "number" ? o.angle : 180,
-        stops: stops.map((st, i) => gradientStop(st, i, stops.length, `${path9}.stops[${i}]`, issues)),
+        stops: stops.map((st, i) => gradientStop(st, i, stops.length, `${path10}.stops[${i}]`, issues)),
         opacity
       };
     }
     if (o.color !== void 0) return { kind: "solid", color: String(o.color), opacity };
-    issues.errors.push(`${path9}: unrecognised paint ${JSON.stringify(v)}. Use "#hex", "$variable", "@Style", {color, opacity}, {gradient, stops} or {image, fit}.`);
+    issues.errors.push(`${path10}: unrecognised paint ${JSON.stringify(v)}. Use "#hex", "$variable", "@Style", {color, opacity}, {gradient, stops} or {image, fit}.`);
     return void 0;
   }
-  issues.errors.push(`${path9}: unrecognised paint ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path10}: unrecognised paint ${JSON.stringify(v)}.`);
   return void 0;
 }
-function gradientStop(st, i, n, path9, issues) {
+function gradientStop(st, i, n, path10, issues) {
   const fallbackPos = n > 1 ? i / (n - 1) : 0;
   if (typeof st === "string") {
     const m = st.trim().match(/^(.*?)(?:\s+(-?\d*\.?\d+)%)?$/);
@@ -26595,10 +26595,10 @@ function gradientStop(st, i, n, path9, issues) {
     const p = st.position ?? st.pos ?? st.at;
     return { color: String(st.color), position: typeof p === "number" ? p > 1 ? p / 100 : p : fallbackPos };
   }
-  issues.errors.push(`${path9}: unrecognised gradient stop.`);
+  issues.errors.push(`${path10}: unrecognised gradient stop.`);
   return { color: "#000000", position: fallbackPos };
 }
-function cssGradient(s, path9, issues) {
+function cssGradient(s, path10, issues) {
   const m = s.match(/^(\w+)-gradient\((.*)\)$/i);
   if (!m) return void 0;
   const kind = m[1].toLowerCase();
@@ -26620,22 +26620,22 @@ function cssGradient(s, path9, issues) {
     const dirs = { "to top": 0, "to right": 90, "to bottom": 180, "to left": 270, "to top right": 45, "to bottom right": 135, "to bottom left": 225, "to top left": 315 };
     angle = a.endsWith("deg") ? parseFloat(a) : dirs[a] ?? 180;
   } else if (parts.length && /^(circle|ellipse|at )/.test(parts[0])) parts.shift();
-  const stops = parts.map((p, i) => gradientStop(p, i, parts.length, `${path9}.stops[${i}]`, issues));
+  const stops = parts.map((p, i) => gradientStop(p, i, parts.length, `${path10}.stops[${i}]`, issues));
   const gradient = kind === "linear" ? "linear" : kind === "radial" ? "radial" : kind === "diamond" ? "diamond" : "angular";
   return { kind: "gradient", gradient, angle, stops };
 }
-function paints(v, path9, issues) {
+function paints(v, path10, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false || Array.isArray(v) && v.length === 0) return null;
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((p, i) => {
-    const r = paint(p, list.length > 1 || Array.isArray(v) ? `${path9}[${i}]` : path9, issues);
+    const r = paint(p, list.length > 1 || Array.isArray(v) ? `${path10}[${i}]` : path10, issues);
     if (r) out.push(r);
   });
   return out;
 }
-function stroke(v, path9, issues) {
+function stroke(v, path10, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false) return null;
   if (typeof v === "string") {
@@ -26650,33 +26650,33 @@ function stroke(v, path9, issues) {
       else if (t === "solid") continue;
       else rest.push(t);
     }
-    const p = paint(rest.join(" ") || "#000000", path9, issues);
+    const p = paint(rest.join(" ") || "#000000", path10, issues);
     return { paints: p ? [p] : [], weight: weight ?? 1, dash };
   }
-  if (Array.isArray(v)) return { paints: paints(v, path9, issues) ?? [], weight: 1 };
+  if (Array.isArray(v)) return { paints: paints(v, path10, issues) ?? [], weight: 1 };
   if (isPlainObject3(v)) {
     const o = v;
     const colorInput = o.color ?? o.paint ?? o.paints ?? o.fill;
     let weight;
     const w = o.weight ?? o.width ?? o.strokeWeight;
     if (Array.isArray(w)) {
-      const sides = padLike(w, `${path9}.weight`, issues);
+      const sides = padLike(w, `${path10}.weight`, issues);
       weight = sides;
-    } else if (w !== void 0) weight = num(w, `${path9}.weight`, issues, { min: 0 });
+    } else if (w !== void 0) weight = num(w, `${path10}.weight`, issues, { min: 0 });
     const align = o.align ?? o.position ?? o.strokeAlign;
     return {
-      paints: colorInput === void 0 ? [] : paints(colorInput, `${path9}.color`, issues) ?? [],
+      paints: colorInput === void 0 ? [] : paints(colorInput, `${path10}.color`, issues) ?? [],
       weight: weight ?? 1,
-      align: align === void 0 ? void 0 : enumOf(align, { inside: "inside", inner: "inside", center: "center", middle: "center", outside: "outside", outer: "outside" }, `${path9}.align`, issues),
+      align: align === void 0 ? void 0 : enumOf(align, { inside: "inside", inner: "inside", center: "center", middle: "center", outside: "outside", outer: "outside" }, `${path10}.align`, issues),
       dash: Array.isArray(o.dash) ? o.dash : o.dash === true || o.style === "dashed" ? [4, 4] : o.style === "dotted" ? [1, 2] : void 0,
-      cap: o.cap === void 0 ? void 0 : enumOf(o.cap, { none: "none", round: "round", square: "square" }, `${path9}.cap`, issues),
-      join: o.join === void 0 ? void 0 : enumOf(o.join, { miter: "miter", bevel: "bevel", round: "round" }, `${path9}.join`, issues)
+      cap: o.cap === void 0 ? void 0 : enumOf(o.cap, { none: "none", round: "round", square: "square" }, `${path10}.cap`, issues),
+      join: o.join === void 0 ? void 0 : enumOf(o.join, { miter: "miter", bevel: "bevel", round: "round" }, `${path10}.join`, issues)
     };
   }
-  issues.errors.push(`${path9}: unrecognised stroke ${JSON.stringify(v)}.`);
+  issues.errors.push(`${path10}: unrecognised stroke ${JSON.stringify(v)}.`);
   return void 0;
 }
-function cssShadows(s, path9, issues) {
+function cssShadows(s, path10, issues) {
   const parts = [];
   let depth = 0;
   let cur = "";
@@ -26701,7 +26701,7 @@ function cssShadows(s, path9, issues) {
       else if (/^-?\d*\.?\d+(px)?$/.test(t)) nums.push(parseFloat(t));
       else colorParts.push(t);
     }
-    if (nums.length < 2) issues.errors.push(`${path9}[${i}]: shadow needs at least "x y" offsets: ${JSON.stringify(p)}.`);
+    if (nums.length < 2) issues.errors.push(`${path10}[${i}]: shadow needs at least "x y" offsets: ${JSON.stringify(p)}.`);
     return {
       kind: inset ? "inner-shadow" : "drop-shadow",
       x: nums[0] ?? 0,
@@ -26712,17 +26712,17 @@ function cssShadows(s, path9, issues) {
     };
   });
 }
-function effects(v, path9, issues) {
+function effects(v, path10, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === "none" || v === false) return null;
   if (typeof v === "string") {
     if (v.trim().startsWith("@")) return [{ kind: "style", name: v.trim().slice(1) }];
-    return cssShadows(v, path9, issues);
+    return cssShadows(v, path10, issues);
   }
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((e, i) => {
-    const p = `${path9}[${i}]`;
+    const p = `${path10}[${i}]`;
     if (typeof e === "string") {
       if (e.trim().startsWith("@")) out.push({ kind: "style", name: e.trim().slice(1) });
       else out.push(...cssShadows(e, p, issues));
@@ -26794,20 +26794,20 @@ function fontShorthand(s) {
   if (family.length) out.family = family.join(" ").replace(/^["']|["']$/g, "");
   return out;
 }
-function fontSpec(v, path9, issues, into = {}) {
+function fontSpec(v, path10, issues, into = {}) {
   if (typeof v === "string") return { ...into, ...fontShorthand(v) };
   if (!isPlainObject3(v)) {
-    issues.errors.push(`${path9}: expected an object or a shorthand like "600 16/24 Inter".`);
+    issues.errors.push(`${path10}: expected an object or a shorthand like "600 16/24 Inter".`);
     return into;
   }
   const out = { ...into };
   for (const [k, val] of Object.entries(v)) {
     const key = FONT_KEYS[k] ?? k;
-    applyFontKey(out, key, val, `${path9}.${k}`, issues);
+    applyFontKey(out, key, val, `${path10}.${k}`, issues);
   }
   return out;
 }
-function applyFontKey(out, key, val, path9, issues) {
+function applyFontKey(out, key, val, path10, issues) {
   switch (key) {
     case "family":
       out.family = String(val);
@@ -26820,33 +26820,33 @@ function applyFontKey(out, key, val, path9, issues) {
       else if (typeof val === "string" && /^\d+$/.test(val)) out.weight = parseInt(val, 10);
       else if (typeof val === "string" && WEIGHT_NAMES[val.toLowerCase().replace(/[-_ ]/g, "")] !== void 0)
         out.weight = WEIGHT_NAMES[val.toLowerCase().replace(/[-_ ]/g, "")];
-      else issues.errors.push(`${path9}: unknown font weight ${JSON.stringify(val)} (100\u2013900 or Regular/Medium/SemiBold/Bold\u2026).`);
+      else issues.errors.push(`${path10}: unknown font weight ${JSON.stringify(val)} (100\u2013900 or Regular/Medium/SemiBold/Bold\u2026).`);
       break;
     }
     case "italic":
       out.italic = !!val;
       break;
     case "size":
-      out.size = num(val, path9, issues, { min: 1 });
+      out.size = num(val, path10, issues, { min: 1 });
       break;
     case "lineHeight":
       if (typeof val === "string" && (/%$/.test(val.trim()) || val.trim().toLowerCase() === "auto")) out.lineHeight = val.trim().toLowerCase();
       else if (typeof val === "number" && val > 0 && val < 4) out.lineHeight = `${Math.round(val * 100)}%`;
-      else out.lineHeight = num(val, path9, issues);
+      else out.lineHeight = num(val, path10, issues);
       break;
     case "letterSpacing":
       if (typeof val === "string" && /%$/.test(val.trim())) out.letterSpacing = val.trim();
       else if (typeof val === "string" && /em$/.test(val.trim())) out.letterSpacing = `${parseFloat(val) * 100}%`;
-      else out.letterSpacing = num(val, path9, issues);
+      else out.letterSpacing = num(val, path10, issues);
       break;
     case "case":
-      out.case = enumOf(val, CASE, path9, issues);
+      out.case = enumOf(val, CASE, path10, issues);
       break;
     case "decoration":
-      out.decoration = enumOf(val, DECORATION, path9, issues);
+      out.decoration = enumOf(val, DECORATION, path10, issues);
       break;
     default:
-      issues.warnings.push(`${path9}: unknown font property ignored.${didYouMean(key, Object.values(FONT_KEYS))}`);
+      issues.warnings.push(`${path10}: unknown font property ignored.${didYouMean(key, Object.values(FONT_KEYS))}`);
   }
 }
 var TRIGGERS = {
@@ -26919,14 +26919,14 @@ function keyCode(k) {
   const n = parseInt(k, 10);
   return Number.isFinite(n) ? n : 13;
 }
-function trigger(v, path9, issues) {
+function trigger(v, path10, issues) {
   if (v === void 0 || v === null) return { kind: "click" };
   if (isPlainObject3(v)) {
     const o = v;
     if (o.after !== void 0 || o.delay !== void 0 || o.timeout !== void 0)
       return { kind: "after", delayMs: parseDuration(o.after ?? o.delay ?? o.timeout, 800) };
     if (o.key !== void 0) return { kind: "key", keyCodes: (Array.isArray(o.key) ? o.key : [o.key]).map((k2) => keyCode(String(k2))) };
-    return trigger(o.type ?? o.kind, path9, issues);
+    return trigger(o.type ?? o.kind, path10, issues);
   }
   const s = String(v).trim();
   const m = s.match(/^(after|delay|timeout)\s+(.+)$/i);
@@ -26935,7 +26935,7 @@ function trigger(v, path9, issues) {
   if (k) return { kind: "key", keyCodes: k[1].split(/[+,\s]+/).filter(Boolean).map(keyCode) };
   const kind = TRIGGERS[s.toLowerCase()];
   if (!kind) {
-    issues.errors.push(`${path9}: unknown trigger ${JSON.stringify(v)}.${didYouMean(s, Object.keys(TRIGGERS))}`);
+    issues.errors.push(`${path10}: unknown trigger ${JSON.stringify(v)}.${didYouMean(s, Object.keys(TRIGGERS))}`);
     return { kind: "click" };
   }
   return { kind };
@@ -26980,7 +26980,7 @@ var TRANSITIONS = {
   "slide-out": "slide-out",
   slideout: "slide-out"
 };
-function easing(v, path9, issues) {
+function easing(v, path10, issues) {
   if (v === void 0 || v === null) return { kind: "ease-out" };
   if (Array.isArray(v) && v.length === 4) return { kind: "bezier", points: v.map(Number) };
   if (isPlainObject3(v)) {
@@ -26999,12 +26999,12 @@ function easing(v, path9, issues) {
   }
   const kind = EASINGS[s];
   if (!kind) {
-    issues.errors.push(`${path9}: unknown easing ${JSON.stringify(v)}.${didYouMean(s, Object.keys(EASINGS))}`);
+    issues.errors.push(`${path10}: unknown easing ${JSON.stringify(v)}.${didYouMean(s, Object.keys(EASINGS))}`);
     return { kind: "ease-out" };
   }
   return { kind };
 }
-function transition(v, path9, issues) {
+function transition(v, path10, issues) {
   if (v === void 0) return void 0;
   if (v === null || v === false) return null;
   let type;
@@ -27027,12 +27027,12 @@ function transition(v, path9, issues) {
     ease = o.easing ?? o.ease ?? o.curve;
     matchLayers = o.matchLayers === void 0 ? void 0 : !!o.matchLayers;
   } else {
-    issues.errors.push(`${path9}: expected a transition string like "smart-animate 300ms ease-out" or an object.`);
+    issues.errors.push(`${path10}: expected a transition string like "smart-animate 300ms ease-out" or an object.`);
     return void 0;
   }
   const t = TRANSITIONS[type ?? "dissolve"];
   if (!t) {
-    issues.errors.push(`${path9}: unknown transition ${JSON.stringify(type)}.${didYouMean(type ?? "", Object.keys(TRANSITIONS))}`);
+    issues.errors.push(`${path10}: unknown transition ${JSON.stringify(type)}.${didYouMean(type ?? "", Object.keys(TRANSITIONS))}`);
     return void 0;
   }
   if (t === "instant") return null;
@@ -27042,7 +27042,7 @@ function transition(v, path9, issues) {
     type: t,
     direction: directional ? dirMap[direction ?? "left"] ?? "left" : void 0,
     durationMs: parseDuration(duration3, 300),
-    easing: easing(ease, `${path9}.easing`, issues),
+    easing: easing(ease, `${path10}.easing`, issues),
     matchLayers
   };
 }
@@ -27070,14 +27070,14 @@ var ACTION_KEYS = {
   setVariable: "set-variable",
   "set-variable": "set-variable"
 };
-function action(o, path9, issues, sharedTransition) {
+function action(o, path10, issues, sharedTransition) {
   let kind;
   let to;
   if (o.action !== void 0 || o.type !== void 0 || o.kind !== void 0) {
     const a2 = String(o.action ?? o.type ?? o.kind).replace(/[_\s]/g, "-");
     kind = ACTION_KEYS[a2] ?? ACTION_KEYS[a2.toLowerCase()] ?? (Object.values(ACTION_KEYS).includes(a2.toLowerCase()) ? a2.toLowerCase() : void 0);
     if (!kind) {
-      issues.errors.push(`${path9}.action: unknown action ${JSON.stringify(a2)}.${didYouMean(a2, Object.keys(ACTION_KEYS))}`);
+      issues.errors.push(`${path10}.action: unknown action ${JSON.stringify(a2)}.${didYouMean(a2, Object.keys(ACTION_KEYS))}`);
       return void 0;
     }
     to = o.to !== void 0 ? String(o.to) : o.destination !== void 0 ? String(o.destination) : void 0;
@@ -27091,14 +27091,14 @@ function action(o, path9, issues, sharedTransition) {
     }
   }
   if (!kind) {
-    issues.errors.push(`${path9}: no action. Use {action: "navigate", to: "<node id or ref>"} or shorthands like {navigate: "\u2026"}, {overlay: "\u2026"}, {back: true}, {url: "\u2026"}.`);
+    issues.errors.push(`${path10}: no action. Use {action: "navigate", to: "<node id or ref>"} or shorthands like {navigate: "\u2026"}, {overlay: "\u2026"}, {back: true}, {url: "\u2026"}.`);
     return void 0;
   }
   const a = { kind };
   if (["navigate", "overlay", "swap", "scroll-to", "change-to"].includes(kind)) {
-    if (!to) issues.errors.push(`${path9}: "${kind}" needs a destination ("to").`);
+    if (!to) issues.errors.push(`${path10}: "${kind}" needs a destination ("to").`);
     a.to = to;
-    const tr = transition(o.transition ?? o.animation ?? sharedTransition, `${path9}.transition`, issues);
+    const tr = transition(o.transition ?? o.animation ?? sharedTransition, `${path10}.transition`, issues);
     a.transition = tr === void 0 ? kind === "change-to" ? { type: "smart-animate", durationMs: 200, easing: { kind: "ease-out" } } : null : tr;
     if (o.resetScroll !== void 0) a.resetScroll = !!o.resetScroll;
     if (o.preserveScroll !== void 0) a.resetScroll = !o.preserveScroll;
@@ -27106,29 +27106,29 @@ function action(o, path9, issues, sharedTransition) {
   }
   if (kind === "url") {
     a.url = String(o.url ?? o.to ?? o.openUrl ?? o.link ?? "");
-    if (!a.url) issues.errors.push(`${path9}: "url" action needs a url.`);
+    if (!a.url) issues.errors.push(`${path10}: "url" action needs a url.`);
     a.newTab = o.newTab === void 0 ? true : !!o.newTab;
   }
   if (kind === "set-mode") {
     const src = isPlainObject3(o.setMode) ? o.setMode : o;
     a.collection = src.collection !== void 0 ? String(src.collection) : void 0;
     a.mode = src.mode !== void 0 ? String(src.mode) : void 0;
-    if (!a.collection || !a.mode) issues.errors.push(`${path9}: "set-mode" needs {collection, mode}.`);
+    if (!a.collection || !a.mode) issues.errors.push(`${path10}: "set-mode" needs {collection, mode}.`);
   }
   if (kind === "set-variable") {
     const src = isPlainObject3(o.setVariable) ? o.setVariable : o;
     a.variable = src.variable !== void 0 ? String(src.variable).replace(/^\$/, "") : void 0;
     a.value = src.value;
-    if (!a.variable) issues.errors.push(`${path9}: "set-variable" needs {variable, value}.`);
+    if (!a.variable) issues.errors.push(`${path10}: "set-variable" needs {variable, value}.`);
   }
   return a;
 }
-function interactions(v, path9, issues) {
+function interactions(v, path10, issues) {
   if (v === void 0 || v === null) return [];
   const list = Array.isArray(v) ? v : [v];
   const out = [];
   list.forEach((item, i) => {
-    const p = Array.isArray(v) ? `${path9}[${i}]` : path9;
+    const p = Array.isArray(v) ? `${path10}[${i}]` : path10;
     if (typeof item === "string") {
       out.push({ trigger: { kind: "click" }, actions: [{ kind: "navigate", to: item, transition: null }] });
       return;
@@ -27155,14 +27155,14 @@ function interactions(v, path9, issues) {
   });
   return out;
 }
-function padLike(v, path9, issues) {
+function padLike(v, path10, issues) {
   if (Array.isArray(v)) {
-    const a = v.map((x, i) => num(x, `${path9}[${i}]`, issues) ?? 0);
+    const a = v.map((x, i) => num(x, `${path10}[${i}]`, issues) ?? 0);
     if (a.length === 1) return [a[0], a[0], a[0], a[0]];
     if (a.length === 2) return [a[0], a[1], a[0], a[1]];
     if (a.length === 3) return [a[0], a[1], a[2], a[1]];
     if (a.length === 4) return [a[0], a[1], a[2], a[3]];
-    issues.errors.push(`${path9}: expected 1\u20134 values (CSS order: top right bottom left).`);
+    issues.errors.push(`${path10}: expected 1\u20134 values (CSS order: top right bottom left).`);
     return [0, 0, 0, 0];
   }
   if (isPlainObject3(v)) {
@@ -27170,19 +27170,19 @@ function padLike(v, path9, issues) {
     const x = o.x ?? o.horizontal ?? o.h;
     const y = o.y ?? o.vertical ?? o.v;
     const g = (k, fb) => {
-      for (const kk of k) if (o[kk] !== void 0) return num(o[kk], `${path9}.${kk}`, issues) ?? 0;
-      return fb === void 0 ? 0 : num(fb, path9, issues) ?? 0;
+      for (const kk of k) if (o[kk] !== void 0) return num(o[kk], `${path10}.${kk}`, issues) ?? 0;
+      return fb === void 0 ? 0 : num(fb, path10, issues) ?? 0;
     };
     return [g(["top", "t"], y), g(["right", "r", "end"], x), g(["bottom", "b"], y), g(["left", "l", "start"], x)];
   }
-  if (typeof v === "string" && !isToken(v) && /\s/.test(v.trim())) return padLike(v.trim().split(/\s+/), path9, issues);
-  const n = num(v, path9, issues) ?? 0;
+  if (typeof v === "string" && !isToken(v) && /\s/.test(v.trim())) return padLike(v.trim().split(/\s+/), path10, issues);
+  const n = num(v, path10, issues) ?? 0;
   return [n, n, n, n];
 }
-function normalizeSpec(input, path9, issues, opts = {}) {
+function normalizeSpec(input, path10, issues, opts = {}) {
   const out = {};
   if (!isPlainObject3(input)) {
-    issues.errors.push(`${path9}: expected an object, got ${JSON.stringify(input)?.slice(0, 80)}.`);
+    issues.errors.push(`${path10}: expected an object, got ${JSON.stringify(input)?.slice(0, 80)}.`);
     return { type: "frame" };
   }
   const raw = input;
@@ -27199,7 +27199,7 @@ function normalizeSpec(input, path9, issues, opts = {}) {
     const t = String(typeInput).toLowerCase();
     const alias = TYPE_ALIASES[t];
     if (!alias) {
-      issues.errors.push(`${path9}.type: unknown node type ${JSON.stringify(typeInput)}.${didYouMean(t, Object.keys(TYPE_ALIASES))}`);
+      issues.errors.push(`${path10}.type: unknown node type ${JSON.stringify(typeInput)}.${didYouMean(t, Object.keys(TYPE_ALIASES))}`);
       out.type = "frame";
     } else {
       out.type = alias[0];
@@ -27214,7 +27214,7 @@ function normalizeSpec(input, path9, issues, opts = {}) {
   let srcForFill;
   for (const [rawKey, val] of Object.entries(raw)) {
     if (["type", "kind", "node", "nodeType"].includes(rawKey)) continue;
-    const p = `${path9}.${rawKey}`;
+    const p = `${path10}.${rawKey}`;
     if (FONT_KEYS[rawKey] !== void 0) {
       applyFontKey(font, FONT_KEYS[rawKey], val, p, issues);
       fontTouched = true;
@@ -27516,34 +27516,34 @@ function normalizeSpec(input, path9, issues, opts = {}) {
   if (out.prompt !== void 0 && !out.prompt.trim()) delete out.prompt;
   if (out.supply !== void 0 && !out.supply.trim()) delete out.supply;
   if (out.prompt !== void 0 && out.supply !== void 0) {
-    issues.warnings.push(`${path9}: both prompt and supply \u2014 an image is either generated (prompt) or supplied by the user (supply); supply ignored.`);
+    issues.warnings.push(`${path10}: both prompt and supply \u2014 an image is either generated (prompt) or supplied by the user (supply); supply ignored.`);
     delete out.supply;
   }
   if (!opts.partial) {
     if (out.children && type && !CONTAINER_TYPES.has(type)) {
-      issues.errors.push(`${path9}: a "${type}" cannot have children (only frame, component, group, section). Wrap it in a frame.`);
+      issues.errors.push(`${path10}: a "${type}" cannot have children (only frame, component, group, section). Wrap it in a frame.`);
     }
-    if (type === "instance" && !out.component) issues.errors.push(`${path9}: an instance needs "component" (name, key or id).`);
-    if (type === "icon" && !out.icon) issues.errors.push(`${path9}: an icon needs "icon", e.g. "lucide:search".`);
-    if (type === "icon" && out.icon && !out.icon.includes(":")) issues.errors.push(`${path9}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
-    if (type === "svg" && !out.svg) issues.errors.push(`${path9}: an svg node needs "svg" markup.`);
-    if (type === "text" && out.text === void 0 && !out.segments) issues.errors.push(`${path9}: a text node needs "text".`);
+    if (type === "instance" && !out.component) issues.errors.push(`${path10}: an instance needs "component" (name, key or id).`);
+    if (type === "icon" && !out.icon) issues.errors.push(`${path10}: an icon needs "icon", e.g. "lucide:search".`);
+    if (type === "icon" && out.icon && !out.icon.includes(":")) issues.errors.push(`${path10}.icon: use "set:name", e.g. "lucide:${out.icon}".`);
+    if (type === "svg" && !out.svg) issues.errors.push(`${path10}: an svg node needs "svg" markup.`);
+    if (type === "text" && out.text === void 0 && !out.segments) issues.errors.push(`${path10}: a text node needs "text".`);
     if (type === "image" && !out.src && !out.imageData && !out.prompt && !out.supply) {
-      issues.warnings.push(`${path9}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate (or "supply" for a real file the user has: logo, product photo).`);
+      issues.warnings.push(`${path10}: image without src \u2014 add "prompt" (what the image shows: subject, setting, style, light) so it is listed in IMAGE_PROMPTS.md for the user to generate (or "supply" for a real file the user has: logo, product photo).`);
     }
-    if (type === "group" && !(out.children && out.children.length)) issues.errors.push(`${path9}: a group needs children.`);
+    if (type === "group" && !(out.children && out.children.length)) issues.errors.push(`${path10}: a group needs children.`);
     if (out.dir === "none" && (type === "frame" || type === "component") && (out.children?.filter((c) => !c.absolute).length ?? 0) >= 2) {
-      issues.warnings.push(`${path9}: ${out.children.length} children placed by hand (dir: "none") \u2014 put related content in auto layout (dir "row" | "column" | "grid"); keep free placement for overlays only (absolute: true on those children).`);
+      issues.warnings.push(`${path10}: ${out.children.length} children placed by hand (dir: "none") \u2014 put related content in auto layout (dir "row" | "column" | "grid"); keep free placement for overlays only (absolute: true on those children).`);
     }
-    if (type === "group" && (out.children?.length ?? 0) > 1) issues.warnings.push(`${path9}: a group is not a layout container \u2014 use a frame (auto layout by default) so spacing and resizing work.`);
-    if (out.dir === "grid" && !out.cols) issues.errors.push(`${path9}: a grid needs "cols".`);
+    if (type === "group" && (out.children?.length ?? 0) > 1) issues.warnings.push(`${path10}: a group is not a layout container \u2014 use a frame (auto layout by default) so spacing and resizing work.`);
+    if (out.dir === "grid" && !out.cols) issues.errors.push(`${path10}: a grid needs "cols".`);
   }
   return out;
 }
-function walkSpec(spec, visit, path9 = "spec") {
-  visit(spec, path9);
-  spec.children?.forEach((c, i) => walkSpec(c, visit, `${path9}.children[${i}]`));
-  if (spec.overrides) for (const [k, o] of Object.entries(spec.overrides)) walkSpec(o, visit, `${path9}.overrides.${k}`);
+function walkSpec(spec, visit, path10 = "spec") {
+  visit(spec, path10);
+  spec.children?.forEach((c, i) => walkSpec(c, visit, `${path10}.children[${i}]`));
+  if (spec.overrides) for (const [k, o] of Object.entries(spec.overrides)) walkSpec(o, visit, `${path10}.overrides.${k}`);
 }
 var matches = (props, cond) => Object.entries(cond).every(([k, v]) => Array.isArray(v) ? v.map(String).includes(props[k]) : String(v) === props[k]);
 function patchByRef(node, ref, patch) {
@@ -28865,12 +28865,12 @@ function dtcgType(v) {
 function dtcg(dump) {
   const byId = new Map(dump.variables.map((v) => [v.id, v]));
   const root = {};
-  const path9 = (v, coll) => [coll.name, ...v.name.split("/")].map((p) => p.trim()).filter(Boolean);
+  const path10 = (v, coll) => [coll.name, ...v.name.split("/")].map((p) => p.trim()).filter(Boolean);
   const ref = (alias) => {
     const t = byId.get(alias.alias);
     if (!t) return `{${(alias.collection ? alias.collection + "." : "") + (alias.name ?? "").split("/").join(".")}}`;
     const c = dump.collections.find((x) => x.id === t.collectionId);
-    return `{${path9(t, c).join(".")}}`;
+    return `{${path10(t, c).join(".")}}`;
   };
   const value = (v, raw) => {
     if (isAlias(raw)) return ref(raw);
@@ -28880,7 +28880,7 @@ function dtcg(dump) {
   };
   for (const coll of dump.collections) {
     for (const v of dump.variables.filter((x) => x.collectionId === coll.id)) {
-      const parts = path9(v, coll);
+      const parts = path10(v, coll);
       let node = root;
       for (const p of parts.slice(0, -1)) node = node[p] ??= {};
       const token = { $type: dtcgType(v), $value: value(v, v.values[coll.defaultModeId]) };
@@ -28947,10 +28947,89 @@ function summarizeVariables(dump, limitPerCollection = 60) {
   return lines.join("\n");
 }
 
-// src/server/library.ts
+// src/server/history.ts
 import crypto2 from "node:crypto";
 import fs6 from "node:fs";
 import path6 from "node:path";
+var MAX = 400;
+var today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+var historyFile = () => path6.join(homeDir(), "history.json");
+var sha1Of = (data) => crypto2.createHash("sha1").update(data).digest("hex");
+var normUrl = (u) => u.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/[?#].*$/, "").replace(/\/+$/, "");
+function readHistory() {
+  try {
+    const h = JSON.parse(fs6.readFileSync(historyFile(), "utf8"));
+    return { references: h.references ?? [], directions: h.directions ?? [], searches: h.searches ?? [] };
+  } catch {
+    return { references: [], directions: [], searches: [] };
+  }
+}
+function writeHistory(h) {
+  fs6.mkdirSync(path6.dirname(historyFile()), { recursive: true });
+  const trim = (xs) => xs.slice(-MAX);
+  fs6.writeFileSync(historyFile(), JSON.stringify({ references: trim(h.references), directions: trim(h.directions), searches: trim(h.searches) }, null, 2) + "\n");
+}
+var sameRef = (a, b) => {
+  if (a.sha1 && b.sha1 && a.sha1 === b.sha1) return true;
+  const ka = [a.url, a.image].filter((x) => !!x).map(normUrl);
+  return [b.url, b.image].some((x) => !!x && ka.includes(normUrl(x)));
+};
+function usedElsewhere(h, ref, file) {
+  return h.references.filter((x) => x.file !== file && sameRef(x, ref));
+}
+function recordReferences(h, refs, file) {
+  const out = [];
+  for (const r of refs) {
+    if (!r.url) continue;
+    const before = usedElsewhere(h, r, file);
+    if (!h.references.some((x) => x.file === file && sameRef(x, r))) h.references.push({ ...r, file, date: today() });
+    out.push({ ref: r, before });
+  }
+  return out;
+}
+function recordDirections(h, dirs, file) {
+  for (const d of dirs) {
+    h.directions = h.directions.filter((x) => !(x.file === file && x.name.toLowerCase() === d.name.toLowerCase()));
+    h.directions.push({ ...d, file, date: today() });
+  }
+}
+function recordSearches(h, qs, file) {
+  for (const q of qs.map((x) => x.trim()).filter(Boolean)) {
+    if (!h.searches.some((x) => x.file === file && x.q.toLowerCase() === q.toLowerCase())) h.searches.push({ q, file, date: today() });
+  }
+}
+function specImageSources(spec) {
+  const out = /* @__PURE__ */ new Set();
+  const walk = (v) => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") {
+      for (const [k, x] of Object.entries(v)) {
+        if (k === "src" && typeof x === "string" && !x.startsWith("data:")) out.add(x);
+        else walk(x);
+      }
+    }
+  };
+  walk(spec);
+  return [...out];
+}
+var describeDirection = (d) => `- ${d.date} \xB7 ${d.file} \xB7 **${d.name}** \u2014 concept: ${d.concept}; layout: ${d.layout}` + [d.hero && `hero: ${d.hero}`, d.nav && `nav: ${d.nav}`, d.palette?.length && `palette: ${d.palette.join(" ")}`, d.fonts?.length && `fonts: ${d.fonts.join(" + ")}`, d.style && `style: ${d.style}`, d.imagery && `imagery: ${d.imagery}`].filter(Boolean).map((x) => `; ${x}`).join("");
+function renderHistory(h, opts = {}) {
+  const n = opts.limit ?? 20;
+  const recent = (xs) => xs.slice(-n).reverse();
+  const L = [`Design history (all files) \u2014 ${historyFile()}`];
+  L.push("", `## Directions already designed (${h.directions.length}) \u2014 a new design must differ from these on at least 3 of: concept, layout, hero, nav, palette, fonts, style, imagery`);
+  L.push(...h.directions.length ? recent(h.directions).map(describeDirection) : ["- none yet"]);
+  L.push("", `## References already used (${h.references.length}) \u2014 don't pick these again for another file unless the user asks`);
+  L.push(...h.references.length ? recent(h.references).map((r) => `- ${r.date} \xB7 ${r.file} \xB7 ${r.title ? `${r.title} \xB7 ` : ""}${r.url}${r.image && r.image !== r.url ? ` (image ${r.image})` : ""}`) : ["- none yet"]);
+  L.push("", `## Searches already made (${h.searches.length}) \u2014 use other words, sites and pages`);
+  L.push(...h.searches.length ? recent(h.searches).map((s) => `- ${s.date} \xB7 ${s.file} \xB7 ${s.q}`) : ["- none yet"]);
+  return L.join("\n");
+}
+
+// src/server/library.ts
+import crypto3 from "node:crypto";
+import fs7 from "node:fs";
+import path7 from "node:path";
 var DATA = "library.json";
 function imageSize(buf) {
   if (buf.length > 24 && buf.readUInt32BE(0) === 2303741511) return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
@@ -28982,17 +29061,17 @@ function imageSize(buf) {
 var extOf = (buf) => buf[0] === 137 ? "png" : buf[0] === 255 ? "jpg" : buf.toString("ascii", 0, 3) === "GIF" ? "gif" : "webp";
 function readLibrary(ws) {
   try {
-    return JSON.parse(fs6.readFileSync(path6.join(ws.dir, DATA), "utf8")).images;
+    return JSON.parse(fs7.readFileSync(path7.join(ws.dir, DATA), "utf8")).images;
   } catch {
     return [];
   }
 }
 function writeLibrary(ws, items) {
-  fs6.writeFileSync(path6.join(ws.dir, DATA), JSON.stringify({ updated: (/* @__PURE__ */ new Date()).toISOString(), images: items }, null, 2) + "\n");
-  fs6.writeFileSync(path6.join(ws.dir, "LIBRARY.md"), renderLibrary(ws.meta.figma.name, items));
+  fs7.writeFileSync(path7.join(ws.dir, DATA), JSON.stringify({ updated: (/* @__PURE__ */ new Date()).toISOString(), images: items }, null, 2) + "\n");
+  fs7.writeFileSync(path7.join(ws.dir, "LIBRARY.md"), renderLibrary(ws.meta.figma.name, items));
 }
 function addToLibrary(ws, items, buf, meta) {
-  const sha1 = crypto2.createHash("sha1").update(buf).digest("hex");
+  const sha1 = crypto3.createHash("sha1").update(buf).digest("hex");
   const twin = items.find((x) => x.sha1 === sha1 || meta.source && x.source === meta.source);
   if (twin) return { item: twin, added: false };
   const size2 = imageSize(buf);
@@ -29000,8 +29079,8 @@ function addToLibrary(ws, items, buf, meta) {
   const n = items.reduce((m, x) => Math.max(m, Number(x.id.slice(4)) || 0), 0) + 1;
   const id = `LIB-${String(n).padStart(3, "0")}`;
   const file = `library/${id}-${kebab(meta.title).slice(0, 40) || "image"}.${extOf(buf)}`;
-  fs6.mkdirSync(path6.join(ws.dir, "library"), { recursive: true });
-  fs6.writeFileSync(path6.join(ws.dir, file), buf);
+  fs7.mkdirSync(path7.join(ws.dir, "library"), { recursive: true });
+  fs7.writeFileSync(path7.join(ws.dir, file), buf);
   const r = size2.width / size2.height;
   const item = {
     id,
@@ -29034,7 +29113,7 @@ function searchLibrary(items, q) {
 }
 var shipNote = (x) => !x.license || /unknown|reference|editorial/i.test(x.license) ? " \u2014 reference only until licensed" : "";
 function describeItem(x, ws) {
-  return `${x.id} "${x.title}" \xB7 ${x.width}\xD7${x.height} ${x.orientation} \xB7 ${x.tags.join(", ") || "no tags"} \xB7 ${x.license ?? "license unknown"}${shipNote(x)} \xB7 ${path6.join(ws.dir, x.file)}${x.figmaId ? ` \xB7 Figma ${x.figmaId}` : ""}`;
+  return `${x.id} "${x.title}" \xB7 ${x.width}\xD7${x.height} ${x.orientation} \xB7 ${x.tags.join(", ") || "no tags"} \xB7 ${x.license ?? "license unknown"}${shipNote(x)} \xB7 ${path7.join(ws.dir, x.file)}${x.figmaId ? ` \xB7 Figma ${x.figmaId}` : ""}`;
 }
 function renderLibrary(fileName, items) {
   const L = [
@@ -29055,47 +29134,47 @@ function renderLibrary(fileName, items) {
 }
 
 // src/server/workspace.ts
-import fs7 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 var WORKSPACE_PREFIX = "design-";
 var LEGACY_ROOT = "design";
 var META = "workspace.json";
 var FOLDERS = ["references", "images", "assets", "previews", "tokens", "library"];
 var slugOf = (name) => kebab(name).slice(0, 60) || "figma";
-var today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+var today2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 function readMeta(dir) {
   try {
-    return JSON.parse(fs7.readFileSync(path7.join(dir, META), "utf8"));
+    return JSON.parse(fs8.readFileSync(path8.join(dir, META), "utf8"));
   } catch {
     return null;
   }
 }
 function writeMeta(dir, meta) {
-  fs7.writeFileSync(path7.join(dir, META), JSON.stringify(meta, null, 2) + "\n");
+  fs8.writeFileSync(path8.join(dir, META), JSON.stringify(meta, null, 2) + "\n");
 }
-var dirOf = (project, slug) => path7.join(project, WORKSPACE_PREFIX + slug);
+var dirOf = (project, slug) => path8.join(project, WORKSPACE_PREFIX + slug);
 function workspaceDirs(project) {
   migrateLegacy(project);
-  if (!fs7.existsSync(project)) return [];
-  return fs7.readdirSync(project).filter((n) => n.startsWith(WORKSPACE_PREFIX) && fs7.existsSync(path7.join(project, n, META))).sort().map((n) => path7.join(project, n));
+  if (!fs8.existsSync(project)) return [];
+  return fs8.readdirSync(project).filter((n) => n.startsWith(WORKSPACE_PREFIX) && fs8.existsSync(path8.join(project, n, META))).sort().map((n) => path8.join(project, n));
 }
 function migrateLegacy(project) {
-  const root = path7.join(project, LEGACY_ROOT);
-  if (!fs7.existsSync(root) || !fs7.statSync(root).isDirectory()) return;
-  for (const slug of fs7.readdirSync(root)) {
-    const from = path7.join(root, slug);
+  const root = path8.join(project, LEGACY_ROOT);
+  if (!fs8.existsSync(root) || !fs8.statSync(root).isDirectory()) return;
+  for (const slug of fs8.readdirSync(root)) {
+    const from = path8.join(root, slug);
     const meta = readMeta(from);
     if (!meta) continue;
     const to = dirOf(project, slug);
-    if (fs7.existsSync(to)) continue;
+    if (fs8.existsSync(to)) continue;
     try {
-      fs7.renameSync(from, to);
-      if ([".claude/skills", ".agents/skills"].some((b) => fs7.existsSync(path7.join(project, b, `${slug}-design`.slice(0, 64), SKILL_MARK)))) writeSkill({ dir: to, slug, meta }, project);
+      fs8.renameSync(from, to);
+      if ([".claude/skills", ".agents/skills"].some((b) => fs8.existsSync(path8.join(project, b, `${slug}-design`.slice(0, 64), SKILL_MARK)))) writeSkill({ dir: to, slug, meta }, project);
     } catch {
     }
   }
   try {
-    if (!fs7.readdirSync(root).filter((n) => n !== ".DS_Store").length) fs7.rmSync(root, { recursive: true });
+    if (!fs8.readdirSync(root).filter((n) => n !== ".DS_Store").length) fs8.rmSync(root, { recursive: true });
   } catch {
   }
 }
@@ -29103,7 +29182,7 @@ function findWorkspace(file, project = projectDir()) {
   if (!project) return null;
   let byName = null;
   for (const dir of workspaceDirs(project)) {
-    const slug = path7.basename(dir).slice(WORKSPACE_PREFIX.length);
+    const slug = path8.basename(dir).slice(WORKSPACE_PREFIX.length);
     const meta = readMeta(dir);
     if (!meta) continue;
     if (file.key && meta.figma.key === file.key) {
@@ -29125,16 +29204,16 @@ function ensureWorkspace(file, project = projectDir()) {
   if (!project) return null;
   const found = findWorkspace(file, project);
   if (found) {
-    for (const f of FOLDERS) fs7.mkdirSync(path7.join(found.dir, f), { recursive: true });
+    for (const f of FOLDERS) fs8.mkdirSync(path8.join(found.dir, f), { recursive: true });
     return found;
   }
   let slug = slugOf(file.name);
-  for (let i = 2; fs7.existsSync(dirOf(project, slug)); i++) slug = `${slugOf(file.name)}-${i}`;
+  for (let i = 2; fs8.existsSync(dirOf(project, slug)); i++) slug = `${slugOf(file.name)}-${i}`;
   const dir = resolveOutput(dirOf(project, slug));
-  for (const f of FOLDERS) fs7.mkdirSync(path7.join(dir, f), { recursive: true });
-  const meta = { figma: { name: file.name, key: file.key ?? null }, created: today() };
+  for (const f of FOLDERS) fs8.mkdirSync(path8.join(dir, f), { recursive: true });
+  const meta = { figma: { name: file.name, key: file.key ?? null }, created: today2() };
   writeMeta(dir, meta);
-  fs7.writeFileSync(path7.join(dir, "README.md"), readme(file.name));
+  fs8.writeFileSync(path8.join(dir, "README.md"), readme(file.name));
   return { dir, slug, meta, created: true };
 }
 function readme(name) {
@@ -29211,8 +29290,8 @@ function writeDesignMd(file, d) {
 ${renderDesignBody(d)}
 ${END}`;
   let text;
-  if (fs7.existsSync(file)) {
-    const old = fs7.readFileSync(file, "utf8");
+  if (fs8.existsSync(file)) {
+    const old = fs8.readFileSync(file, "utf8");
     const a = old.indexOf("<!-- figma-mcp:start");
     const b = old.indexOf(END);
     text = a >= 0 && b > a ? old.slice(0, a) + body + old.slice(b + END.length) : `${old.trimEnd()}
@@ -29231,12 +29310,12 @@ ${body}
 _Your own notes go here; sync keeps them._
 `;
   }
-  fs7.writeFileSync(file, text);
+  fs8.writeFileSync(file, text);
 }
 var SKILL_MARK = ".figma-mcp";
 function renderSkill(ws, project) {
   const name = `${ws.slug}-design`.slice(0, 64);
-  const rel = path7.relative(project, ws.dir).split(path7.sep).join("/");
+  const rel = path8.relative(project, ws.dir).split(path8.sep).join("/");
   const fileName = ws.meta.figma.name.replace(/["\\]/g, "").slice(0, 80);
   const description = `The design identity of "${fileName}" \u2014 the only design system for UI in this project. Use it for any screen, page, component, layout, styling, banner or image work here (design in Figma or UI in code), e.g. "build the settings screen", "add a pricing section", "style this button", "make the banner images". It reads ${rel}/DESIGN.md (identity, tokens, components, patterns, rules), the tokens in ${rel}/tokens and the image prompts.`;
   const text = [
@@ -29263,17 +29342,17 @@ function writeSkill(ws, project) {
   const { name, text } = renderSkill(ws, project);
   const out = [];
   for (const base of [".claude/skills", ".agents/skills"]) {
-    const dir = resolveOutput(path7.join(project, base, name));
-    const skill = path7.join(dir, "SKILL.md");
-    if (fs7.existsSync(skill) && !fs7.existsSync(path7.join(dir, SKILL_MARK))) {
-      out.push(`skipped ${path7.relative(project, skill)} (not written by figma-mcp \u2014 left as it is)`);
+    const dir = resolveOutput(path8.join(project, base, name));
+    const skill = path8.join(dir, "SKILL.md");
+    if (fs8.existsSync(skill) && !fs8.existsSync(path8.join(dir, SKILL_MARK))) {
+      out.push(`skipped ${path8.relative(project, skill)} (not written by figma-mcp \u2014 left as it is)`);
       continue;
     }
-    fs7.mkdirSync(dir, { recursive: true });
-    fs7.writeFileSync(skill, text);
-    fs7.writeFileSync(path7.join(dir, SKILL_MARK), `written by figma-mcp workspace sync for ${ws.meta.figma.name}
+    fs8.mkdirSync(dir, { recursive: true });
+    fs8.writeFileSync(skill, text);
+    fs8.writeFileSync(path8.join(dir, SKILL_MARK), `written by figma-mcp workspace sync for ${ws.meta.figma.name}
 `);
-    out.push(path7.relative(project, skill));
+    out.push(path8.relative(project, skill));
   }
   return out;
 }
@@ -29285,7 +29364,7 @@ var CATALOG = "components.json";
 var isIcon = (c) => /^icon\//i.test(c.name);
 function readCatalog(ws) {
   try {
-    return JSON.parse(fs7.readFileSync(path7.join(ws.dir, CATALOG), "utf8")).components;
+    return JSON.parse(fs8.readFileSync(path8.join(ws.dir, CATALOG), "utf8")).components;
   } catch {
     return null;
   }
@@ -29341,8 +29420,8 @@ function renderCatalog(fileName, items) {
   return L.join("\n").trimEnd() + "\n";
 }
 function writeCatalog(ws, items) {
-  fs7.writeFileSync(path7.join(ws.dir, CATALOG), JSON.stringify({ updated: (/* @__PURE__ */ new Date()).toISOString(), components: items }, null, 2) + "\n");
-  fs7.writeFileSync(path7.join(ws.dir, "COMPONENTS.md"), renderCatalog(ws.meta.figma.name, items));
+  fs8.writeFileSync(path8.join(ws.dir, CATALOG), JSON.stringify({ updated: (/* @__PURE__ */ new Date()).toISOString(), components: items }, null, 2) + "\n");
+  fs8.writeFileSync(path8.join(ws.dir, "COMPONENTS.md"), renderCatalog(ws.meta.figma.name, items));
 }
 var norm2 = (s) => s.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, "");
 function lookalikes(spec, catalog) {
@@ -29483,6 +29562,35 @@ function clicheWarnings(specs) {
   specs.forEach(walk);
   return found.size ? [`Section numbers as decoration (${[...found].slice(0, 5).map((t) => `"${t}"`).join(", ")}): remove the number and any marker square/dot/line beside it \u2014 only when the user or the references asked for it.`] : [];
 }
+function specTextUrls(spec) {
+  const out = [];
+  const walk = (v) => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) (k === "text" || k === "characters") && typeof x === "string" ? out.push(...x.match(/https?:\/\/[^\s)>\]"']+/g) ?? []) : walk(x);
+  };
+  walk(spec);
+  return out;
+}
+function recordReferenceBuild(spec, page, assets, file) {
+  const name = String(spec.name ?? "");
+  if (/^brand\b/i.test(name) || !(/^references$/i.test(page ?? "") || /^reference\b/i.test(name))) return [];
+  const images = specImageSources(spec);
+  if (!images.length) return [];
+  try {
+    const h = readHistory();
+    const pageUrl = specTextUrls(spec).find((u) => !images.some((i) => normUrl(i) === normUrl(u)));
+    const refs = images.map((src) => {
+      const data = assets.images?.[src]?.data;
+      return { url: images.length === 1 && pageUrl ? pageUrl : src, image: src, ...data ? { sha1: sha1Of(Buffer.from(data, "base64")) } : {}, title: name };
+    });
+    const out = recordReferences(h, refs, file).filter((r) => r.before.length).map((r) => `Reference already used for ${[...new Set(r.before.map((b) => `"${b.file}" (${b.date})`))].join(", ")}: ${r.ref.url} \u2014 a new design needs other references; find different ones (other sites, other words) and move this one to Trash, unless the user asked to reuse it.`);
+    writeHistory(h);
+    return out;
+  } catch (e) {
+    log("history:", e instanceof Error ? e.message : e);
+    return [];
+  }
+}
 var COMPONENT_OPS = /* @__PURE__ */ new Set(["to-component", "combine-variants", "swap", "detach", "delete", "restore"]);
 var withNotes = (text, notes) => notes.length ? `${text}
 
@@ -29510,12 +29618,12 @@ function wrap(fn) {
   };
 }
 function assetsPrefixFor(dir) {
-  const norm3 = dir.split(path8.sep).join("/");
+  const norm3 = dir.split(path9.sep).join("/");
   const pub = norm3.match(/\/public(\/.*)?$/);
   if (pub) return `${pub[1] ?? ""}/`;
   const proj = projectDir();
-  if (proj && dir.startsWith(proj)) return `./${path8.relative(proj, dir).split(path8.sep).join("/")}/`;
-  return `./${path8.basename(dir)}/`;
+  if (proj && dir.startsWith(proj)) return `./${path9.relative(proj, dir).split(path9.sep).join("/")}/`;
+  return `./${path9.basename(dir)}/`;
 }
 async function loadAssetsOrThrow(raws) {
   const { assets, errors } = await loadAssetsFor(raws);
@@ -29617,14 +29725,14 @@ ${result.xml}${tail}`, notes));
       const content = [];
       const captions = [];
       const dir = saveTo ? resolveOutput(saveTo) : null;
-      if (dir) fs8.mkdirSync(dir, { recursive: true });
+      if (dir) fs9.mkdirSync(dir, { recursive: true });
       for (const img of result.images) {
         if (img.error) captions.push(`\u2715 ${img.name} (${img.nodeId}): ${img.error}`);
         else {
           let saved = "";
           if (dir && img.data) {
             const f = uniquePath(dir, kebab(img.name) || "screenshot", img.format === "JPG" ? "jpg" : "png", true);
-            fs8.writeFileSync(f, Buffer.from(img.data, "base64"));
+            fs9.writeFileSync(f, Buffer.from(img.data, "base64"));
             saved = ` \u2192 ${f}`;
           }
           captions.push(`${img.name} (${img.nodeId}) ${img.type?.toLowerCase() ?? ""} ${img.w}\xD7${img.h} @${img.scale}x${saved}`);
@@ -29673,7 +29781,7 @@ ${result.xml}${tail}`, notes));
       const ready = result.assets.filter((as) => !as.pending);
       if (a.assetsDir && result.assets.length) {
         const dir = resolveOutput(a.assetsDir);
-        fs8.mkdirSync(dir, { recursive: true });
+        fs9.mkdirSync(dir, { recursive: true });
         const prefix = a.assetsPrefix ?? assetsPrefixFor(dir);
         for (const as of pending) assetPaths[as.id] = `${prefix}${as.id}.png`;
         const items = ready.map((as) => as.kind === "svg" ? { nodeId: as.nodeId, format: "SVG" } : { nodeId: as.nodeId, original: true, format: "PNG", scale: 2 });
@@ -29686,9 +29794,9 @@ ${result.xml}${tail}`, notes));
             return;
           }
           const file = uniquePath(dir, as.id, f.ext === "svg" ? "svg" : f.ext ?? "png", true);
-          fs8.writeFileSync(file, Buffer.from(f.data, "base64"));
-          assetPaths[as.id] = `${prefix}${path8.basename(file)}`;
-          written.push(path8.basename(file));
+          fs9.writeFileSync(file, Buffer.from(f.data, "base64"));
+          assetPaths[as.id] = `${prefix}${path9.basename(file)}`;
+          written.push(path9.basename(file));
         });
         assetNote = written.length ? ` \u2192 exported to ${dir}: ${written.join(", ")}` : "";
       } else {
@@ -29824,8 +29932,8 @@ ${result.xml}${tail}`, notes));
       let where = "";
       if (outFile) {
         const out = resolveOutput(outFile);
-        fs8.mkdirSync(path8.dirname(out), { recursive: true });
-        fs8.writeFileSync(out, text);
+        fs9.mkdirSync(path9.dirname(out), { recursive: true });
+        fs9.writeFileSync(out, text);
         where = `Wrote ${out}
 
 `;
@@ -29897,7 +30005,8 @@ ${lines.join("\n")}`, notes));
       );
       const ws = openWorkspace(plugin, notes);
       if (ws && !pre) await refreshCatalog(c, ws, a.file);
-      const warnings = [...result.warnings ?? [], ...componentWarnings([a.spec], catalog, !a.parentId), ...clicheWarnings([a.spec])];
+      const repeats = plugin ? recordReferenceBuild(a.spec, result.page ?? a.page, assets, plugin.file.name) : [];
+      const warnings = [...result.warnings ?? [], ...componentWarnings([a.spec], catalog, !a.parentId), ...clicheWarnings([a.spec]), ...repeats];
       const text = yaml(compact({ built: result.root, page: result.page, layers: result.created, interactions: result.interactions || void 0, ids: result.ids, warnings }));
       const wantShot = a.screenshot ?? !a.parentId;
       const shots = wantShot ? await screenshotOf(c, result.root.id, a.file) : [];
@@ -30127,7 +30236,7 @@ ${lines.join("\n")}`, notes));
         file,
         18e4
       );
-      fs8.mkdirSync(out, { recursive: true });
+      fs9.mkdirSync(out, { recursive: true });
       const lines = [];
       for (const f of result.files) {
         if (!f.data || f.error) {
@@ -30135,7 +30244,7 @@ ${lines.join("\n")}`, notes));
           continue;
         }
         const target = uniquePath(out, kebab(f.name) || "export", f.ext ?? "png", !!overwrite);
-        fs8.writeFileSync(target, Buffer.from(f.data, "base64"));
+        fs9.writeFileSync(target, Buffer.from(f.data, "base64"));
         lines.push(`\u2713 ${target} (${Math.round(f.data.length * 3 / 4 / 1024)} KB)`);
       }
       return textResult(withNotes(lines.join("\n"), notes));
@@ -30214,22 +30323,22 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       const { result, notes, plugin } = await call(c, "placeholders", { within: a.within && normalizeNodeId(a.within), allPages: true }, a.file, 12e4);
       const figmaName = plugin?.file.name ?? "Figma";
       const ws = a.outFile ? null : openWorkspace(plugin, notes);
-      let md = a.outFile ? resolveOutput(a.outFile) : ws ? path8.join(ws.dir, "IMAGE_PROMPTS.md") : resolveOutput("IMAGE_PROMPTS.md");
-      let prev = fs8.existsSync(md) ? parsePromptsFile(fs8.readFileSync(md, "utf8")) : void 0;
+      let md = a.outFile ? resolveOutput(a.outFile) : ws ? path9.join(ws.dir, "IMAGE_PROMPTS.md") : resolveOutput("IMAGE_PROMPTS.md");
+      let prev = fs9.existsSync(md) ? parsePromptsFile(fs9.readFileSync(md, "utf8")) : void 0;
       if (!a.outFile && !ws && prev?.meta.title && prev.meta.title !== figmaName) {
         md = resolveOutput(`IMAGE_PROMPTS-${kebab(figmaName) || "figma"}.md`);
-        prev = fs8.existsSync(md) ? parsePromptsFile(fs8.readFileSync(md, "utf8")) : void 0;
+        prev = fs9.existsSync(md) ? parsePromptsFile(fs9.readFileSync(md, "utf8")) : void 0;
       }
       const scale = a.scale ?? prev?.meta.scale ?? 2;
       const imagesDir = a.imagesDir ?? prev?.meta.imagesDir ?? "images";
       const assetsDir = a.assetsDir ?? prev?.meta.assetsDir ?? (ws ? "assets" : imagesDir);
       const entries = groupUsages(result.placeholders);
       if (!entries.length && !prev) return textResult(withNotes(`No image is waiting \u2014 nothing written. Images that do not exist yet are built as {type: "image", name, prompt} (or supply for the user's own files).`, notes));
-      const base = path8.dirname(md);
-      fs8.mkdirSync(base, { recursive: true });
+      const base = path9.dirname(md);
+      fs9.mkdirSync(base, { recursive: true });
       if (a.previews ?? !!ws) {
         const shots = /* @__PURE__ */ new Map();
-        const pdir = path8.join(base, "previews");
+        const pdir = path9.join(base, "previews");
         for (const e of entries) {
           const u = e.usages[0];
           const target = u.screenId ?? u.nodeId;
@@ -30238,10 +30347,10 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
               const { result: shot } = await call(c, "screenshot", { nodeId: target, maxPx: 1200 }, a.file, 6e4);
               const data = shot.images[0]?.data;
               if (!data) continue;
-              fs8.mkdirSync(pdir, { recursive: true });
-              const f = path8.join(pdir, `${kebab(u.screen ?? "") || kebab(target)}.png`);
-              fs8.writeFileSync(f, Buffer.from(data, "base64"));
-              shots.set(target, path8.relative(base, f).split(path8.sep).join("/"));
+              fs9.mkdirSync(pdir, { recursive: true });
+              const f = path9.join(pdir, `${kebab(u.screen ?? "") || kebab(target)}.png`);
+              fs9.writeFileSync(f, Buffer.from(data, "base64"));
+              shots.set(target, path9.relative(base, f).split(path9.sep).join("/"));
             } catch (err) {
               log("preview failed", err instanceof Error ? err.message : err);
               continue;
@@ -30250,11 +30359,11 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
           e.preview = shots.get(target);
         }
       }
-      fs8.writeFileSync(md, renderPromptsFile({ title: figmaName, entries, scale, imagesDir, assetsDir, style: a.style ?? prev?.meta.style, previous: prev?.entries }));
+      fs9.writeFileSync(md, renderPromptsFile({ title: figmaName, entries, scale, imagesDir, assetsDir, style: a.style ?? prev?.meta.style, previous: prev?.entries }));
       const supplied = entries.filter((e) => e.supply);
       const generated = entries.filter((e) => !e.supply);
-      if (generated.length) fs8.mkdirSync(path8.join(base, imagesDir), { recursive: true });
-      if (supplied.length) fs8.mkdirSync(path8.join(base, assetsDir), { recursive: true });
+      if (generated.length) fs9.mkdirSync(path9.join(base, imagesDir), { recursive: true });
+      if (supplied.length) fs9.mkdirSync(path9.join(base, assetsDir), { recursive: true });
       const lines = [`Wrote ${md} \u2014 ${generated.length} image(s) to generate, ${supplied.length} from the user (${result.placeholders.length} layer(s)).`];
       const incomplete = [];
       for (const e of entries) {
@@ -30263,8 +30372,8 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
         lines.push(`- ${e.imageId} ${e.title}${e.supply ? " (from the user)" : ""}: ${Math.round(e.w * scale)}\xD7${Math.round(e.h * scale)}px, ratio ${ratio(e.w, e.h)}, used ${e.usages.length}\xD7${e.prompt ? "" : ` \u2014 NO ${e.supply ? "DESCRIPTION: set supply" : "PROMPT: set one"} with edit set`}${gaps.length ? ` \u2014 BRIEF INCOMPLETE, missing: ${gaps.join(", ")}` : ""}${e.preview ? ` \xB7 preview ${e.preview}` : ""}`);
       }
       if (incomplete.length) lines.push("", `Not ready for the user: ${incomplete.join(", ")} lack parts of the brief. Find a reference image for each, write every field (${BRIEF_FIELDS.join(", ")}), set the full prompt with edit set {prompt}, then run image_prompts again.`);
-      if (generated.length && !incomplete.length) lines.push("", `Tell the user: generate them into ${path8.join(base, imagesDir)} with names starting with the id (IMG-001.png\u2026), then say so; you run place_images.`);
-      if (supplied.length) lines.push(`${generated.length ? "And" : "Tell the user"}: put their own files (${supplied.map((e) => e.title).join(", ")}) into ${path8.join(base, assetsDir)} with the names listed in the file.`);
+      if (generated.length && !incomplete.length) lines.push("", `Tell the user: generate them into ${path9.join(base, imagesDir)} with names starting with the id (IMG-001.png\u2026), then say so; you run place_images.`);
+      if (supplied.length) lines.push(`${generated.length ? "And" : "Tell the user"}: put their own files (${supplied.map((e) => e.title).join(", ")}) into ${path9.join(base, assetsDir)} with the names listed in the file.`);
       return textResult(withNotes(lines.join("\n"), notes));
     })
   );
@@ -30285,13 +30394,13 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
     wrap(async (a) => {
       const { result, notes, plugin } = await call(c, "placeholders", { allPages: true }, a.file, 12e4);
       const ws = plugin ? findWorkspace(plugin.file) : null;
-      let md = a.promptsFile ? resolveOutput(a.promptsFile) : ws && fs8.existsSync(path8.join(ws.dir, "IMAGE_PROMPTS.md")) ? path8.join(ws.dir, "IMAGE_PROMPTS.md") : resolveOutput("IMAGE_PROMPTS.md");
+      let md = a.promptsFile ? resolveOutput(a.promptsFile) : ws && fs9.existsSync(path9.join(ws.dir, "IMAGE_PROMPTS.md")) ? path9.join(ws.dir, "IMAGE_PROMPTS.md") : resolveOutput("IMAGE_PROMPTS.md");
       if (!a.promptsFile && plugin && !md.startsWith(ws?.dir ?? "\0")) {
         const alt = resolveOutput(`IMAGE_PROMPTS-${kebab(plugin.file.name) || "figma"}.md`);
-        if (fs8.existsSync(alt)) md = alt;
+        if (fs9.existsSync(alt)) md = alt;
       }
-      const prev = fs8.existsSync(md) ? parsePromptsFile(fs8.readFileSync(md, "utf8")) : void 0;
-      const dirs = a.dir ? [resolveOutput(a.dir)] : [.../* @__PURE__ */ new Set([prev?.meta.imagesDir ?? "images", prev?.meta.assetsDir ?? "assets"])].map((d) => path8.join(path8.dirname(md), d));
+      const prev = fs9.existsSync(md) ? parsePromptsFile(fs9.readFileSync(md, "utf8")) : void 0;
+      const dirs = a.dir ? [resolveOutput(a.dir)] : [.../* @__PURE__ */ new Set([prev?.meta.imagesDir ?? "images", prev?.meta.assetsDir ?? "assets"])].map((d) => path9.join(path9.dirname(md), d));
       const byId = /* @__PURE__ */ new Map();
       const unmatched = [];
       for (const d of dirs) {
@@ -30313,9 +30422,9 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
           const img = await loadImage(f);
           if (!img.data) throw new Error("SVG cannot fill an image box \u2014 export it as PNG.");
           await call(c, "place_image", { ids: e.usages.map((u) => u.nodeId), imageData: img.data, fit: a.fit }, a.file, 9e4);
-          placed.push({ id: e.imageId, file: path8.basename(f), path: f, layers: e.usages.length });
+          placed.push({ id: e.imageId, file: path9.basename(f), path: f, layers: e.usages.length });
         } catch (err) {
-          problems.push(`${e.imageId} (${path8.basename(f)}): ${err instanceof Error ? err.message : err}`);
+          problems.push(`${e.imageId} (${path9.basename(f)}): ${err instanceof Error ? err.message : err}`);
         }
       }
       const placedIds = new Set(placed.map((p) => p.id));
@@ -30326,19 +30435,19 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       if (prev) {
         const history = new Map(prev.entries);
         for (const p of placed) {
-          const status = `placed \u2713 (${path8.relative(path8.dirname(md), p.path).split(path8.sep).join("/")})`;
+          const status = `placed \u2713 (${path9.relative(path9.dirname(md), p.path).split(path9.sep).join("/")})`;
           const old = history.get(p.id);
           history.set(p.id, { status, block: (old?.block ?? `## ${p.id}`).replace(/^- \*\*Status:\*\* .+$/m, `- **Status:** ${status}`) });
         }
         const previews = new Map([...prev.entries].map(([id, v]) => [id, v.block.match(/^- \*\*Where it goes:\*\* !\[[^\]]*\]\(([^)]+)\)/m)?.[1]]));
         for (const e of left) e.preview = previews.get(e.imageId);
-        fs8.writeFileSync(md, renderPromptsFile({ title: prev.meta.title ?? plugin?.file.name ?? "Figma", entries: left, scale: prev.meta.scale ?? 2, imagesDir: prev.meta.imagesDir ?? "images", assetsDir: prev.meta.assetsDir, style: prev.meta.style, previous: history }));
+        fs9.writeFileSync(md, renderPromptsFile({ title: prev.meta.title ?? plugin?.file.name ?? "Figma", entries: left, scale: prev.meta.scale ?? 2, imagesDir: prev.meta.imagesDir ?? "images", assetsDir: prev.meta.assetsDir, style: prev.meta.style, previous: history }));
       }
       const lines = [
         placed.length ? `Placed ${placed.length} image(s): ${placed.map((p) => `${p.id} \u2190 ${p.file}${p.layers > 1 ? ` (${p.layers} layers)` : ""}`).join(", ")}.` : `No images placed (looked in ${dirs.join(", ")}).`,
         left.length ? `Still waiting: ${left.map((e) => `${e.imageId}${e.supply ? " (from the user)" : ""}`).join(", ")}.` : unlisted.length ? "Everything in the prompts file is placed." : "Nothing is waiting for an image any more."
       ];
-      if (unlisted.length) lines.push(`Also waiting but not in ${path8.basename(md)} yet: ${unlisted.map((e) => e.imageId).join(", ")} \u2014 run image_prompts to add them.`);
+      if (unlisted.length) lines.push(`Also waiting but not in ${path9.basename(md)} yet: ${unlisted.map((e) => e.imageId).join(", ")} \u2014 run image_prompts to add them.`);
       const known = new Set(entries.map((e) => e.imageId));
       const stray = [...byId.keys()].filter((id) => !known.has(id) && !prev?.entries.get(id)?.status.startsWith("placed"));
       if (stray.length) lines.push(`No layer is waiting for: ${stray.join(", ")} (already placed, or the layer was removed).`);
@@ -30369,9 +30478,9 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       if (!project) throw new PathError("The project folder is unknown, so there is no place for the workspace. Start the session in the user's project (or set FIGMA_MCP_PROJECT_DIR).");
       if (action2 === "status") {
         const ws2 = findWorkspace(plugin.file);
-        if (!ws2) return textResult(withNotes(`No workspace yet for "${plugin.file.name}" \u2014 it opens at ${path8.join(project, "design-<file>")} on the first design change (or workspace open).`, notes));
-        const count = (d) => fs8.existsSync(path8.join(ws2.dir, d)) ? fs8.readdirSync(path8.join(ws2.dir, d)).filter((f) => !f.startsWith(".")).length : 0;
-        const has = (f) => fs8.existsSync(path8.join(ws2.dir, f)) ? "\u2713" : "\u2014";
+        if (!ws2) return textResult(withNotes(`No workspace yet for "${plugin.file.name}" \u2014 it opens at ${path9.join(project, "design-<file>")} on the first design change (or workspace open).`, notes));
+        const count = (d) => fs9.existsSync(path9.join(ws2.dir, d)) ? fs9.readdirSync(path9.join(ws2.dir, d)).filter((f) => !f.startsWith(".")).length : 0;
+        const has = (f) => fs9.existsSync(path9.join(ws2.dir, f)) ? "\u2713" : "\u2014";
         const cat = (readCatalog(ws2) ?? []).filter((x) => !/^icon\//i.test(x.name));
         const idle = cat.filter((x) => x.inDesigns === 0);
         return textResult(withNotes([
@@ -30393,7 +30502,7 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       const tokenFiles = [];
       if (vars.variables.length) {
         for (const [fmt, name] of [["css", "tokens.css"], ["tailwind", "tailwind.css"], ["dtcg", "tokens.json"]]) {
-          fs8.writeFileSync(path8.join(ws.dir, "tokens", name), exportTokens(vars, fmt));
+          fs9.writeFileSync(path9.join(ws.dir, "tokens", name), exportTokens(vars, fmt));
           tokenFiles.push(`tokens/${name}`);
         }
         lines.push(`- tokens: ${tokenFiles.join(", ")} (${vars.variables.length} variables)`);
@@ -30407,15 +30516,15 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
           top.forEach((r, i) => {
             const f = ex.files[i];
             if (!f?.data) return void references.push({ name: r.name });
-            const out = uniquePath(path8.join(ws.dir, "references"), kebab(r.name) || r.id, "png", true);
-            fs8.writeFileSync(out, Buffer.from(f.data, "base64"));
-            references.push({ name: r.name, file: `references/${path8.basename(out)}` });
+            const out = uniquePath(path9.join(ws.dir, "references"), kebab(r.name) || r.id, "png", true);
+            fs9.writeFileSync(out, Buffer.from(f.data, "base64"));
+            references.push({ name: r.name, file: `references/${path9.basename(out)}` });
           });
-          fs8.writeFileSync(path8.join(ws.dir, "references", "REFERENCES.md"), [`# References \u2014 ${plugin.file.name}`, "", 'Frames on the Figma page "References" (what each one is for is written next to it in Figma).', "", ...references.map((r) => `- ${r.name}${r.file ? ` \u2192 ![${r.name}](${path8.basename(r.file)})` : ""}`), ""].join("\n"));
+          fs9.writeFileSync(path9.join(ws.dir, "references", "REFERENCES.md"), [`# References \u2014 ${plugin.file.name}`, "", 'Frames on the Figma page "References" (what each one is for is written next to it in Figma).', "", ...references.map((r) => `- ${r.name}${r.file ? ` \u2192 ![${r.name}](${path9.basename(r.file)})` : ""}`), ""].join("\n"));
         }
         lines.push(`- references: ${references.length}`);
       }
-      writeDesignMd(path8.join(ws.dir, "DESIGN.md"), {
+      writeDesignMd(path9.join(ws.dir, "DESIGN.md"), {
         fileName: plugin.file.name,
         brief: br.brief,
         pages: ds.pages,
@@ -30463,13 +30572,13 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
       let items = readLibrary(ws);
       if (action2 === "list") {
         const found = searchLibrary(items, a);
-        const head = `${found.length} of ${items.length} image(s) in ${path8.join(ws.dir, "LIBRARY.md")}${a.query || a.orientation || a.minWidth || a.minHeight ? " matching" : ""}`;
+        const head = `${found.length} of ${items.length} image(s) in ${path9.join(ws.dir, "LIBRARY.md")}${a.query || a.orientation || a.minWidth || a.minHeight ? " matching" : ""}`;
         return textResult(withNotes([head, ...found.map((x) => `- ${describeItem(x, ws)}`), found.length ? "" : "Nothing fits: search the web (free-license sources first), then add what you choose."].join("\n"), notes));
       }
       if (action2 === "remove") {
         const want = new Set((a.ids ?? []).map((x) => x.toUpperCase()));
         const gone = items.filter((x) => want.has(x.id));
-        for (const x of gone) fs8.rmSync(path8.join(ws.dir, x.file), { force: true });
+        for (const x of gone) fs9.rmSync(path9.join(ws.dir, x.file), { force: true });
         const figmaIds = gone.map((x) => x.figmaId).filter((x) => !!x);
         if (figmaIds.length) await call(c, "edit", { ops: [{ op: "delete", ids: figmaIds }] }, a.file, 6e4).catch((e) => log("library remove:", e instanceof Error ? e.message : e));
         items = items.filter((x) => !want.has(x.id));
@@ -30505,7 +30614,7 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
             fill: "#FFFFFF",
             radius: 12,
             children: [
-              { type: "image", name: x.id, src: path8.join(ws.dir, x.file), w, h, radius: 6 },
+              { type: "image", name: x.id, src: path9.join(ws.dir, x.file), w, h, radius: 6 },
               { type: "text", text: `${x.id} \xB7 ${x.title}`, size: 13, weight: 600, w: "fill", color: "#18181B" },
               { type: "text", text: [`${x.width}\xD7${x.height} ${x.orientation}`, x.tags.join(", "), x.license ?? "license unknown"].filter(Boolean).join(" \xB7 "), size: 11, w: "fill", color: "#52525B" }
             ]
@@ -30521,8 +30630,67 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
         writeLibrary(ws, items);
         lines.push(`Placed ${fresh.filter((x) => x.figmaId).length} on the Figma page "Library".`);
       }
-      lines.push(`Library: ${items.length} image(s) \u2014 ${path8.join(ws.dir, "LIBRARY.md")}`);
+      lines.push(`Library: ${items.length} image(s) \u2014 ${path9.join(ws.dir, "LIBRARY.md")}`);
       return textResult(withNotes(lines.join("\n"), notes));
+    })
+  );
+  server.registerTool(
+    "history",
+    {
+      title: "Design history (all files)",
+      description: 'What was already designed across every Figma file and project: the references used, the directions built (concept, layout, hero, nav, palette, fonts, style, imagery) and the searches made \u2014 so a new design with the same prompt finds other references and builds a different direction instead of repeating the last one. action list (default): read it before searching references and before proposing directions; check: candidate reference URLs \u2192 which were used before and where. add: references [{url (shot/project page), image?, title?}], directions [{name, concept, layout, \u2026}] once the user picks one, searches ["site:dribbble.com \u2026"] you ran. References placed with build on the References page are recorded by themselves.',
+      inputSchema: {
+        action: external_exports.enum(["list", "add"]).optional(),
+        check: external_exports.array(external_exports.string()).max(40).optional().describe("list: candidate reference URLs to test against the history."),
+        limit: external_exports.number().int().min(1).max(200).optional().describe("list: entries per section (default 20, newest first)."),
+        references: external_exports.array(external_exports.object({ url: external_exports.string(), image: external_exports.string().optional(), title: external_exports.string().optional() })).max(40).optional(),
+        directions: external_exports.array(
+          external_exports.object({
+            name: external_exports.string().describe('e.g. "Floriva \u2013 Direction B: editorial catalog"'),
+            concept: external_exports.string().describe("the idea in one line"),
+            layout: external_exports.string().describe("structure top\u2192bottom, grid, density"),
+            hero: external_exports.string().optional(),
+            nav: external_exports.string().optional(),
+            palette: external_exports.array(external_exports.string()).optional(),
+            fonts: external_exports.array(external_exports.string()).optional(),
+            style: external_exports.string().optional().describe("shape language, surfaces, shadows, radius"),
+            imagery: external_exports.string().optional()
+          })
+        ).max(10).optional(),
+        searches: external_exports.array(external_exports.string()).max(40).optional(),
+        file: fileParam
+      },
+      annotations: { destructiveHint: false }
+    },
+    wrap(async (a) => {
+      if (!c.bridge.plugins_().length) await c.bridge.waitForPlugin(5e3);
+      let fileName = "unknown file";
+      try {
+        if (c.bridge.plugins_().length) fileName = c.bridge.pick(a.file ?? c.bridge.stickyTarget ?? void 0).file.name;
+      } catch {
+      }
+      const h = readHistory();
+      if ((a.action ?? "list") === "add") {
+        const before = recordReferences(h, a.references ?? [], fileName).filter((r) => r.before.length);
+        recordDirections(h, a.directions ?? [], fileName);
+        recordSearches(h, a.searches ?? [], fileName);
+        writeHistory(h);
+        const lines2 = [`Recorded for "${fileName}": ${a.references?.length ?? 0} reference(s), ${a.directions?.length ?? 0} direction(s), ${a.searches?.length ?? 0} search(es).`];
+        for (const r of before) lines2.push(`\u26A0 ${r.ref.url} was already used for ${[...new Set(r.before.map((b) => `"${b.file}" (${b.date})`))].join(", ")} \u2014 pick another unless the user asked to reuse it.`);
+        return textResult(lines2.join("\n"));
+      }
+      const lines = [];
+      if (a.check?.length) {
+        lines.push("## Check");
+        for (const u of a.check) {
+          const used = h.references.filter((x) => [x.url, x.image].some((y) => y && normUrl(y) === normUrl(u)));
+          lines.push(used.length ? `- USED ${u} \u2014 ${[...new Set(used.map((b) => `"${b.file}" (${b.date})`))].join(", ")}` : `- new ${u}`);
+        }
+        lines.push("");
+      }
+      lines.push(renderHistory(h, { limit: a.limit }));
+      lines.push("", `Current file: "${fileName}". Entries from this same file are its own work (continue it); entries from other files are what a new design must not repeat.`);
+      return textResult(lines.join("\n"));
     })
   );
   server.registerTool(
@@ -30541,7 +30709,7 @@ ${result.families.map((f) => `- ${f.family}: ${f.styles.join(", ")}`).join("\n")
 }
 
 // src/server/index.ts
-var VERSION = true ? "1.0.0+1300ce9" : "dev";
+var VERSION = true ? "1.0.0+c1fd6eb" : "dev";
 var INSTRUCTIONS = [
   'figma-mcp \u2014 local bridge to Figma Desktop through the "Figma MCP" development plugin (read + write: layout, auto layout, variables, styles, components & variants, prototype, design\u2192code).',
   'Before the first call load the figma-mcp skill ("figma-mcp:figma" in Claude Code, "figma-mcp" elsewhere) \u2014 the single entry point: its router tells you which guide to read for design, design systems/components, prototypes, design\u2192code and images, and it covers the tool workflow and build-spec vocabulary. Pick the guides yourself for every request; the user should not have to name them.',

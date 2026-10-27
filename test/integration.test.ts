@@ -132,7 +132,7 @@ let idleComponents: Array<Record<string, unknown>> = [];
 test('lists all tools', async () => {
   const { tools } = await A.client.listTools();
   const names = tools.map((t) => t.name).sort();
-  for (const n of ['status', 'workspace', 'image_library', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
+  for (const n of ['status', 'workspace', 'image_library', 'build', 'edit', 'get_design_context', 'get_metadata', 'screenshot', 'variables', 'styles', 'create_component', 'prototype', 'lint', 'export', 'execute', 'export_tokens', 'icons', 'image_prompts', 'place_images', 'history', 'brief']) assert.ok(names.includes(n), `missing ${n}`);
   for (const t of tools) assert.ok((t.description ?? '').length < 4000, `${t.name} description too long`);
 });
 
@@ -267,6 +267,22 @@ test('image library: images are stored once in the workspace and placed on the L
   assert.match(text(r2), /= LIB-001 .*already in the library/);
   const r3 = await A.client.callTool({ name: 'image_library', arguments: { query: 'hero' } });
   assert.match(text(r3), /1 of 1 image\(s\)[\s\S]*LIB-001 "Hero test".*Figma 5:1/);
+});
+
+test('history: a reference already used for another file is flagged when placed again; directions and searches are kept', async () => {
+  fs.writeFileSync(path.join(dataDir, 'history.json'), JSON.stringify({ references: [{ url: 'https://dribbble.com/shots/123-shop', file: 'Other file', date: '2026-01-02' }], directions: [], searches: [] }));
+  const spec = { type: 'frame', name: 'Reference – Shop home (dribbble)', children: [{ type: 'image', src: path.join(project, 'hero.png'), w: 10, h: 10 }, { type: 'text', text: 'Take the grid. Source: https://www.dribbble.com/shots/123-shop/' }] };
+  const r = await A.client.callTool({ name: 'build', arguments: { spec, page: 'References', screenshot: false } });
+  assert.match(text(r), /Reference already used for \\?"Other file\\?" \(2026-01-02\): https:\/\/www\.dribbble\.com\/shots\/123-shop\//);
+  await A.client.callTool({ name: 'history', arguments: { action: 'add', directions: [{ name: 'Direction B', concept: 'editorial catalog', layout: 'split hero, masonry grid', fonts: ['Fraunces', 'Inter'] }], searches: ['site:behance.net florist app'] } });
+  const l = text(await A.client.callTool({ name: 'history', arguments: { check: ['http://dribbble.com/shots/123-shop?x=1', 'https://dribbble.com/shots/999'] } }));
+  assert.match(l, /USED http:\/\/dribbble\.com\/shots\/123-shop\?x=1 — "Other file" \(2026-01-02\)/);
+  assert.match(l, /- new https:\/\/dribbble\.com\/shots\/999/);
+  assert.match(l, /\*\*Direction B\*\* — concept: editorial catalog; layout: split hero, masonry grid; fonts: Fraunces \+ Inter/);
+  assert.match(l, /site:behance\.net florist app/);
+  const again = await A.client.callTool({ name: 'build', arguments: { spec: { ...spec, name: 'Reference – Shop home 2 (dribbble)' }, page: 'References', screenshot: false } });
+  assert.match(text(again), /Reference already used for \\?"Other file\\?"/, 'the earlier file still counts; the same file does not');
+  assert.doesNotMatch(text(again), /"Test file"|already used for .*Test/);
 });
 
 test('workspace sync writes the identity, tokens, references and a project skill; notes and foreign skills survive', async () => {

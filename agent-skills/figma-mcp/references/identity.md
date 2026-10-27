@@ -106,12 +106,14 @@ Pick the path from what exists; several can combine (a file with half a system p
    A design-knowledge skill or database (palettes and font pairings by product type, style catalogs) may give
    raw material here — treat it as suggestions to adapt, check them against the brief, and never save its own
    "master" design file next to the identity (§3, One source).
-   With no reference from the user, find a few on Dribbble/Behance/Pinterest first and place them on `References`
+   With no reference from the user, find a few new ones (not in `history`) on Dribbble/Behance/Pinterest first and place them on `References`
    ([design.md](design.md), § No reference given) — each direction names the references it builds on.
 2. Propose 2–3 genuinely different directions, each as a small `Identity` board sample (a key screen section +
    swatches + type ramp), named `Identity – Direction A/B/C` on `Components`. A distinctive detail only when the
-   brief supports it — no decoration just to look different.
-3. The chosen one becomes the identity (§1); the others go to Trash.
+   brief supports it — no decoration just to look different. Read `history` first: no direction repeats one already
+   designed for another file (3+ of concept, layout, hero, nav, palette, fonts, style, imagery differ), and no
+   reference used there is used again ([design.md](design.md), § Never the same design twice).
+3. The chosen one becomes the identity (§1) and goes into `history` (add `directions`); the others go to Trash.
 
 ### Review — one independent pass
 After building an identity, a component set or a screen from a reference, have it checked by someone who didn't
